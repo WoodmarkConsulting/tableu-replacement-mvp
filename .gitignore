@@ -47,4 +47,3 @@ next-env.d.ts
 
 # user generatet pages
 pagesConfig/*
-!pagesConfig/index.ts
