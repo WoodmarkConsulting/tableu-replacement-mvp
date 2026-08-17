@@ -28,8 +28,8 @@ The intended end state is:
 - `pagesConfig/index.ts`: Registry of dashboards and the JSON file each dashboard uses.
 - `pagesConfig/*.json`: Declarative dashboard definitions with tabs, rows, module selections, chart metadata, filters, and module config.
 - `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename.
-- `app/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
-- `scripts/pages/generateNextPage.ts`: Creates `app/<DashboardName>/page.tsx` from `pagesConfig/index.ts` and the referenced JSON.
+- `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
+- `scripts/pages/generateNextPage.ts`: Creates `app/Dashboards/<DashboardName>/page.tsx` from `pagesConfig/index.ts` and the referenced JSON.
 - `components/TapsWrapper/index.tsx`: Renders tab and row layout from declarative config and passes each chart config into `ChartWrapper`.
 - `components/ChartWrapper/index.tsx`: Resolves the module by `moduleName`, fetches chart data from `/api/data/<chartID>`, validates it with the module's Zod schema, and injects runtime props.
 - `app/api/data/[...chartIDs]/route.ts`: Loads `pagesConfig/sql/<chartID>.sql`, executes it, and returns the query result.
@@ -54,7 +54,7 @@ Do not change module implementation files for normal dashboard requests.
 The runtime flow is:
 
 1. `pagesConfig/index.ts` lists dashboards.
-2. `scripts/pages/generateNextPage.ts` embeds the referenced JSON config into a generated page under `app/`.
+2. `scripts/pages/generateNextPage.ts` embeds the referenced JSON config into a generated page under `app/Dashboards/`.
 3. The generated page renders `TapsWrapper` with `tabsConfig`.
 4. `TapsWrapper` renders `ChartWrapper` for each configured component.
 5. `ChartWrapper` resolves the configured `moduleName` from `moduleRegistry`.
@@ -111,7 +111,7 @@ For module-development or framework work:
 ## Editing rules for agents
 
 - Prefer updating `pagesConfig/*.json` and `pagesConfig/sql/*.sql` over editing React files for dashboard requests.
-- Treat generated `app/<DashboardName>/page.tsx` files as outputs, not as the primary authoring surface.
+- Treat generated `app/Dashboards/<DashboardName>/page.tsx` files as outputs, not as the primary authoring surface.
 - `scripts/pages/generateNextPage.ts` does not overwrite an existing page directory; if a generated page already exists, the script skips it.
 - Before changing any file inside a folder under `modules/`, verify that the folder already satisfies the required module contract.
 - After changing any file inside a folder under `modules/`, verify again that the folder still satisfies the required module contract.

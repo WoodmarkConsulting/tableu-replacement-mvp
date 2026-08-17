@@ -2,6 +2,8 @@ import fs from "fs";
 import { validateRootDirectoryAndPagesConfig } from "../utils";
 import type { TabsConfig } from "@/types/tabs";
 
+const generatedDashboardsDir = "app/Dashboards";
+
 const readPagesConfig = () => {
   const pagesConfigPath = "pagesConfig/pages.json";
 
@@ -22,7 +24,7 @@ function generateNextPage() {
   pagesConfig.forEach((dashboard) => {
     const { dashboardName, dashboardConfigName } = dashboard;
 
-    const pageFolderPath = `app/${dashboardName}`;
+    const pageFolderPath = `${generatedDashboardsDir}/${dashboardName}`;
     const pageFilePath = `${pageFolderPath}/page.tsx`;
     const dashboardConfigPath = `pagesConfig/${dashboardConfigName}`;
 

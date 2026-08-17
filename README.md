@@ -31,7 +31,7 @@ For normal dashboard work, the source of truth is config plus SQL, not page-spec
 - `pagesConfig/index.ts`: Registry of dashboards and the JSON file each dashboard uses.
 - `pagesConfig/*.json`: Declarative dashboard definitions with tabs, rows, chart metadata, filters, and module config.
 - `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. The `chartID` maps directly to the SQL filename.
-- `app/<DashboardName>/page.tsx`: Generated App Router pages for dashboards.
+- `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router pages for dashboards.
 - `components/TapsWrapper/index.tsx`: Renders tabs and rows and passes each chart entry into `ChartWrapper`.
 - `components/ChartWrapper/index.tsx`: Resolves the selected module, fetches chart data, validates it against the module schema, and injects runtime props.
 - `app/api/data/[...chartIDs]/route.ts`: Loads `pagesConfig/sql/<chartID>.sql`, executes it, and returns the query result.
@@ -39,7 +39,7 @@ For normal dashboard work, the source of truth is config plus SQL, not page-spec
 - `modules/modulRegistry.ts`: Auto-generated registry of available modules and the union of chart config types.
 - `modules/instructions.md`: High-level overview of the available modules and when to use them.
 - `modules/<ModuleName>/instructions.md`: Module-specific behavior, data contract, config rules, and usage notes.
-- `scripts/pages/generateNextPage.ts`: Generates `app/<DashboardName>/page.tsx` from `pagesConfig/index.ts` and the referenced JSON.
+- `scripts/pages/generateNextPage.ts`: Generates `app/Dashboards/<DashboardName>/page.tsx` from `pagesConfig/index.ts` and the referenced JSON.
 - `scripts/modules/validateModules.ts`: Validates the required module file contract.
 - `scripts/modules/generateModuleRegistry.ts`: Regenerates `modules/modulRegistry.ts` from module folders.
 
@@ -51,7 +51,7 @@ The dashboard config stays declarative all the way until the runtime wrappers re
 flowchart TD
     A[pagesConfig/index.ts] --> B[pagesConfig/<dashboard>.json]
     B --> C[npm run pageConfig:generatePage]
-    C --> D[app/<DashboardName>/page.tsx]
+    C --> D[app/Dashboards/<DashboardName>/page.tsx]
     D --> E[ChartPageWrapper]
     E --> F[TapsWrapper]
     F --> G[ChartWrapper]
@@ -67,7 +67,7 @@ flowchart TD
 In practice that means:
 
 1. `pagesConfig/index.ts` points to a dashboard JSON file.
-2. `npm run pageConfig:generatePage` embeds that JSON into `app/<DashboardName>/page.tsx`.
+2. `npm run pageConfig:generatePage` embeds that JSON into `app/Dashboards/<DashboardName>/page.tsx`.
 3. The generated page renders `ChartPageWrapper` and `TapsWrapper`.
 4. `TapsWrapper` lays out rows in a 12-column grid and passes each configured chart entry to `ChartWrapper`.
 5. `ChartWrapper` resolves the selected module from `modules/modulRegistry.ts` using `moduleName`.
@@ -125,7 +125,7 @@ For each entry in `pagesConfig/index.ts`, the generator:
 1. Reads `dashboardName` and `dashboardConfigName`.
 2. Validates that the project root and referenced JSON file exist.
 3. Reads and parses the dashboard JSON.
-4. Creates `app/<DashboardName>/page.tsx` if the target folder does not already exist.
+4. Creates `app/Dashboards/<DashboardName>/page.tsx` if the target folder does not already exist.
 5. Embeds the parsed dashboard JSON directly into the generated page as `tabsConfig`.
 
 Important limitation:
@@ -188,7 +188,7 @@ npm run databricks:tableSchemas
 
 ## Current caveats
 
-- `app/<DashboardName>/page.tsx` files are generated outputs, not the primary authoring surface.
+- `app/Dashboards/<DashboardName>/page.tsx` files are generated outputs, not the primary authoring surface.
 - The generator skips dashboards whose target page directory already exists.
 - `ChartPageWrapper` is currently only a thin layout wrapper.
 - The root `app/page.tsx` is not the main dashboard authoring flow; the config-driven dashboard path is the intended architecture.
