@@ -9,5 +9,7 @@
     "shadcn/*",
     "context7/*",
     "playwright/*"
-  ]
+  ],
+
+  "chat.useCustomAgentHooks": true
 }

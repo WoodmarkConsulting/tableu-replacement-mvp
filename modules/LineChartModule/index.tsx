@@ -1,16 +1,16 @@
 "use client";
 
-import { TrendingUp } from "lucide-react";
-import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
-
+import { useMemo } from "react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Area,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  XAxis,
+  YAxis,
+} from "recharts";
+
 import {
   ChartContainer,
   ChartTooltip,
@@ -18,89 +18,242 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
-export const description = "A multiple line chart";
+import type { ChartWrapperInjectedProps } from "@/types/baseChart";
+import { LineChartData } from "./chartDataSchema";
 
-const chartData = [
-  { month: "January", desktop: 186, mobile: 80 },
-  { month: "February", desktop: 305, mobile: 200 },
-  { month: "March", desktop: 237, mobile: 120 },
-  { month: "April", desktop: 73, mobile: 190 },
-  { month: "May", desktop: 209, mobile: 130 },
-  { month: "June", desktop: 214, mobile: 140 },
-];
+/**
+ * Compact transport format returned by the API.
+ *
+ * x:
+ *   Numeric X-axis value.
+ *   Dates should be Unix timestamps in milliseconds.
+ *
+ * y:
+ *   Values for the configured chart series.
+ *
+ * Example:
+ *
+ * {
+ *   x: 1782864000000,
+ *   y: [12, 9]
+ * }
+ */
 
-const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--chart-1)",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "var(--chart-2)",
-  },
-} satisfies ChartConfig;
+type RechartsDataPoint = {
+  x: number;
+  [key: `series_${number}`]: number | null;
+};
 
-interface Props extends BaseChartProps {
-  optional?: string;
+function getSeriesKey(seriesIndex: number): `series_${number}` {
+  return `series_${seriesIndex}`;
 }
 
-export function LineChartModule({ height = 25 }: Props) {
+function formatXAxisValue(
+  value: number,
+  format: LineChartConfig["xAxis"]["format"],
+): string {
+  switch (format) {
+    case "date-month-day": {
+      const date = new Date(value);
+
+      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+
+      const day = String(date.getUTCDate()).padStart(2, "0");
+
+      return `${month}-${day}`;
+    }
+
+    case "date-day-month": {
+      const date = new Date(value);
+
+      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+
+      const day = String(date.getUTCDate()).padStart(2, "0");
+
+      return `${day}.${month}`;
+    }
+
+    case "number":
+    default:
+      return String(value);
+  }
+}
+
+function formatYAxisValue(
+  value: number,
+  format: LineChartConfig["yAxis"]["format"],
+): string {
+  switch (format) {
+    case "compact":
+      return new Intl.NumberFormat("en", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(value);
+
+    case "percent":
+      return `${value}%`;
+
+    case "number":
+    default:
+      return String(value);
+  }
+}
+
+function createChartContainerConfig(
+  lines: LineChartConfig["lines"],
+): ChartConfig {
+  return Object.fromEntries(
+    lines.map((line) => [
+      getSeriesKey(line.seriesIndex),
+      {
+        label: line.name,
+        color: line.stroke,
+      },
+    ]),
+  ) as ChartConfig;
+}
+
+function createRechartsData(
+  chartData: LineChartData[],
+  lines: LineChartConfig["lines"],
+): RechartsDataPoint[] {
+  return chartData.map((dataPoint, pointIndex) => {
+    const rechartsDataPoint: RechartsDataPoint = {
+      x: dataPoint.x,
+    };
+
+    for (const line of lines) {
+      if (line.seriesIndex < 0) {
+        throw new Error(
+          `Invalid seriesIndex ${line.seriesIndex} for line "${line.name}". seriesIndex must be 0 or greater.`,
+        );
+      }
+
+      if (line.seriesIndex >= dataPoint.y.length) {
+        throw new Error(
+          `Missing Y value for line "${line.name}" at data point ${pointIndex}. ` +
+            `Expected y[${line.seriesIndex}], but the Y array only contains ${dataPoint.y.length} value(s).`,
+        );
+      }
+
+      rechartsDataPoint[getSeriesKey(line.seriesIndex)] =
+        dataPoint.y[line.seriesIndex];
+    }
+
+    return rechartsDataPoint;
+  });
+}
+
+type Props = ChartWrapperInjectedProps<LineChartData>;
+
+function LineChartModule(props: Props) {
+  const { chartConfig, chartData, height } = props;
+
+  const { xAxis, yAxis, grid, tooltip, legend, margin, lines } = chartConfig;
+
+  const dataConfig = useMemo(() => createChartContainerConfig(lines), [lines]);
+
+  const rechartsData = useMemo(
+    () => createRechartsData(chartData, lines),
+    [chartData, lines],
+  );
+
   return (
-    <Card className="h-full w-full">
-      <CardHeader>
-        <CardTitle>Line Chart - Multiple</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer
-          config={chartConfig}
-          className={`w-full aspect-auto`}
-          style={height ? { height: `${height}svh` } : undefined}>
-          <LineChart
-            accessibilityLayer
-            data={chartData}
-            margin={{
-              left: 12,
-              right: 12,
-            }}>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="month"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => value.slice(0, 3)}
-            />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-            <Line
-              dataKey="desktop"
-              type="monotone"
-              stroke="var(--color-desktop)"
-              strokeWidth={2}
-              dot={false}
-            />
-            <Line
-              dataKey="mobile"
-              type="monotone"
-              stroke="var(--color-mobile)"
-              strokeWidth={2}
-              dot={false}
-            />
-          </LineChart>
-        </ChartContainer>
-      </CardContent>
-      <CardFooter>
-        <div className="flex w-full items-start gap-2 text-sm">
-          <div className="grid gap-2">
-            <div className="flex items-center gap-2 leading-none font-medium">
-              Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
-            </div>
-            <div className="flex items-center gap-2 leading-none text-muted-foreground">
-              Showing total visitors for the last 6 months
-            </div>
-          </div>
-        </div>
-      </CardFooter>
-    </Card>
+    <ChartContainer
+      config={dataConfig}
+      className="w-full aspect-auto"
+      style={{
+        height: `${height || 15}svh`,
+      }}>
+      <ComposedChart accessibilityLayer data={rechartsData} margin={margin}>
+        {grid.show && (
+          <CartesianGrid
+            horizontal={grid.horizontal}
+            vertical={grid.vertical}
+            strokeDasharray={grid.strokeDasharray}
+          />
+        )}
+
+        <XAxis
+          dataKey="x"
+          type="number"
+          domain={["dataMin", "dataMax"]}
+          hide={!xAxis.show}
+          tickLine={xAxis.tickLine}
+          axisLine={xAxis.axisLine}
+          tickMargin={xAxis.tickMargin}
+          tickFormatter={(value: number) =>
+            formatXAxisValue(value, xAxis.format)
+          }
+        />
+
+        <YAxis
+          type="number"
+          width="auto"
+          hide={!yAxis.show}
+          tickLine={yAxis.tickLine}
+          axisLine={yAxis.axisLine}
+          tickFormatter={(value: number) =>
+            formatYAxisValue(value, yAxis.format)
+          }
+        />
+
+        {tooltip.show && (
+          <ChartTooltip
+            cursor={tooltip.cursor}
+            content={<ChartTooltipContent />}
+          />
+        )}
+
+        {legend.show && <Legend />}
+
+        {lines.map((line) => {
+          const dataKey = getSeriesKey(line.seriesIndex);
+
+          const commonProps = {
+            dataKey,
+            name: line.name,
+            type: line.curve,
+            stroke: line.stroke,
+            strokeWidth: line.strokeWidth,
+            strokeDasharray: line.strokeDasharray,
+            connectNulls: line.connectNulls,
+
+            dot: line.dots.show
+              ? {
+                  r: line.dots.radius,
+                  fill: line.dots.fill,
+                  stroke: line.dots.stroke,
+                  strokeWidth: line.dots.strokeWidth,
+                }
+              : false,
+
+            activeDot: line.activeDot.show
+              ? {
+                  r: line.activeDot.radius,
+                  fill: line.activeDot.fill,
+                  stroke: line.activeDot.stroke,
+                  strokeWidth: line.activeDot.strokeWidth,
+                }
+              : false,
+          } as const;
+
+          if (line.fill.enabled) {
+            return (
+              <Area
+                key={dataKey}
+                {...commonProps}
+                fill={line.fill.color}
+                fillOpacity={line.fill.opacity}
+              />
+            );
+          }
+
+          return <Line key={dataKey} {...commonProps} fill="none" />;
+        })}
+      </ComposedChart>
+    </ChartContainer>
   );
 }
+
+export default LineChartModule;

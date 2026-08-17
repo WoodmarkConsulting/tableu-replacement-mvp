@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# databricks
+.tools/
+.tools/databricks/
+.cache/
+
+# user generatet pages
+pagesConfig/*
+!pagesConfig/index.ts

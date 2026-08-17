@@ -36,3 +36,10 @@ export function validateRootDirectoryAndPagesConfig(
     process.exit(1);
   }
 }
+
+export const ANSI_COLORS = {
+  RED: "\x1b[31m",
+  GREEN: "\x1b[32m",
+  YELLOW: "\x1b[33m",
+  RESET: "\x1b[0m",
+};

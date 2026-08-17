@@ -1,12 +1,27 @@
-type Enumerate<
-  N extends number,
-  Acc extends number[] = [],
-> = Acc["length"] extends N
-  ? Acc[number]
-  : Enumerate<N, [...Acc, Acc["length"]]>;
+import type { ChartConfigs } from "@/modules/modulRegistry";
+type FilterTypes = "dateString" | "number" | "string";
 
-type Range1To100 = Exclude<Enumerate<101>, 0>;
+type FilterConfig = {
+  key: string;
+  value: string | null;
+  type: FilterTypes;
+};
 
 type BaseChartProps = {
-  height?: Range1To100;
+  chartTitle?: string;
+  chartDescription: string;
+  chartID: string;
+  filterConfig: FilterConfig[];
+  chartConfig: ChartConfigs;
 };
+
+export interface ChartWrapperInjectedProps<
+  D extends ChartDataTemplate,
+> extends BaseChartProps {
+  height: number;
+  chartData: D[];
+  isLoading: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  error: Error | null;
+}

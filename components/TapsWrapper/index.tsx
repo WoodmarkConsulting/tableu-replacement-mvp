@@ -1,11 +1,11 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsConfig } from "@/types/tabs";
+import ChartWrapper from "../ChartWrapper";
 
-const fillRow = (
-  components: {
-    module: React.ComponentType<BaseChartProps>;
-    space: number;
-  }[],
-) => {
+/**
+ * Fills the row with components and adjusts the last component's space if the total used space is less than 12.
+ */
+const fillRow = (components: TabsConfig["rows"][number]["components"]) => {
   const result = components.map((component) => ({
     ...component,
     effectiveSpace: component.space,
@@ -44,15 +44,22 @@ export function TapsWrapper({ tabsConfig }: Props) {
               return (
                 <div key={rowIndex} className="grid grid-cols-12 gap-4">
                   {components.map((component, index) => {
-                    const Module = component.module;
+                    const {
+                      effectiveSpace,
+
+                      ...compConfig
+                    } = component;
 
                     return (
                       <div
                         key={index}
                         style={{
-                          gridColumn: `span ${component.effectiveSpace} / span ${component.effectiveSpace}`,
+                          gridColumn: `span ${effectiveSpace} / span ${effectiveSpace}`,
                         }}>
-                        <Module height={row.height} />
+                        <ChartWrapper
+                          {...compConfig}
+                          height={row.height || 15}
+                        />
                       </div>
                     );
                   })}

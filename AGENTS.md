@@ -13,47 +13,147 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## What this repository does
 
 This is a config-driven Next.js dashboard MVP built on the App Router.
-Pages under `app/` can be generated from JSON dashboard definitions in `pagesConfig/`.
-The generated page composes reusable chart modules from `modules/` and renders them through `components/TapsWrapper`.
+For normal dashboard work, the source of truth is declarative dashboard config plus SQL, not page-specific React code.
+
+The intended end state is:
+
+1. A user asks for one or more visualizations and names the source database tables.
+2. The agent selects suitable existing modules from `modules/`.
+3. The agent reads each selected module's `instructions.md`, `chartType.d.ts`, and `chartDataSchema.ts`.
+4. The agent writes or updates dashboard JSON and SQL so the SQL output matches the module schema exactly.
+5. Existing generation and runtime code render the dashboard without page-specific module implementation changes.
 
 ## Important paths
 
-- `app/`: Next.js App Router pages. Generated dashboards live here as `app/<DashboardName>/page.tsx`.
-- `modules/`: Reusable dashboard modules. Every module should export a React component that accepts `BaseChartProps`.
-- `modules/instructions.md`: Overview of all available modules and their intended use.
-- `modules/<ModuleName>/instructions.md`: Module-specific implementation and usage notes.
-- `pagesConfig/index.ts`: Registry of dashboards that should be generated.
-- `pagesConfig/*.json`: Declarative tab and row layout for each dashboard.
-- `scripts/generateNextPage.ts`: Generates App Router pages from `pagesConfig` entries.
-- `components/TapsWrapper/index.tsx`: Resolves config rows into rendered modules inside tabs.
+- `pagesConfig/index.ts`: Registry of dashboards and the JSON file each dashboard uses.
+- `pagesConfig/*.json`: Declarative dashboard definitions with tabs, rows, module selections, chart metadata, filters, and module config.
+- `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename.
+- `app/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
+- `scripts/pages/generateNextPage.ts`: Creates `app/<DashboardName>/page.tsx` from `pagesConfig/index.ts` and the referenced JSON.
+- `components/TapsWrapper/index.tsx`: Renders tab and row layout from declarative config and passes each chart config into `ChartWrapper`.
+- `components/ChartWrapper/index.tsx`: Resolves the module by `moduleName`, fetches chart data from `/api/data/<chartID>`, validates it with the module's Zod schema, and injects runtime props.
+- `app/api/data/[...chartIDs]/route.ts`: Loads `pagesConfig/sql/<chartID>.sql`, executes it, and returns the query result.
+- `modules/modulRegistry.ts`: Auto-generated registry of available modules and the union of chart config types.
+- `scripts/modules/generateModuleRegistry.ts`: Regenerates `modules/modulRegistry.ts` from module folders.
+- `scripts/modules/validateModules.ts`: Validates the required module file contract.
+- `modules/instructions.md`: High-level overview of the available modules and when to use them. Keep it up to date whenever module capabilities, intended usage, or the set of available modules changes.
+- `modules/<ModuleName>/instructions.md`: Module-specific instructions. Detailed module behavior belongs there, not in this root file.
 
-## Rendering model
+## Dashboard authoring model
 
-1. `pagesConfig/index.ts` defines which dashboards exist.
-2. Each dashboard points to a JSON config file in `pagesConfig/`.
-3. `scripts/generateNextPage.ts` reads that JSON file, collects module names, writes imports, and creates `app/<DashboardName>/page.tsx`.
-4. The generated page passes a typed `tabsConfig` object into `TapsWrapper`.
-5. `TapsWrapper` renders tabs, fills remaining row width to 12 columns, and mounts each referenced module.
+For normal dashboard creation and updates, the agent should modify only:
+
+- `pagesConfig/index.ts` when adding a new dashboard entry
+- `pagesConfig/*.json` for tabs, rows, module selection, chart metadata, filters, and module configuration
+- `pagesConfig/sql/*.sql` for the data transformation feeding each chart
+
+Do not implement dashboard-specific behavior in `app/` page components.
+
+Do not change module implementation files for normal dashboard requests.
+
+The runtime flow is:
+
+1. `pagesConfig/index.ts` lists dashboards.
+2. `scripts/pages/generateNextPage.ts` embeds the referenced JSON config into a generated page under `app/`.
+3. The generated page renders `TapsWrapper` with `tabsConfig`.
+4. `TapsWrapper` renders `ChartWrapper` for each configured component.
+5. `ChartWrapper` resolves the configured `moduleName` from `moduleRegistry`.
+6. `ChartWrapper` fetches `/api/data/<chartID>`.
+7. The API route reads `pagesConfig/sql/<chartID>.sql` and executes the query.
+8. `ChartWrapper` validates the returned array against the selected module's `chartDataSchema.ts`.
+9. The module receives `ChartWrapperInjectedProps<...>` including `chartData`, loading state, error state, and configured metadata.
 
 ## Module contract
 
-- Export the module as a named React component from `modules/<ModuleName>/index.tsx`.
-- The component must be usable as `React.ComponentType<BaseChartProps>`.
-- `height` is passed from the row config and is defined as a numeric range from 1 to 100.
-- The module name in JSON must exactly match the exported component name used by the generator.
+- Every folder directly inside `modules/` may contain additional files and subfolders, but it must contain all of these required files without exception:
+  - `index.tsx`
+  - `chartDataSchema.ts`
+  - `chartType.d.ts`
+  - `instructions.md`
+- `modules/<ModuleName>/index.tsx` must have a default export.
+- The default-exported component in `modules/<ModuleName>/index.tsx` must use `ChartWrapperInjectedProps` as its props type. Example:
+
+```ts
+import { ChartWrapperInjectedProps } from "../../components/ChartWrapper";
+
+type ExampleProps = ChartWrapperInjectedProps<ExampleChartData>;
+
+const ExampleModule: React.FC<ExampleProps> = (props) => {
+  // component implementation
+};
+
+export default ExampleModule;
+```
+
+- `modules/<ModuleName>/chartDataSchema.ts` must default-export a Zod schema and must also export the module data type.
+- `modules/<ModuleName>/chartType.d.ts` must contain exactly one `type` declaration.
+- `modules/<ModuleName>/instructions.md` must follow `docs/instructions.template.md`.
+- The `moduleName` used in dashboard JSON must match a key in `modules/modulRegistry.ts`.
+
+## Agent workflow
+
+For normal dashboard work:
+
+1. Do not start from `app/` or from module implementation files.
+2. Choose one or more existing modules that fit the requested visualization.
+3. Read the selected module's `instructions.md`, `chartType.d.ts`, and `chartDataSchema.ts`.
+4. Inspect the relevant source table schemas or existing schema exports.
+5. Write SQL that transforms the source tables into exactly the shape required by the module schema.
+6. Write or update dashboard JSON so the module config is valid for that module's `chartType.d.ts`.
+7. Keep the work declarative: JSON and SQL first, generated page second.
+
+For module-development or framework work:
+
+1. Use the `Development` agent.
+2. Change module implementation only when the task is explicitly about module capabilities, shared framework behavior, registry generation, validation, or infrastructure.
+3. When changing a module, keep the module contract valid before and after the edit.
 
 ## Editing rules for agents
 
-- Prefer updating JSON layout in `pagesConfig/*.json` when the change is about arrangement, tabs, row height, or module placement.
-- Prefer updating `modules/` when the change is about chart behavior, data, styling, or component internals.
+- Prefer updating `pagesConfig/*.json` and `pagesConfig/sql/*.sql` over editing React files for dashboard requests.
+- Treat generated `app/<DashboardName>/page.tsx` files as outputs, not as the primary authoring surface.
+- `scripts/pages/generateNextPage.ts` does not overwrite an existing page directory; if a generated page already exists, the script skips it.
+- Before changing any file inside a folder under `modules/`, verify that the folder already satisfies the required module contract.
+- After changing any file inside a folder under `modules/`, verify again that the folder still satisfies the required module contract.
+- This verification must confirm all of the following:
+  - `index.tsx` exists and has a default export.
+  - The default-exported component in `index.tsx` uses `ChartWrapperInjectedProps` as its props type.
+  - `chartDataSchema.ts` exists and default-exports a Zod schema.
+  - `chartDataSchema.ts` exports the module data type.
+  - `chartType.d.ts` exists and contains exactly one `type` declaration.
+  - `instructions.md` exists.
+  - `instructions.md` follows `.github/agents/instructions.template.md`.
+- After changing module folders, run `npm run module:validate`.
+- After adding, removing, renaming, or changing module exports, config types, or schema files, run `npm run module:generateRegistry`.
+- Do not leave a module folder in a partially migrated or non-compliant state, even temporarily at the end of a task.
 - If you add a new module, also add or update:
   - `modules/instructions.md`
   - `modules/<ModuleName>/instructions.md`
   - Any dashboard config that should reference the new module
-- If you change generator behavior, keep `README.md` aligned with the actual flow in `scripts/generateNextPage.ts`.
+- If an existing module changes in a way that affects its purpose, capabilities, or recommended usage, update `modules/instructions.md` as well.
 
 ## Known implementation details
 
-- The component is named `TapsWrapper`, but it renders tabs using the shared tabs UI.
-- The generator skips dashboards whose target folder already exists.
-- The current example module uses static sample data and is intended as a visual scaffold, not a production data source.
+- The component is named `TapsWrapper`, but it is the tab layout renderer for dashboards.
+- `ChartWrapper` owns data fetching, empty/loading/error states, and schema validation.
+- `ChartConfigs` is generated as a union of module chart config types in `modules/modulRegistry.ts`.
+
+## Agent Permissions
+
+The default Copilot agent is intentionally read-only in this repository.
+
+It may search, read, analyze, and explain repository contents, but it must not
+create, modify, rename, or delete files and must not execute shell commands.
+
+For repository modifications or command execution:
+
+1. Select the `Development` agent first.
+2. Start a new chat session after selecting the `Development` agent.
+3. Perform implementation work only in that new session.
+
+Selecting the `Development` agent inside an existing session is not sufficient.
+A fresh session is required for the Development permissions to become active.
+
+If the `Development` agent is unexpectedly blocked by a repository permission
+hook, do not attempt to work around the hook. Select the `Development` agent
+and start a fresh chat session, then retry the operation.
