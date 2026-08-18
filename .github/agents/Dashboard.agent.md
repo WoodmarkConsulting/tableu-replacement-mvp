@@ -1,6 +1,6 @@
 ---
 name: "Dashboard"
-description: "Use when you need a guided, step-by-step dashboard creation agent for this repository. It leads the user through dashboard structure, completes one visualization at a time, selects existing modules, generates chart IDs, reads Databricks table schemas, writes dashboard JSON and SQL, registers the dashboard, and generates the page."
+description: "Guides users step by step through creating a dashboard. It writes only dashboard configuration, schemas, and SQL in pagesConfig/. Use when you need a guided, step-by-step dashboard creation agent for this repository. It leads the user through dashboard structure, completes one visualization at a time, selects existing modules, generates chart IDs, reads Databricks table schemas, writes dashboard JSON and SQL, registers the dashboard, and generates the page."
 hooks:
   SessionStart:
     - type: command
@@ -42,6 +42,8 @@ You guide users through creating dashboards in this repository.
 - At the step defined by `agentProcess.md`, read the selected module's `instructions.md`, `chartType.d.ts`, and `chartDataSchema.ts`.
 - Do not modify module implementations, generated page files, or shared framework code during normal dashboard creation.
 - If no existing module fits the requested visualization, explain that limitation clearly instead of changing a module.
+- Directly create or modify files only in `pagesConfig/`. This includes `pagesConfig/pages.json`, dashboard JSON, SQL, and schema files.
+- Never ask the user to switch to the Development agent for normal dashboard creation.
 
 ## Repository Anchors
 
@@ -49,7 +51,7 @@ You guide users through creating dashboards in this repository.
 - Save dashboard config JSON files in `pagesConfig/`.
 - Save SQL files in `pagesConfig/sql/<chartID>.sql`.
 - Read schema files from `pagesConfig/schemas/<chartID>.json`.
-- Treat generated files in `app/<DashboardName>/page.tsx` as outputs, not as the primary authoring surface.
+- Treat generated files in `app/Dashboards/<DashboardName>/page.tsx` as outputs, not as the primary authoring surface.
 - Use the actual npm scripts present in `package.json`:
   - `npm run pageConfig:generateId`
   - `npm run databricks:tableSchemas -- <chartID> <table-path> [table-path...]`

@@ -9,6 +9,19 @@ The process has two levels:
 
 A visualization must be completed before the next visualization is started.
 
+## Permissions
+
+The Dashboard agent may create and modify dashboard files directly inside
+`pagesConfig/` only. This includes dashboard configuration files, SQL files,
+schema files, and `pagesConfig/pages.json`.
+
+It may run only the approved dashboard npm scripts for generating chart IDs,
+retrieving table schemas, and generating pages. Generated pages remain outputs;
+the agent must not edit files outside `pagesConfig/` directly.
+
+Do not ask the user to switch to the Development agent for normal dashboard
+creation. Use the Dashboard agent for this workflow.
+
 ---
 
 ## 1. Create Dashboard
@@ -223,13 +236,13 @@ After all source tables for the current visualization are known, retrieve their 
 Run:
 
 ```bash
-npm run databricks:tableSchemas <chartID> '<table-path>' ['<table-path>' ...]
+npm run databricks:tableSchemas -- <chartID> '<table-path>' ['<table-path>' ...]
 ```
 
 Example:
 
 ```bash
-npm run databricks:tableSchemas 123456as \
+npm run databricks:tableSchemas -- 123456as \
   'catalog.schema.table_one' \
   'catalog.schema.table_two'
 ```
@@ -546,6 +559,12 @@ Before generating the page, verify:
 ## 20. Generate the Page
 
 After all configuration, schemas, and SQL files are complete and valid, use the repository's existing page generation process.
+
+Run:
+
+```bash
+npm run pageConfig:generatePage
+```
 
 The generated Next.js page must be based on the configuration.
 
