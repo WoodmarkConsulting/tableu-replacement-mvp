@@ -1,23 +1,29 @@
 import type { ChartConfigs } from "@/modules/modulRegistry";
-type FilterTypes = "dateString" | "number" | "string";
 
-type FilterConfig = {
+export type ChartDataTemplate = object;
+
+export type FilterTypes = "dateString" | "number" | "string";
+
+export type FilterConfig = {
   key: string;
   value: string | null;
   type: FilterTypes;
 };
 
-type BaseChartProps = {
+export type BaseChartProps<
+  C extends ChartConfigs = ChartConfigs,
+> = {
   chartTitle?: string;
   chartDescription: string;
   chartID: string;
   filterConfig: FilterConfig[];
-  chartConfig: ChartConfigs;
+  chartConfig: C;
 };
 
 export interface ChartWrapperInjectedProps<
   D extends ChartDataTemplate,
-> extends BaseChartProps {
+  C extends ChartConfigs = ChartConfigs,
+> extends BaseChartProps<C> {
   height: number;
   chartData: D[];
   isLoading: boolean;

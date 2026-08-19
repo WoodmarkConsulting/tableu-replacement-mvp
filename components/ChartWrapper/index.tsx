@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
@@ -28,6 +29,7 @@ import { cn } from "@/lib/utils";
 
 import {
   moduleRegistry,
+  type ChartConfigs,
   type ModuleRegistryKeys,
 } from "@/modules/modulRegistry";
 
@@ -51,17 +53,33 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   type ModuleChartData<M extends ModuleRegistryKeys> = z.infer<ModuleSchema<M>>;
   type DataType = ModuleChartData<M>;
 
-  const { moduleName, ...baseProps } = props;
+  const { moduleName, mockData, ...baseProps } = props;
   const [filters, setFilters] = useChartState(baseProps.filterConfig);
   const { chartID, chartTitle, chartDescription, filterConfig } = baseProps;
   const { component, dataSchema } = moduleRegistry[moduleName];
 
-  const Module = component as unknown as React.ComponentType<
-    ChartWrapperInjectedProps<DataType>
+  const Module = component as React.ComponentType<
+    ChartWrapperInjectedProps<DataType, ChartConfigs>
   >;
 
+  const parsedMockData = useMemo(() => {
+    if (mockData === undefined) {
+      return undefined;
+    }
+
+    const result = z.array(dataSchema).safeParse(mockData);
+
+    if (!result.success) {
+      throw new Error(
+        `Invalid mockData for chartID "${chartID}": ${result.error.message}`,
+      );
+    }
+
+    return result.data as DataType[];
+  }, [mockData, dataSchema, chartID]);
+
   const {
-    data: chartData = [],
+    data: chartData = parsedMockData ?? [],
     isLoading,
     isFetching,
     isError,
@@ -69,7 +87,13 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   } = useQuery<DataType[], Error>({
     queryKey: ["chart-data", chartID, filters],
     queryFn: () =>
-      fetchChartData<ModuleSchema<M>>(chartID, filters, dataSchema),
+      fetchChartData(
+        chartID,
+        filters,
+        dataSchema as unknown as z.ZodType<DataType>,
+      ),
+    enabled: parsedMockData === undefined,
+    initialData: parsedMockData,
   });
 
   if (error) {
@@ -153,7 +177,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
 export default ChartWrapper;
 
-async function fetchChartData<TSchema extends z.ZodType>(
+async function fetchChartData<TSchema extends z.ZodTypeAny>(
   chartID: string,
   filters: ChartFiltersState,
   dataSchema: TSchema,

@@ -27,3 +27,12 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 - Notes: Uses static demo data and does not currently fetch or accept dynamic series data.
 
 For module-specific details, read `modules/LineChartModule/instructions.md`.
+
+### `MapModule`
+
+- Purpose: Geographic visualization module for choropleth country maps and optional bubble overlays for latitude/longitude points.
+- Best use: Showing regional values such as revenue, engagement, or coverage by country, plus geospatial points for facilities, cities, or customer locations.
+- Input: Accepts a mixed `region` and `point` dataset, with value-driven fill logic and optional bubble sizing and color.
+- Notes: Works without a basemap or API key by using the bundled world atlas countries TopoJSON. This differs from `LineChartModule`, which is designed for numeric time-series comparison rather than geographic grouping.
+
+For module-specific details, read `modules/MapModule/instructions.md`.

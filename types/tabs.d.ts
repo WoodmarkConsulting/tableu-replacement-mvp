@@ -13,6 +13,7 @@ type Range1To100 = Exclude<Enumerate<101>, 0>;
 type TabsComponentConfig = {
   moduleName: ModuleRegistryKeys;
   space: number;
+  mockData?: unknown[];
 } & BaseChartProps;
 
 type TabsConfig = {

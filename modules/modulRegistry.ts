@@ -5,10 +5,11 @@
 import dynamic from "next/dynamic";
 
 import LineChartModuleDataSchema from "@/modules/LineChartModule/chartDataSchema";
+import MapModuleDataSchema from "@/modules/MapModule/chartDataSchema";
 
 export type ModuleRegistryKeys = keyof typeof moduleRegistry;
 
-export type ChartConfigs = LineChartConfig;
+export type ChartConfigs = LineChartConfig | MapChartConfig;
 
 export const moduleRegistry = {
   "LineChartModule": {
@@ -18,6 +19,14 @@ export const moduleRegistry = {
       ),
     ),
     dataSchema: LineChartModuleDataSchema,
+  },
+  "MapModule": {
+    component: dynamic(() =>
+      import("@/modules/MapModule").then(
+        (loadedModule) => loadedModule.default,
+      ),
+    ),
+    dataSchema: MapModuleDataSchema,
   },
 } as const;
 

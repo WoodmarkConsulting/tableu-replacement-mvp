@@ -1,5 +1,5 @@
 import fs from "fs";
-import type { PagesConfig } from "@/pagesConfig";
+import type { PagesConfig } from "@/types/pagesConfig";
 
 export function validateRootDirectoryAndPagesConfig(
   dashboard: PagesConfig,

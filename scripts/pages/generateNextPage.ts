@@ -1,5 +1,6 @@
 import fs from "fs";
 import { validateRootDirectoryAndPagesConfig } from "../utils";
+import type { PagesConfig } from "@/types/pagesConfig";
 import type { TabsConfig } from "@/types/tabs";
 
 const generatedDashboardsDir = "app/Dashboards";

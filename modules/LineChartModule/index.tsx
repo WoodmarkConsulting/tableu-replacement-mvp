@@ -144,7 +144,7 @@ function createRechartsData(
   });
 }
 
-type Props = ChartWrapperInjectedProps<LineChartData>;
+type Props = ChartWrapperInjectedProps<LineChartData, LineChartConfig>;
 
 function LineChartModule(props: Props) {
   const { chartConfig, chartData, height } = props;

@@ -1,4 +1,4 @@
-type PagesConfig = {
+export type PagesConfig = {
   dashboardName: string;
   dashboardConfigName: string;
 };
