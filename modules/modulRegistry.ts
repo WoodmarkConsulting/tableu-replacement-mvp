@@ -12,7 +12,7 @@ export type ModuleRegistryKeys = keyof typeof moduleRegistry;
 export type ChartConfigs = LineChartConfig | MapChartConfig;
 
 export const moduleRegistry = {
-  LineChartModule: {
+  "LineChartModule": {
     component: dynamic(() =>
       import("@/modules/LineChartModule").then(
         (loadedModule) => loadedModule.default,

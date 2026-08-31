@@ -1,24 +1,38 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import countries from "i18n-iso-countries";
 import enLocale from "i18n-iso-countries/langs/en.json";
 import { scaleLinear, scaleSqrt, scaleThreshold } from "d3-scale";
 import { geoCentroid } from "d3-geo";
-import {
-  ComposableMap,
-  Geographies,
-  Geography,
-  Marker,
-  ZoomableGroup,
-} from "react-simple-maps";
+import { CustomProjection } from "@visx/geo";
+import { Zoom } from "@visx/zoom";
+import { feature } from "topojson-client";
+import type { FeatureCollection, Feature, Geometry } from "geojson";
 
 import worldAtlas from "world-atlas/countries-110m.json";
 
-import type { ChartWrapperInjectedProps } from "@/types/baseChart";
 import type { MapChartData } from "./chartDataSchema";
 
 countries.registerLocale(enLocale);
+
+type WorldFeature = Feature<Geometry, { name?: string }>;
+
+type ProjectionPresetName =
+  | "mercator"
+  | "naturalEarth"
+  | "equalEarth"
+  | "orthographic";
+
+const PROJECTION_PRESET: Record<
+  MapChartConfig["projection"]["type"],
+  ProjectionPresetName
+> = {
+  geoMercator: "mercator",
+  geoNaturalEarth1: "naturalEarth",
+  geoEqualEarth: "equalEarth",
+  geoOrthographic: "orthographic",
+};
 
 type Props = ChartWrapperInjectedProps<MapChartData, MapChartConfig>;
 
@@ -318,7 +332,73 @@ function MapModule(props: Props) {
       getColorForScale(value, min, max, gradient.minColor, gradient.maxColor);
   }, [config, pointValues]);
 
-  const geometrySource = config.geography.url ?? worldAtlas;
+  const [fetchedGeo, setFetchedGeo] = useState<unknown>(null);
+
+  useEffect(() => {
+    const url = config.geography.url;
+    if (!url) {
+      return;
+    }
+
+    let active = true;
+    fetch(url)
+      .then((response) => response.json())
+      .then((data) => {
+        if (active) {
+          setFetchedGeo(data);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setFetchedGeo(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [config.geography.url]);
+
+  const geoFeatures = useMemo<WorldFeature[]>(() => {
+    const geoData = config.geography.url ? fetchedGeo : worldAtlas;
+    if (!geoData) {
+      return [];
+    }
+
+    const topology = geoData as { objects: Record<string, object> };
+    const object =
+      topology.objects.countries ?? Object.values(topology.objects)[0];
+
+    if (!object) {
+      return [];
+    }
+
+    const collection = feature(
+      topology as Parameters<typeof feature>[0],
+      object as Parameters<typeof feature>[1],
+    ) as unknown as FeatureCollection<Geometry, { name?: string }>;
+
+    return collection.features ?? [];
+  }, [config.geography.url, fetchedGeo]);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const update = () =>
+      setSize({ width: element.clientWidth, height: element.clientHeight });
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleTooltip = (
     event: React.MouseEvent<SVGPathElement | SVGCircleElement>,
@@ -340,70 +420,70 @@ function MapModule(props: Props) {
   };
 
   const renderMapBody = () => (
-    <>
-      <Geographies geography={geometrySource}>
-        {({ geographies }) =>
-          geographies.map((geo) => {
-            const featureId = geo.id?.toString() ?? "";
-            const paddedId = featureId ? featureId.padStart(3, "0") : "";
-            const normalized = paddedId
-              ? countries.numericToAlpha2(paddedId)
-              : null;
-            const regionValue = normalized
-              ? regionValues.get(normalized.toUpperCase())
-              : undefined;
+    <CustomProjection<WorldFeature>
+      data={geoFeatures}
+      projection={PROJECTION_PRESET[config.projection.type]}
+      scale={config.projection.scale}
+      center={config.projection.center}
+      translate={[size.width / 2, size.height / 2]}
+    >
+      {({ features, projection }) => (
+        <>
+          <g>
+            {features.map(({ feature: geo, path, index }) => {
+              const featureId = geo.id?.toString() ?? "";
+              const paddedId = featureId ? featureId.padStart(3, "0") : "";
+              const normalized = paddedId
+                ? countries.numericToAlpha2(paddedId)
+                : null;
+              const regionValue = normalized
+                ? regionValues.get(normalized.toUpperCase())
+                : undefined;
 
-            const fill =
-              regionValue !== undefined && config.choropleth.enabled
-                ? choroplethScale?.(regionValue) ?? config.choropleth.noDataColor
-                : config.choropleth.enabled
-                  ? config.choropleth.noDataColor
-                  : config.geography.defaultFill;
+              const fill =
+                regionValue !== undefined && config.choropleth.enabled
+                  ? choroplethScale?.(regionValue) ??
+                    config.choropleth.noDataColor
+                  : config.choropleth.enabled
+                    ? config.choropleth.noDataColor
+                    : config.geography.defaultFill;
 
-            const title = normalized ?? geo.properties?.name ?? "Unknown region";
+              const title =
+                normalized ?? geo.properties?.name ?? "Unknown region";
 
-            const showLabel =
-              config.regionLabels.show && regionValue !== undefined;
-            const centroid = showLabel
-              ? (geoCentroid(geo as never) as [number, number])
-              : null;
+              const showLabel =
+                config.regionLabels.show && regionValue !== undefined;
+              const centroid = showLabel
+                ? (geoCentroid(geo as never) as [number, number])
+                : null;
+              const projectedCentroid = centroid
+                ? projection(centroid)
+                : null;
 
-            return (
-              <Fragment key={geo.rsmKey}>
-                <Geography
-                  geography={geo}
-                  fill={fill}
-                  stroke={config.geography.stroke}
-                  strokeWidth={config.geography.strokeWidth}
-                  onMouseMove={(event) => {
-                    if (regionValue === undefined) {
-                      return;
-                    }
-                    handleTooltip(event, title, regionValue);
-                  }}
-                  onMouseLeave={() => setTooltip(null)}
-                  onClick={() => handleRegionSelect(normalized)}
-                  style={{
-                    default: {
+              return (
+                <Fragment key={`${featureId}-${index}`}>
+                  <path
+                    d={path ?? ""}
+                    fill={fill}
+                    stroke={config.geography.stroke}
+                    strokeWidth={config.geography.strokeWidth}
+                    onMouseMove={(event) => {
+                      if (regionValue === undefined) {
+                        return;
+                      }
+                      handleTooltip(event, title, regionValue);
+                    }}
+                    onMouseLeave={() => setTooltip(null)}
+                    onClick={() => handleRegionSelect(normalized)}
+                    style={{
                       outline: "none",
-                      fill,
                       cursor: selectionEnabled ? "pointer" : "default",
-                    },
-                    hover: {
-                      outline: "none",
-                      fill,
-                      opacity: 0.9,
-                      cursor: selectionEnabled ? "pointer" : "default",
-                    },
-                    pressed: {
-                      outline: "none",
-                      fill,
-                    },
-                  }}
-                />
-                {showLabel && centroid && (
-                  <Marker coordinates={centroid}>
+                    }}
+                  />
+                  {showLabel && projectedCentroid && (
                     <text
+                      x={projectedCentroid[0]}
+                      y={projectedCentroid[1]}
                       textAnchor="middle"
                       dominantBaseline="central"
                       style={{
@@ -415,78 +495,106 @@ function MapModule(props: Props) {
                     >
                       {regionValue}
                     </text>
-                  </Marker>
-                )}
-              </Fragment>
-            );
-          })
-        }
-      </Geographies>
+                  )}
+                </Fragment>
+              );
+            })}
+          </g>
 
-      {config.bubbles.enabled &&
-        pointRows.map((entry) => {
-          const radius = bubbleRadiusScale
-            ? bubbleRadiusScale(entry.value)
-            : config.bubbles.radius.min;
-          const bubbleColor =
-            config.bubbles.color.mode === "value" && bubbleColorScale
-              ? bubbleColorScale(entry.value)
-              : config.bubbles.color.fixedColor ?? "#3b82f6";
+          {config.bubbles.enabled &&
+            pointRows.map((entry) => {
+              const projected = projection([entry.lng, entry.lat]);
+              if (!projected) {
+                return null;
+              }
 
-          return (
-            <Marker
-              key={`${entry.lat}-${entry.lng}-${entry.label ?? "point"}`}
-              coordinates={[entry.lng, entry.lat]}
-            >
-              <circle
-                r={radius}
-                fill={bubbleColor}
-                fillOpacity={config.bubbles.opacity}
-                stroke={config.bubbles.stroke}
-                strokeWidth={config.bubbles.strokeWidth}
-                onMouseMove={(event) => {
-                  handleTooltip(
-                    event,
-                    entry.label ?? `${entry.lat}, ${entry.lng}`,
-                    entry.value,
-                  );
-                }}
-                onMouseLeave={() => setTooltip(null)}
-                onClick={() => handlePointSelect(entry)}
-                style={{ cursor: selectionEnabled ? "pointer" : "default" }}
-              />
-            </Marker>
-          );
-        })}
-    </>
+              const radius = bubbleRadiusScale
+                ? bubbleRadiusScale(entry.value)
+                : config.bubbles.radius.min;
+              const bubbleColor =
+                config.bubbles.color.mode === "value" && bubbleColorScale
+                  ? bubbleColorScale(entry.value)
+                  : config.bubbles.color.fixedColor ?? "#3b82f6";
+
+              return (
+                <circle
+                  key={`${entry.lat}-${entry.lng}-${entry.label ?? "point"}`}
+                  cx={projected[0]}
+                  cy={projected[1]}
+                  r={radius}
+                  fill={bubbleColor}
+                  fillOpacity={config.bubbles.opacity}
+                  stroke={config.bubbles.stroke}
+                  strokeWidth={config.bubbles.strokeWidth}
+                  onMouseMove={(event) => {
+                    handleTooltip(
+                      event,
+                      entry.label ?? `${entry.lat}, ${entry.lng}`,
+                      entry.value,
+                    );
+                  }}
+                  onMouseLeave={() => setTooltip(null)}
+                  onClick={() => handlePointSelect(entry)}
+                  style={{ cursor: selectionEnabled ? "pointer" : "default" }}
+                />
+              );
+            })}
+        </>
+      )}
+    </CustomProjection>
   );
+
+  const initialZoom = config.zoom.initial > 0 ? config.zoom.initial : 1;
+  const canRender = size.width > 0 && size.height > 0;
 
   return (
     <div
+      ref={containerRef}
       className="relative w-full overflow-hidden rounded-md border border-slate-200 bg-slate-50"
       style={{ height: `${height || 15}svh` }}
     >
-      <ComposableMap
-        projection={config.projection.type}
-        projectionConfig={{
-          center: config.projection.center,
-          scale: config.projection.scale,
-        }}
-        className="h-full w-full"
-      >
-        {config.zoom.enabled ? (
-          <ZoomableGroup
-            center={config.projection.center}
-            zoom={config.zoom.initial}
-            minZoom={config.zoom.min}
-            maxZoom={config.zoom.max}
+      {canRender &&
+        (config.zoom.enabled ? (
+          <Zoom<SVGSVGElement>
+            width={size.width}
+            height={size.height}
+            scaleXMin={config.zoom.min}
+            scaleXMax={config.zoom.max}
+            scaleYMin={config.zoom.min}
+            scaleYMax={config.zoom.max}
+            initialTransformMatrix={{
+              scaleX: initialZoom,
+              scaleY: initialZoom,
+              translateX: ((1 - initialZoom) * size.width) / 2,
+              translateY: ((1 - initialZoom) * size.height) / 2,
+              skewX: 0,
+              skewY: 0,
+            }}
+          >
+            {(zoom) => (
+              <svg
+                ref={zoom.containerRef}
+                width={size.width}
+                height={size.height}
+                className="h-full w-full"
+                style={{
+                  cursor: zoom.isDragging ? "grabbing" : "grab",
+                  touchAction: "none",
+                }}
+              >
+                <g transform={zoom.toString()}>{renderMapBody()}</g>
+              </svg>
+            )}
+          </Zoom>
+        ) : (
+          <svg
+            width={size.width}
+            height={size.height}
+            className="h-full w-full"
           >
             {renderMapBody()}
-          </ZoomableGroup>
-        ) : (
-          renderMapBody()
-        )}
-      </ComposableMap>
+          </svg>
+        ))}
 
       {config.tooltip.show && tooltip && (
         <div

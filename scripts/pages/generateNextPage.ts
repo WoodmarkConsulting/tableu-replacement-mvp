@@ -51,6 +51,9 @@ function generateNextPage() {
 
       const dashboardConfig = JSON.parse(configContent) as DashboardConfig;
       const tabsConfig = dashboardConfig.tabs;
+      // React component names must be capitalized for the rules-of-hooks lint rule.
+      const componentName =
+        dashboardName.charAt(0).toUpperCase() + dashboardName.slice(1);
 
       // Generate the Next.js page.
       const boilerplateCode = `
@@ -60,9 +63,8 @@ function generateNextPage() {
           import { useLayoutEffect } from "react";
           import useFiltersStore from "@/stores/filterProvider";
           import { DashboardShell } from "@/components/DashboardShell";
-          import { FilterValue } from "@/types/filters";
 
-          export default function ${dashboardName}() {
+          export default function ${componentName}() {
             const { initFilterStore, resetFilterStore } = useFiltersStore(
               useShallow((s) => ({
                 initFilterStore: s.initFilterStore,
@@ -71,20 +73,18 @@ function generateNextPage() {
             );
 
             const tabsConfig = ${JSON.stringify(tabsConfig, null, 2)} as const satisfies TabsConfig[];
-            const dashboardConfig: DashboardConfig<typeof tabsConfig> = ${JSON.stringify(dashboardConfig, null, 2)};
+            const dashboardConfig: DashboardConfig<typeof tabsConfig> = {
+              reportName: ${JSON.stringify(dashboardConfig.reportName)},
+              filterLayout: ${JSON.stringify(dashboardConfig.filterLayout)},
+              filters: ${JSON.stringify(dashboardConfig.filters, null, 2)},
+              tabs: tabsConfig,
+            };
 
 
             useLayoutEffect(() => {
               initFilterStore({
                 dimensions: dashboardConfig.filters,
                 initialActiveTab: dashboardConfig.tabs[0]?.trigger ?? "",
-                initialValues: dashboardConfig.filters.reduce(
-                  (acc, filter) => {
-                    acc[filter.key] = filter.defaultValue;
-                    return acc;
-                  },
-                  {} as Record<string, FilterValue>,
-                ),
               });
 
               return () => {

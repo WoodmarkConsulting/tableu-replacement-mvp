@@ -8,6 +8,8 @@ Use this module when you need to show values by country, region, or market footp
 
 Do not use this module for heatmap density overlays, tile-based basemaps, or click-through drill-down navigation. Those behaviors are intentionally outside the current module scope.
 
+The map is rendered with `@visx/geo` (projections and geography paths) and `@visx/zoom` (pan/zoom). Geography features come from `world-atlas` TopoJSON converted with `topojson-client`. Choropleth coloring and bubble sizing use `d3-scale`, ISO matching uses `i18n-iso-countries`, and region label placement uses `d3-geo` `geoCentroid`.
+
 ---
 
 ## 2. Module Files
@@ -244,7 +246,7 @@ type MapChartConfig = {
 
 ### `projection`
 
-Description of the map projection used by the SVG renderer.
+Description of the map projection used by the `@visx/geo` renderer.
 
 #### `projection.type`
 
