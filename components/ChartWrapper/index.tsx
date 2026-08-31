@@ -30,6 +30,7 @@ import {
 } from "@/modules/modulRegistry";
 
 import useFilterStore, { globalKey, tabKey } from "@/stores/filterProvider";
+import useQueryTimingStore from "@/stores/queryTimingStore";
 
 import type { FilterValue } from "@/types/filters";
 // import useChartState from "@/hooks/useChartState";
@@ -61,6 +62,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const activeTab = useFilterStore((state) => state.activeTab);
   const dimensions = useFilterStore((state) => state.dimensions);
   const applySelection = useFilterStore((state) => state.applySelection);
+  const recordTiming = useQueryTimingStore((state) => state.recordTiming);
 
   const params = useMemo(() => {
     const resolved: Record<string, string | number | null> = {};
@@ -155,12 +157,26 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     error,
   } = useQuery<DataType[], Error>({
     queryKey: ["chart-data", chartID, params],
-    queryFn: () =>
-      fetchChartData(
+    queryFn: async () => {
+      const start = performance.now();
+
+      const result = await fetchChartData(
         chartID,
         params,
         dataSchema as unknown as z.ZodType<DataType>,
-      ),
+      );
+
+      if (process.env.NODE_ENV === "development") {
+        recordTiming({
+          chartID,
+          label: chartTitle,
+          durationMs: performance.now() - start,
+          timestamp: Date.now(),
+        });
+      }
+
+      return result;
+    },
     enabled: parsedMockData === undefined,
     initialData: parsedMockData,
   });

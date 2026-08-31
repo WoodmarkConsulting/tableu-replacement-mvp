@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sidebar";
 import useFiltersStore, { globalKey } from "@/stores/filterProvider";
 import { FilterControl } from "../FilterControl";
+import { QueryTimer } from "../QueryTimer";
 import { FilterValue } from "@/types/filters";
 
 export function AppSidebar() {
@@ -35,7 +36,9 @@ export function AppSidebar() {
         </SidebarGroup>
         <SidebarGroup />
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter>
+        <QueryTimer />
+      </SidebarFooter>
     </Sidebar>
   );
 }
