@@ -43,12 +43,10 @@ function formatValue(dimension: FilterDimension, value: FilterValue): string {
 }
 
 export function ActiveFilters({ dimensions }: ActiveFiltersProps) {
-  const values = useFilterStore((state) => state.values);
+  const values = useFilterStore((state) => state.appliedValues);
   const activeTab = useFilterStore((state) => state.activeTab);
   const clearDimension = useFilterStore((state) => state.clearDimension);
   const clearAll = useFilterStore((state) => state.clearAll);
-
-  const {} = useFilterStore();
 
   const active = dimensions
     .filter(

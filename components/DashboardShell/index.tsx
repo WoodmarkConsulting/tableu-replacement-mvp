@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 
 import { ActiveFilters } from "@/components/ActiveFilters";
+import { FilterActions } from "@/components/FilterActions";
 import { ShareButton } from "@/components/ShareButton";
 import { TabFilters } from "@/components/TabFilters";
 import { TabsWrapper } from "@/components/TabsWrapper";
@@ -20,7 +21,7 @@ function FilterUrlSync() {
 }
 
 export function DashboardShell({ config }: DashboardShellProps) {
-  const { reportName, filters, tabs } = config;
+  const { reportName, filterLayout, filters, tabs } = config;
 
   const activeTab = useFilterStore((state) => state.activeTab);
   const setActiveTab = useFilterStore((state) => state.setActiveTab);
@@ -40,6 +41,16 @@ export function DashboardShell({ config }: DashboardShellProps) {
       </span>
     </div>
   );
+
+  // In the "top" layout the global filters render outside the sidebar, so the
+  // Apply/Reset control lives in the top bar. The sidebar layout gets it from
+  // AppSidebar's footer.
+  const actions =
+    filterLayout === "top" ? (
+      <div className="print:hidden">
+        <FilterActions />
+      </div>
+    ) : null;
 
   const applied = <ActiveFilters dimensions={filters} />;
 
@@ -62,6 +73,8 @@ export function DashboardShell({ config }: DashboardShellProps) {
       {urlSync}
 
       {header}
+
+      {actions}
 
       {applied}
 

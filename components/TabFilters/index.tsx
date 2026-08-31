@@ -10,8 +10,8 @@ type TabFiltersProps = {
 
 export function TabFilters({ dimensions }: TabFiltersProps) {
   const activeTab = useFilterStore((state) => state.activeTab);
-  const values = useFilterStore((state) => state.values);
-  const setFilter = useFilterStore((state) => state.setFilter);
+  const values = useFilterStore((state) => state.draftValues);
+  const setDraftFilter = useFilterStore((state) => state.setDraftFilter);
 
   const tabDimensions = dimensions.filter(
     (dimension) => dimension.scope === "tab" && dimension.tab === activeTab,
@@ -31,7 +31,7 @@ export function TabFilters({ dimensions }: TabFiltersProps) {
             key={dimension.id}
             dimension={dimension}
             value={values[key]}
-            onChange={(value: FilterValue) => setFilter(key, value)}
+            onChange={(value: FilterValue) => setDraftFilter(key, value)}
           />
         );
       })}

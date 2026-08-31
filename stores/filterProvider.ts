@@ -43,10 +43,17 @@ export type FilterStoreState = {
 
   // Static dimension definitions for this dashboard.
   dimensions: FilterDimension[];
-  // Values keyed by `global:<dimId>` or `tab:<tabId>:<dimId>`.
-  values: Record<string, FilterValue>;
+  // Draft layer: edited by controls, not yet committed to queries.
+  // Keyed by `global:<dimId>` or `tab:<tabId>:<dimId>`.
+  draftValues: Record<string, FilterValue>;
+  // Applied layer: drives queries + chips. Committed via applyFilters().
+  appliedValues: Record<string, FilterValue>;
+  // Gate: false until the first Apply (or snapshot hydration). Blocks fetching.
+  hasApplied: boolean;
   activeTab: string;
-  setFilter: (key: string, value: FilterValue) => void;
+  setDraftFilter: (key: string, value: FilterValue) => void;
+  applyFilters: () => void;
+  resetDraft: () => void;
   clearDimension: (key: string) => void;
   clearAll: () => void;
   applySelection: (
@@ -56,6 +63,23 @@ export type FilterStoreState = {
   setActiveTab: (tab: string) => void;
   initFilterStore: (args: CreateFilterStoreArgs) => void;
   resetFilterStore: () => void;
+};
+
+// Shallow inequality of draft vs applied — true when there are pending edits.
+export const isDirty = (state: FilterStoreState): boolean => {
+  const { draftValues, appliedValues } = state;
+  const keys = new Set([
+    ...Object.keys(draftValues),
+    ...Object.keys(appliedValues),
+  ]);
+
+  for (const key of keys) {
+    if (draftValues[key] !== appliedValues[key]) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 const useFiltersStore = create<FilterStoreState>((set, get) => {
@@ -68,37 +92,70 @@ const useFiltersStore = create<FilterStoreState>((set, get) => {
       return;
     }
 
+    const seeded = {
+      ...buildDefaultValues(dimensions),
+      ...(initialValues ?? {}),
+    };
+
     set({
       _isInit: true,
       dimensions,
-      values: { ...buildDefaultValues(dimensions), ...(initialValues ?? {}) },
+      // Seed both layers, but leave hasApplied false so open != fetch.
+      draftValues: { ...seeded },
+      appliedValues: { ...seeded },
+      hasApplied: false,
       activeTab: initialActiveTab,
     });
   };
 
-  const setFilter: FilterStoreState["setFilter"] = (key, value) =>
-    set((state) => ({ values: { ...state.values, [key]: value } }));
+  const setDraftFilter: FilterStoreState["setDraftFilter"] = (key, value) =>
+    set((state) => ({ draftValues: { ...state.draftValues, [key]: value } }));
+
+  const applyFilters: FilterStoreState["applyFilters"] = () =>
+    set((state) => ({
+      appliedValues: { ...state.draftValues },
+      hasApplied: true,
+    }));
+
+  const resetDraft: FilterStoreState["resetDraft"] = () =>
+    set((state) => ({ draftValues: { ...state.appliedValues } }));
 
   const clearDimension: FilterStoreState["clearDimension"] = (key) =>
     set((state) => {
-      const newValues = { ...state.values };
-      delete newValues[key];
-      return { values: newValues };
+      const nextDraft = { ...state.draftValues };
+      const nextApplied = { ...state.appliedValues };
+      delete nextDraft[key];
+      delete nextApplied[key];
+      return { draftValues: nextDraft, appliedValues: nextApplied };
     });
 
   const clearAll: FilterStoreState["clearAll"] = () =>
-    set(() => ({ values: {} }));
+    // Keep hasApplied so charts show "no filters" results, not the idle prompt.
+    set(() => ({ draftValues: {}, appliedValues: {} }));
 
   const applySelection: FilterStoreState["applySelection"] = (
     entries,
     navigateTo,
   ) => {
     set((state) => {
-      const next = { ...state.values, ...entries };
+      // Drill is an explicit, immediate cross-filter: write to both layers so
+      // it re-queries without an Apply press and without clobbering pending
+      // edits on other dimensions.
+      const nextDraft = { ...state.draftValues, ...entries };
+      const nextApplied = { ...state.appliedValues, ...entries };
 
       return navigateTo
-        ? { values: next, activeTab: navigateTo }
-        : { values: next };
+        ? {
+            draftValues: nextDraft,
+            appliedValues: nextApplied,
+            hasApplied: true,
+            activeTab: navigateTo,
+          }
+        : {
+            draftValues: nextDraft,
+            appliedValues: nextApplied,
+            hasApplied: true,
+          };
     });
   };
 
@@ -109,7 +166,9 @@ const useFiltersStore = create<FilterStoreState>((set, get) => {
     set({
       _isInit: false,
       dimensions: [],
-      values: {},
+      draftValues: {},
+      appliedValues: {},
+      hasApplied: false,
       activeTab: "",
     });
   };
@@ -117,11 +176,15 @@ const useFiltersStore = create<FilterStoreState>((set, get) => {
   return {
     _isInit: false,
     dimensions: [],
-    values: {},
+    draftValues: {},
+    appliedValues: {},
+    hasApplied: false,
     activeTab: "",
 
     //actions
-    setFilter,
+    setDraftFilter,
+    applyFilters,
+    resetDraft,
     clearDimension,
     clearAll,
     applySelection,

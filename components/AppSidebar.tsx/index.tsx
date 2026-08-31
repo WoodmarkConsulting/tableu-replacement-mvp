@@ -9,11 +9,12 @@ import {
 } from "@/components/ui/sidebar";
 import useFiltersStore, { globalKey } from "@/stores/filterProvider";
 import { FilterControl } from "../FilterControl";
+import { FilterActions } from "../FilterActions";
 import { QueryTimer } from "../QueryTimer";
 import { FilterValue } from "@/types/filters";
 
 export function AppSidebar() {
-  const { dimensions, setFilter } = useFiltersStore();
+  const { dimensions, draftValues, setDraftFilter } = useFiltersStore();
   const globalFilters = dimensions.filter((dim) => dim.scope === "global");
 
   return (
@@ -28,8 +29,8 @@ export function AppSidebar() {
               <FilterControl
                 key={dimension.id}
                 dimension={dimension}
-                value={0}
-                onChange={(value: FilterValue) => setFilter(key, value)}
+                value={draftValues[key]}
+                onChange={(value: FilterValue) => setDraftFilter(key, value)}
               />
             );
           })}
@@ -37,6 +38,7 @@ export function AppSidebar() {
         <SidebarGroup />
       </SidebarContent>
       <SidebarFooter>
+        <FilterActions />
         <QueryTimer />
       </SidebarFooter>
     </Sidebar>

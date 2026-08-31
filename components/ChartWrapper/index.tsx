@@ -58,10 +58,11 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
   // const [filters, setFilters] = useChartState(baseProps.filterConfig);
 
-  const filterValues = useFilterStore((state) => state.values);
+  const filterValues = useFilterStore((state) => state.appliedValues);
   const activeTab = useFilterStore((state) => state.activeTab);
   const dimensions = useFilterStore((state) => state.dimensions);
   const applySelection = useFilterStore((state) => state.applySelection);
+  const hasApplied = useFilterStore((state) => state.hasApplied);
   const recordTiming = useQueryTimingStore((state) => state.recordTiming);
 
   const params = useMemo(() => {
@@ -177,7 +178,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
       return result;
     },
-    enabled: parsedMockData === undefined,
+    enabled: parsedMockData === undefined && hasApplied,
     initialData: parsedMockData,
   });
 
@@ -208,7 +209,22 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
           />
         )} */}
 
-        {isLoading || isFetching ? (
+        {!hasApplied && parsedMockData === undefined ? (
+          <ChartState height={props.height}>
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>Bereit zum Abfragen</EmptyTitle>
+
+                <EmptyDescription>
+                  Passen Sie die Filter an und klicken Sie auf „Anwenden“, um die
+                  Daten zu laden.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </ChartState>
+        ) : null}
+
+        {hasApplied && (isLoading || isFetching) ? (
           <ChartState height={props.height}>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Spinner />
@@ -232,7 +248,11 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
           </ChartState>
         ) : null}
 
-        {chartData.length === 0 && !isLoading && !isFetching && !isError ? (
+        {hasApplied &&
+        chartData.length === 0 &&
+        !isLoading &&
+        !isFetching &&
+        !isError ? (
           <ChartState height={props.height}>
             <Empty>
               <EmptyHeader>

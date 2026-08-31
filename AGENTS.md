@@ -74,6 +74,27 @@ Dashboards share a filter framework driven entirely by config:
 - **Layout** — `filterLayout: "sidebar" | "top"` controls where global filters render; `reportName` shows in the header.
 - **Applied filters** — `ActiveFilters` renders removable chips and doubles as the print/export summary (interactive controls are `print:hidden`).
 
+### Deferred queries (Apply to run)
+
+Charts never fetch on dashboard open. Filter edits go into a **draft** layer and
+only hit the warehouse when **Apply** is pressed.
+
+- The store (`stores/filterProvider.ts`) splits values into `draftValues` (edited
+  by controls via `setDraftFilter`) and `appliedValues` (drives queries + chips),
+  plus a `hasApplied` gate (`false` until the first `applyFilters()` or snapshot
+  hydration). `resetDraft()` discards pending edits; `isDirty(state)` reports
+  draft ≠ applied.
+- `ChartWrapper` reads `appliedValues`, sets `enabled: ... && hasApplied`, and
+  renders an idle prompt until the first Apply.
+- `components/FilterActions/index.tsx` renders **Apply**/**Reset**. It sits in the
+  sidebar footer (`filterLayout: "sidebar"`) and the top bar (`filterLayout: "top"`).
+- **Chip removal** (`clearDimension`) and **drill** (`applySelection`)
+  intentionally bypass the Apply gate: both write to draft *and* applied layers and
+  re-query immediately.
+- Shared permalinks auto-apply on hydration (`useFilterUrlSync`) so recipients see
+  data without pressing Apply; `useShareFilters` snapshots `appliedValues`.
+
+
 ### Drill & cross-filter
 
 A component may declare `drill: { targetTab?, selectionMode: "single" | "multi", selectionBindings: Record<selectionKey, dimensionId> }`. Selecting data maps each selected row's `selectionKey` to the bound dimension and writes the value at that dimension's own scope — `global:<id>` (filters every tab) or `tab:<dim.tab>:<id>` (filters that page).
