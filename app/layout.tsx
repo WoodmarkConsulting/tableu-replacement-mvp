@@ -38,12 +38,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         "font-sans",
         ibmPlexSans.variable,
       )}>
-      <body className="min-h-full flex flex-col" cz-shortcut-listen="true">
+      <body className="min-h-full flex flex-col pr-3" cz-shortcut-listen="true">
         <TanstackProvider>
           <SidebarProvider>
             <AppSidebar />
             <SidebarTrigger />
-            <main>{children}</main>
+            <main className="w-full">{children}</main>
           </SidebarProvider>
         </TanstackProvider>
       </body>

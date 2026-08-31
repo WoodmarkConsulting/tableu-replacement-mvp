@@ -1,41 +1,39 @@
-export type FilterType =
-  | "string"
-  | "number"
-  | "dateString"
-  | "dateRange"
-  | "select";
+type FilterType = "string" | "number" | "dateString" | "dateRange" | "select";
 
-export type FilterScope = "global" | "tab";
-
-export type FilterLayout = "sidebar" | "top";
+type FilterScope = "global" | "tab";
 
 export type SelectionMode = "single" | "multi";
 
-export type FilterOption = {
+type FilterOption = {
   label: string;
   value: string;
 };
 
-export type DateRangeValue = {
+type DateRangeValue = {
   from: string | null;
   to: string | null;
 };
 
-export type FilterValue = string | number | null | DateRangeValue;
+type FilterValue = string | number | null | DateRangeValue;
 
-export type FilterDimension = {
+type FilterDimension<Tconf extends TabsConfig[] = TabsConfig[]> = {
   id: string;
   label: string;
   type: FilterType;
-  scope: FilterScope;
-  // Required when scope is "tab": the tab trigger this dimension belongs to.
-  tab?: string;
-  // Options for type "select".
   options?: FilterOption[];
   defaultValue?: FilterValue;
-};
+} & (
+  | {
+      scope: "global";
+      tab?: never;
+    }
+  | {
+      scope: "tab";
+      tab: Tconf[number]["trigger"];
+    }
+);
 
-export type DrillConfig = {
+type DrillConfig = {
   // When set, navigate to this tab after applying the selection (cross-tab drill).
   // When omitted, the selection filters in place (same-page or global cross-filter).
   targetTab?: string;
@@ -44,7 +42,7 @@ export type DrillConfig = {
   selectionBindings: Record<string, string>;
 };
 
-export type FilterSnapshot = {
+type FilterSnapshot = {
   values: Record<string, FilterValue>;
   activeTab: string;
 };

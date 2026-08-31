@@ -1,4 +1,3 @@
-import type { FilterConfig } from "@/types/baseChart";
 import { useState } from "react";
 
 export type ChartFiltersState = {

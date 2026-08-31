@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { useFilterStoreApi, type FilterState } from "@/stores/filterProvider";
 import type { FilterSnapshot } from "@/types/filters";
+import useFiltersStore, { FilterStoreState } from "@/stores/filterProvider";
 
 const SNAPSHOT_PARAM = "s";
 const TAB_PARAM = "tab";
@@ -13,7 +13,6 @@ const TAB_PARAM = "tab";
 // (small) active tab in the URL. Large filter selections are never placed in the
 // URL directly; they are persisted server-side as snapshots (see /api/filters).
 export function useFilterUrlSync(): void {
-  const store = useFilterStoreApi();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -27,7 +26,7 @@ export function useFilterUrlSync(): void {
 
     hydratedRef.current = true;
 
-    const state = store.getState();
+    const state = useFiltersStore.getState();
     const snapshotId = searchParams.get(SNAPSHOT_PARAM);
     const tab = searchParams.get(TAB_PARAM);
 
@@ -55,7 +54,7 @@ export function useFilterUrlSync(): void {
           return;
         }
 
-        const current = store.getState();
+        const current = useFiltersStore.getState();
 
         for (const [key, value] of Object.entries(snapshot.values ?? {})) {
           current.setFilter(key, value);
@@ -72,28 +71,27 @@ export function useFilterUrlSync(): void {
     return () => {
       cancelled = true;
     };
-  }, [store, searchParams]);
+  }, [searchParams]);
 
   // Keep only the active tab in the URL; drop the consumed snapshot token.
   useEffect(() => {
-    const write = (state: FilterState) => {
-      const params = new URLSearchParams(window.location.search);
-
-      params.delete(SNAPSHOT_PARAM);
-
-      if (state.activeTab) {
-        params.set(TAB_PARAM, state.activeTab);
-      } else {
-        params.delete(TAB_PARAM);
+    const write = (
+      state: FilterStoreState,
+      previousState: FilterStoreState,
+    ) => {
+      if (state.activeTab === previousState.activeTab) {
+        return;
       }
 
-      const query = params.toString();
+      const params = new URLSearchParams(window.location.search);
+      params.delete(SNAPSHOT_PARAM);
+      params.set(TAB_PARAM, state.activeTab);
 
-      router.replace(query ? `${pathname}?${query}` : pathname, {
+      router.replace(`${pathname}?${params.toString()}`, {
         scroll: false,
       });
     };
 
-    return store.subscribe(write);
-  }, [store, pathname, router]);
+    return useFiltersStore.subscribe(write);
+  }, [pathname, router]);
 }

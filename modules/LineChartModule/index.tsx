@@ -18,7 +18,6 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
-import type { ChartWrapperInjectedProps } from "@/types/baseChart";
 import { LineChartData } from "./chartDataSchema";
 
 /**

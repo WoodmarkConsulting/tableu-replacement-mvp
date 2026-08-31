@@ -21,7 +21,7 @@ function generateNextPage() {
   const pagesConfig = readPagesConfig();
 
   pagesConfig.forEach((dashboard) => {
-    const { dashboardName, dashboardConfigName, globalFilters } = dashboard;
+    const { dashboardName, dashboardConfigName } = dashboard;
 
     const pageFolderPath = `${generatedDashboardsDir}/${dashboardName}`;
     const pageFilePath = `${pageFolderPath}/page.tsx`;
@@ -50,35 +50,53 @@ function generateNextPage() {
       const configContent = fs.readFileSync(dashboardConfigPath, "utf-8");
 
       const dashboardConfig = JSON.parse(configContent) as DashboardConfig;
+      const tabsConfig = dashboardConfig.tabs;
 
       // Generate the Next.js page.
       const boilerplateCode = `
-          "use client";
-          import useGlobalFilters from "@/context/globalFilter";
-          import { useShallow } from "zustand/shallow";
-          import { useLayoutEffect } from "react";
-
           import ChartPageWrapper from "@/components/ChartPageWrapper";
-          import { TabsWrapper } from "@/components/TabsWrapper";
-          import { TabsConfig } from "@/types/tabs";
+          import { useShallow } from "zustand/shallow";
+
+          import { useLayoutEffect } from "react";
+          import useFiltersStore from "@/stores/filterProvider";
+          import { DashboardShell } from "@/components/DashboardShell";
+          import { FilterValue } from "@/types/filters";
 
           export default function ${dashboardName}() {
-              const setGlobalFilterConfig = useGlobalFilters(
-                useShallow((state) => state.setGlobalFilterConfig),
-              );
+            const { initFilterStore, resetFilterStore } = useFiltersStore(
+              useShallow((s) => ({
+                initFilterStore: s.initFilterStore,
+                resetFilterStore: s.resetFilterStore,
+              })),
+            );
 
-            const tabsConfig: TabsConfig[] = ${JSON.stringify(dashboardConfig, null, 2)};
-            const globalFilters: PagesConfig["globalFilters"] = ${JSON.stringify(globalFilters, null, 2)};
+            const tabsConfig = ${JSON.stringify(tabsConfig, null, 2)} as const satisfies TabsConfig[];
+            const dashboardConfig: DashboardConfig<typeof tabsConfig> = ${JSON.stringify(dashboardConfig, null, 2)};
+
 
             useLayoutEffect(() => {
-              setGlobalFilterConfig(globalFilters);
+              initFilterStore({
+                dimensions: dashboardConfig.filters,
+                initialActiveTab: dashboardConfig.tabs[0]?.trigger ?? "",
+                initialValues: dashboardConfig.filters.reduce(
+                  (acc, filter) => {
+                    acc[filter.key] = filter.defaultValue;
+                    return acc;
+                  },
+                  {} as Record<string, FilterValue>,
+                ),
+              });
+
+              return () => {
+                resetFilterStore();
+              };
 
               //eslint-disable-next-line react-hooks/exhaustive-deps
             }, []);
 
             return (
               <ChartPageWrapper>
-                <TabsWrapper tabsConfig={tabsConfig} />
+                <DashboardShell config={dashboardConfig} />
               </ChartPageWrapper>
             );
           }

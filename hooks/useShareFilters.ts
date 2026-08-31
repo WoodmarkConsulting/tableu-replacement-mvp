@@ -3,12 +3,11 @@
 import { useCallback, useState } from "react";
 import { usePathname } from "next/navigation";
 
-import { useFilterStoreApi } from "@/stores/filterProvider";
+import useFiltersStore from "@/stores/filterProvider";
 
 type ShareStatus = "idle" | "sharing" | "copied" | "error";
 
 export function useShareFilters(dashboard: string) {
-  const store = useFilterStoreApi();
   const pathname = usePathname();
   const [status, setStatus] = useState<ShareStatus>("idle");
 
@@ -16,12 +15,15 @@ export function useShareFilters(dashboard: string) {
     setStatus("sharing");
 
     try {
-      const { values, activeTab } = store.getState();
+      const { values, activeTab } = useFiltersStore.getState();
 
       const response = await fetch("/api/filters/snapshot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dashboard, state: { values, activeTab } }),
+        body: JSON.stringify({
+          dashboard,
+          state: { values, activeTab },
+        }),
       });
 
       if (!response.ok) {
@@ -40,14 +42,13 @@ export function useShareFilters(dashboard: string) {
       const url = `${window.location.origin}${pathname}?${params.toString()}`;
 
       await navigator.clipboard.writeText(url);
-
       setStatus("copied");
     } catch {
       setStatus("error");
     } finally {
       window.setTimeout(() => setStatus("idle"), 2000);
     }
-  }, [store, pathname, dashboard]);
+  }, [dashboard, pathname]);
 
   return { share, status };
 }

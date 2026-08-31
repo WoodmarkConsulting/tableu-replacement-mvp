@@ -1,6 +1,4 @@
-type BaseChartProps = import("./baseChart").BaseChartProps;
 type ModuleRegistryKeys = import("@/modules/modulRegistry").ModuleRegistryKeys;
-import type { DrillConfig, FilterDimension, FilterLayout } from "./filters";
 
 type Enumerate<
   N extends number,
@@ -28,9 +26,8 @@ type TabsConfig = {
   }[];
 };
 
-type DashboardConfig = {
+type DashboardConfig<T extends TabsConfig[] = TabsConfig[]> = {
   reportName: string;
-  filterLayout: FilterLayout;
-  filters: FilterDimension[];
-  tabs: TabsConfig[];
+  filters: FilterDimension<T>[];
+  tabs: T;
 };

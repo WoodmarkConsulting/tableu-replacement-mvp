@@ -29,10 +29,8 @@ import {
   type ModuleRegistryKeys,
 } from "@/modules/modulRegistry";
 
-import { globalKey, tabKey, useFilterStore } from "@/stores/filterProvider";
+import useFilterStore, { globalKey, tabKey } from "@/stores/filterProvider";
 
-import type { TabsComponentConfig } from "@/types/tabs";
-import type { ChartWrapperInjectedProps } from "@/types/baseChart";
 import type { FilterValue } from "@/types/filters";
 
 type ModuleSchema<M extends ModuleRegistryKeys> =

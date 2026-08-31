@@ -3,7 +3,7 @@
 import { XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { globalKey, tabKey, useFilterStore } from "@/stores/filterProvider";
+import useFilterStore, { globalKey, tabKey } from "@/stores/filterProvider";
 import type {
   DateRangeValue,
   FilterDimension,
@@ -47,6 +47,8 @@ export function ActiveFilters({ dimensions }: ActiveFiltersProps) {
   const activeTab = useFilterStore((state) => state.activeTab);
   const clearDimension = useFilterStore((state) => state.clearDimension);
   const clearAll = useFilterStore((state) => state.clearAll);
+
+  const {} = useFilterStore();
 
   const active = dimensions
     .filter(

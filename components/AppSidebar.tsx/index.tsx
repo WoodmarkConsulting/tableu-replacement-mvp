@@ -1,6 +1,5 @@
 "use client";
 
-import useGlobalFilters from "@/app/context/globalFilter";
 import {
   Sidebar,
   SidebarContent,
@@ -8,23 +7,31 @@ import {
   SidebarGroup,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import ChartFilters from "../ChartFilters";
+import useFiltersStore, { globalKey } from "@/stores/filterProvider";
+import { FilterControl } from "../FilterControl";
+import { FilterValue } from "@/types/filters";
 
 export function AppSidebar() {
-  const { globalFilterConfig, globalFilters, setFilter } = useGlobalFilters();
-
-  console.log("globalFilters", globalFilters);
+  const { dimensions, setFilter } = useFiltersStore();
+  const globalFilters = dimensions.filter((dim) => dim.scope === "global");
 
   return (
     <Sidebar>
       <SidebarHeader />
       <SidebarContent>
         <SidebarGroup>
-          <ChartFilters
-            filterConfig={globalFilterConfig}
-            filters={globalFilters}
-            setFilter={setFilter}
-          />
+          {globalFilters.map((dimension) => {
+            const key = globalKey(dimension.id);
+
+            return (
+              <FilterControl
+                key={dimension.id}
+                dimension={dimension}
+                value={0}
+                onChange={(value: FilterValue) => setFilter(key, value)}
+              />
+            );
+          })}
         </SidebarGroup>
         <SidebarGroup />
       </SidebarContent>

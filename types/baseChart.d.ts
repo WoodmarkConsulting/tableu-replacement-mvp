@@ -1,25 +1,25 @@
-import type { ChartConfigs } from "@/modules/modulRegistry";
-import type { SelectionMode } from "./filters";
+type ChartConfigs = import("@/modules/modulRegistry").ChartConfigs;
+type SelectionMode = import("./filters").SelectionMode;
 
-export type ChartDataTemplate = object;
+type ChartDataTemplate = object;
 
-export type FilterTypes = "dateString" | "number" | "string";
+type FilterTypes = "dateString" | "number" | "string";
 
-export type FilterConfig = {
+type FilterConfig = {
   key: string;
   value: string | null;
   type: FilterTypes;
   label?: string;
 };
 
-export type BaseChartProps<C extends ChartConfigs = ChartConfigs> = {
+type BaseChartProps<C extends ChartConfigs = ChartConfigs> = {
   chartTitle?: string;
   chartDescription: string;
   chartID: string;
   chartConfig: C;
 };
 
-export interface ChartWrapperInjectedProps<
+interface ChartWrapperInjectedProps<
   D extends ChartDataTemplate,
   C extends ChartConfigs = ChartConfigs,
 > extends BaseChartProps<C> {

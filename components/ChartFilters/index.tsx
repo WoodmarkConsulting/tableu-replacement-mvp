@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/popover";
 
 import type { ChartFiltersState } from "@/hooks/useChartState";
-import { FilterConfig } from "@/types/baseChart";
 
 type SetFilterCallback = (
   currentFilters: ChartFiltersState,

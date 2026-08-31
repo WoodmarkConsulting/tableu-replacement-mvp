@@ -3,13 +3,11 @@
 import { Suspense } from "react";
 
 import { ActiveFilters } from "@/components/ActiveFilters";
-import { FilterBar } from "@/components/FilterBar";
 import { ShareButton } from "@/components/ShareButton";
 import { TabFilters } from "@/components/TabFilters";
-import { TapsWrapper } from "@/components/TapsWrapper";
+import { TabsWrapper } from "@/components/TabsWrapper";
 import { useFilterUrlSync } from "@/hooks/useFilterUrlSync";
-import { useFilterStore } from "@/stores/filterProvider";
-import type { DashboardConfig } from "@/types/tabs";
+import useFilterStore from "@/stores/filterProvider";
 
 type DashboardShellProps = {
   config: DashboardConfig;
@@ -22,14 +20,10 @@ function FilterUrlSync() {
 }
 
 export function DashboardShell({ config }: DashboardShellProps) {
-  const { reportName, filterLayout, filters, tabs } = config;
+  const { reportName, filters, tabs } = config;
 
   const activeTab = useFilterStore((state) => state.activeTab);
   const setActiveTab = useFilterStore((state) => state.setActiveTab);
-
-  const hasGlobalFilters = filters.some(
-    (dimension) => dimension.scope === "global",
-  );
 
   const urlSync = (
     <Suspense fallback={null}>
@@ -55,7 +49,7 @@ export function DashboardShell({ config }: DashboardShellProps) {
         <TabFilters dimensions={filters} />
       </div>
 
-      <TapsWrapper
+      <TabsWrapper
         tabsConfig={tabs}
         value={activeTab}
         onValueChange={setActiveTab}
@@ -63,39 +57,11 @@ export function DashboardShell({ config }: DashboardShellProps) {
     </div>
   );
 
-  if (filterLayout === "sidebar") {
-    return (
-      <div className="flex flex-col gap-6">
-        {urlSync}
-
-        {header}
-
-        {applied}
-
-        <div className="flex gap-6">
-          {hasGlobalFilters ? (
-            <aside className="w-64 shrink-0 print:hidden">
-              <FilterBar dimensions={filters} orientation="vertical" />
-            </aside>
-          ) : null}
-
-          {main}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-6">
       {urlSync}
 
       {header}
-
-      {hasGlobalFilters ? (
-        <div className="print:hidden">
-          <FilterBar dimensions={filters} orientation="horizontal" />
-        </div>
-      ) : null}
 
       {applied}
 
