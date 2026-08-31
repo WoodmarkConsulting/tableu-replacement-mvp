@@ -1,7 +1,7 @@
 import fs from "fs";
 import { validateRootDirectoryAndPagesConfig } from "../utils";
 import type { PagesConfig } from "@/types/pagesConfig";
-import type { TabsConfig } from "@/types/tabs";
+import type { DashboardConfig } from "@/types/tabs";
 
 const generatedDashboardsDir = "app/Dashboards";
 
@@ -51,21 +51,27 @@ function generateNextPage() {
       // Read and parse the dashboard configuration.
       const configContent = fs.readFileSync(dashboardConfigPath, "utf-8");
 
-      const dashboardConfig = JSON.parse(configContent) as TabsConfig[];
+      const dashboardConfig = JSON.parse(configContent) as DashboardConfig;
 
       // Generate the Next.js page.
       const boilerplateCode = `
           import React from "react";
           import ChartPageWrapper from "@/components/ChartPageWrapper";
-          import { TapsWrapper } from "@/components/TapsWrapper";
-          import { TabsConfig } from "@/types/tabs";
+          import { DashboardShell } from "@/components/DashboardShell";
+          import { FilterProvider } from "@/stores/filterProvider";
+          import { DashboardConfig } from "@/types/tabs";
 
           export default function ${dashboardName}() {
-            const tabsConfig: TabsConfig[] = ${JSON.stringify(dashboardConfig, null, 2)};
+            const dashboardConfig: DashboardConfig = ${JSON.stringify(dashboardConfig, null, 2)};
 
             return (
               <ChartPageWrapper>
-                <TapsWrapper tabsConfig={tabsConfig} />
+                <FilterProvider
+                  dimensions={dashboardConfig.filters}
+                  initialActiveTab={dashboardConfig.tabs[0]?.trigger ?? ""}
+                >
+                  <DashboardShell config={dashboardConfig} />
+                </FilterProvider>
               </ChartPageWrapper>
             );
           }

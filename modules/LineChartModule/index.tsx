@@ -147,9 +147,31 @@ function createRechartsData(
 type Props = ChartWrapperInjectedProps<LineChartData, LineChartConfig>;
 
 function LineChartModule(props: Props) {
-  const { chartConfig, chartData, height } = props;
+  const { chartConfig, chartData, height, onSelectionChange } = props;
 
   const { xAxis, yAxis, grid, tooltip, legend, margin, lines } = chartConfig;
+
+  const selectionEnabled = typeof onSelectionChange === "function";
+
+  const handleChartClick = (state: unknown) => {
+    if (!onSelectionChange) {
+      return;
+    }
+
+    const activeLabel = (state as { activeLabel?: string | number } | null)
+      ?.activeLabel;
+    const x = Number(activeLabel);
+
+    if (!Number.isFinite(x)) {
+      return;
+    }
+
+    const rows = chartData.filter((point) => point.x === x);
+
+    if (rows.length > 0) {
+      onSelectionChange(rows);
+    }
+  };
 
   const dataConfig = useMemo(() => createChartContainerConfig(lines), [lines]);
 
@@ -165,7 +187,11 @@ function LineChartModule(props: Props) {
       style={{
         height: `${height || 15}svh`,
       }}>
-      <ComposedChart accessibilityLayer data={rechartsData} margin={margin}>
+      <ComposedChart
+        accessibilityLayer
+        data={rechartsData}
+        margin={margin}
+        onClick={selectionEnabled ? handleChartClick : undefined}>
         {grid.show && (
           <CartesianGrid
             horizontal={grid.horizontal}

@@ -44,7 +44,7 @@ Do not invent a dashboard name.
 
 Ask how many tabs the dashboard should contain.
 
-Each tab becomes one `trigger` in `TabsConfig`.
+Each tab becomes one `trigger` in the dashboard's `tabs` array.
 
 For every tab, ask for its visible name.
 
@@ -302,38 +302,59 @@ Do not invent configuration properties.
 
 ## 11. Configure Filters
 
-Ask whether the visualization requires filters.
+Filters are defined once per dashboard as **dimensions** and then **bound** to each chart's SQL parameters. There is no chart-local filter config.
+
+Ask whether the dashboard requires filters.
 
 Examples:
 
-- Date from
-- Date to
+- Date from / date to
 - Department
 - User
 - Category
 
-Example:
+### Step A — Declare dimensions (dashboard level)
+
+Add each filter to the top-level `filters` array as a `FilterDimension`:
 
 ```json
 {
-  "filterConfig": [
+  "filters": [
     {
-      "key": "from",
-      "value": null,
-      "type": "dateString"
+      "id": "from",
+      "label": "Von",
+      "type": "dateString",
+      "scope": "global"
     },
     {
-      "key": "to",
-      "value": null,
-      "type": "dateString"
+      "id": "department",
+      "label": "Abteilung",
+      "type": "select",
+      "scope": "tab",
+      "tab": "Overview",
+      "options": [{ "label": "Sales", "value": "sales" }]
     }
   ]
 }
 ```
 
+- `type`: `"string" | "number" | "dateString" | "dateRange" | "select"`.
+- `scope`: `"global"` (all tabs) or `"tab"` (requires `tab` = the tab `trigger`).
+- `options` is required for `"select"`; `defaultValue` is optional.
+
+### Step B — Bind dimensions to a chart
+
+On each component, map dimension ids to the SQL named parameters that chart uses:
+
+```json
+{
+  "filterBindings": { "from": "from", "department": "department" }
+}
+```
+
 Only add filters that are actually needed.
 
-Filters must also be considered when generating SQL.
+Filters must also be considered when generating SQL (Step 12): each bound dimension arrives as a named parameter (`:from`, `:department`), and unset filters are passed as `null`.
 
 ---
 
@@ -353,11 +374,13 @@ Use:
 - the selected module
 - the retrieved table schemas
 - `chartDataSchema.ts`
-- the configured filters
+- the configured filters (bound via `filterBindings`; referenced in SQL as named parameters like `:from`, and `null` when unset)
 
 Do not modify the module data schema to make the SQL easier.
 
 Adapt the SQL to the existing module contract.
+
+Guard each bound parameter so an unset (`null`) filter does not restrict results, e.g. `(:from IS NULL OR col >= :from)`. For a multi-select drill parameter (comma-joined), use `(:p IS NULL OR array_contains(split(:p, ','), col))`.
 
 Save the SQL using the same `chartID`:
 
@@ -448,45 +471,52 @@ Do not mix unfinished visualizations.
 
 ---
 
-## 16. Create TabsConfig
+## 16. Create DashboardConfig
 
 After all visualizations are complete, build the full dashboard configuration.
 
-The configuration must conform to the repository's `TabsConfig` type.
+The configuration must conform to the repository's `DashboardConfig` type: a top-level object with `reportName`, `filterLayout`, `filters`, and `tabs`.
 
 Example:
 
 ```json
-[
-  {
-    "trigger": "Overview",
-    "rows": [
-      {
-        "height": 12,
-        "components": [
-          {
-            "moduleName": "LineChartModule",
-            "space": 6,
-            "chartID": "123456as",
-            "chartTitle": "Fleet activity",
-            "chartDescription": "Shows how fleet activity changes over time.",
-            "filterConfig": [],
-            "chartConfig": {}
-          }
-        ]
-      }
-    ]
-  }
-]
+{
+  "reportName": "Fleet Overview",
+  "filterLayout": "sidebar",
+  "filters": [
+    { "id": "from", "label": "Von", "type": "dateString", "scope": "global" }
+  ],
+  "tabs": [
+    {
+      "trigger": "Overview",
+      "rows": [
+        {
+          "height": 12,
+          "components": [
+            {
+              "moduleName": "LineChartModule",
+              "space": 6,
+              "chartID": "123456as",
+              "chartTitle": "Fleet activity",
+              "chartDescription": "Shows how fleet activity changes over time.",
+              "filterBindings": { "from": "from" },
+              "chartConfig": {}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
 ```
 
-One trigger may contain multiple rows and multiple modules.
+One trigger may contain multiple rows and multiple modules. Omit `filterBindings` for charts without filters. Add optional `drill` on a component to enable cross-tab drill-down.
 
 ---
 
 ## 17. Save Dashboard Config
 
-Save the finished `TabsConfig` as JSON in:
+Save the finished `DashboardConfig` as JSON in:
 
 ```text
 pagesConfig/
@@ -551,7 +581,7 @@ Before generating the page, verify:
 - Every SQL file belongs to the correct `chartID`.
 - Every module configuration is valid.
 - The dashboard config is valid JSON.
-- The dashboard config conforms to `TabsConfig`.
+- The dashboard config conforms to `DashboardConfig`.
 - The dashboard is registered in `pagesConfig/pages.json`.
 
 ---
@@ -598,7 +628,7 @@ existing visualization fundamentally invalid.
 Examples:
 
 - Changing line style only requires updating and validating `chartConfig`.
-- Changing a filter may require updating both `filterConfig` and SQL.
+- Changing a filter may require updating the dashboard `filters` / a chart's `filterBindings` and SQL.
 - Changing the selected data or grouping may require regenerating SQL and parts
   of `chartConfig`.
 - Changing the module may require redoing the module configuration and SQL

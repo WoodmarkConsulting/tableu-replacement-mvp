@@ -9,23 +9,44 @@ export type QueryParameters = Record<string, QueryParameterValue>;
 
 const server_hostname = process.env.HOSTNAME;
 const http_path = process.env.HTTP_PATH;
+const accessToken = process.env.DATABRICKS_TOKEN;
 const clientID = process.env.DATABRICKS_OAUTH_CLIENT_ID;
 const clientSecret = process.env.DATABRICKS_OAUTH_CLIENT_SECRET;
 
-if (!server_hostname || !http_path || !clientID || !clientSecret) {
-  throw new Error("Missing required environment variables");
+if (!server_hostname || !http_path) {
+  throw new Error("Missing required environment variables: HOSTNAME, HTTP_PATH");
 }
 
 const dbsqlClient = new DBSQLClient();
 
-const options: ConnectionOptions = {
-  host: server_hostname,
-  path: http_path,
-  authType: "databricks-oauth",
-  oauthClientId: clientID,
-  oauthClientSecret: clientSecret,
-  useDatabricksOAuthInAzure: true,
+// Prefer a Personal Access Token when provided; otherwise use OAuth M2M.
+const buildOptions = (): ConnectionOptions => {
+  if (accessToken) {
+    return {
+      host: server_hostname,
+      path: http_path,
+      authType: "access-token",
+      token: accessToken,
+    };
+  }
+
+  if (!clientID || !clientSecret) {
+    throw new Error(
+      "Missing Databricks credentials: set DATABRICKS_TOKEN, or DATABRICKS_OAUTH_CLIENT_ID and DATABRICKS_OAUTH_CLIENT_SECRET",
+    );
+  }
+
+  return {
+    host: server_hostname,
+    path: http_path,
+    authType: "databricks-oauth",
+    oauthClientId: clientID,
+    oauthClientSecret: clientSecret,
+    useDatabricksOAuthInAzure: true,
+  };
 };
+
+const options: ConnectionOptions = buildOptions();
 
 let connectedClient: IDBSQLClient | null = null;
 let connectingPromise: Promise<IDBSQLClient> | null = null;

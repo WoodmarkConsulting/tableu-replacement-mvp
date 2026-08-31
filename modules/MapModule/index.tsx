@@ -204,8 +204,36 @@ function MapLegend({
 }
 
 function MapModule(props: Props) {
-  const { chartConfig: config, chartData, height } = props;
+  const { chartConfig: config, chartData, height, onSelectionChange } = props;
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+
+  const selectionEnabled = typeof onSelectionChange === "function";
+
+  const handleRegionSelect = (code: string | null | undefined) => {
+    if (!onSelectionChange || !code) {
+      return;
+    }
+
+    const upper = code.toUpperCase();
+    const rows = chartData.filter(
+      (entry) =>
+        entry.kind === "region" && entry.regionCode.toUpperCase() === upper,
+    );
+
+    if (rows.length > 0) {
+      onSelectionChange(rows);
+    }
+  };
+
+  const handlePointSelect = (
+    entry: Extract<MapChartData, { kind: "point" }>,
+  ) => {
+    if (!onSelectionChange) {
+      return;
+    }
+
+    onSelectionChange([entry]);
+  };
 
   const regionValues = useMemo(() => getRegionValueMap(chartData), [chartData]);
   const regionValueList = useMemo(() => [...regionValues.values()], [regionValues]);
@@ -354,15 +382,18 @@ function MapModule(props: Props) {
                     handleTooltip(event, title, regionValue);
                   }}
                   onMouseLeave={() => setTooltip(null)}
+                  onClick={() => handleRegionSelect(normalized)}
                   style={{
                     default: {
                       outline: "none",
                       fill,
+                      cursor: selectionEnabled ? "pointer" : "default",
                     },
                     hover: {
                       outline: "none",
                       fill,
                       opacity: 0.9,
+                      cursor: selectionEnabled ? "pointer" : "default",
                     },
                     pressed: {
                       outline: "none",
@@ -421,6 +452,8 @@ function MapModule(props: Props) {
                   );
                 }}
                 onMouseLeave={() => setTooltip(null)}
+                onClick={() => handlePointSelect(entry)}
+                style={{ cursor: selectionEnabled ? "pointer" : "default" }}
               />
             </Marker>
           );

@@ -1,4 +1,5 @@
 import type { ChartConfigs } from "@/modules/modulRegistry";
+import type { SelectionMode } from "./filters";
 
 export type ChartDataTemplate = object;
 
@@ -16,7 +17,6 @@ export type BaseChartProps<
   chartTitle?: string;
   chartDescription: string;
   chartID: string;
-  filterConfig: FilterConfig[];
   chartConfig: C;
 };
 
@@ -30,4 +30,7 @@ export interface ChartWrapperInjectedProps<
   isFetching: boolean;
   isError: boolean;
   error: Error | null;
+  // Present only when the chart is configured as a drill source.
+  selectionMode?: SelectionMode;
+  onSelectionChange?: (rows: D[]) => void;
 }

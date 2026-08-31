@@ -114,7 +114,7 @@ Wenn der Benutzer eine frühere Entscheidung ändert:
 Beispiele:
 
 - Änderung der Linienform → nur `chartConfig` anpassen und erneut validieren.
-- Änderung eines Filters → `filterConfig` und gegebenenfalls SQL anpassen.
+- Änderung eines Filters → `filters` / `filterBindings` und gegebenenfalls SQL anpassen.
 - Änderung der Gruppierung oder Datenbasis → SQL und eventuell `chartConfig` neu erzeugen.
 - Wechsel des Moduls → Modul-Konfiguration und SQL neu prüfen, da sich der Datenvertrag ändern kann.
 

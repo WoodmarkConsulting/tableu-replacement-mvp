@@ -4,8 +4,6 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
-import useChartState, { type ChartFiltersState } from "@/hooks/useChartState";
-
 import {
   Empty,
   EmptyDescription,
@@ -23,8 +21,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import ChartFilters from "../ChartFilters";
-
 import { cn } from "@/lib/utils";
 
 import {
@@ -33,8 +29,11 @@ import {
   type ModuleRegistryKeys,
 } from "@/modules/modulRegistry";
 
+import { globalKey, tabKey, useFilterStore } from "@/stores/filterProvider";
+
 import type { TabsComponentConfig } from "@/types/tabs";
 import type { ChartWrapperInjectedProps } from "@/types/baseChart";
+import type { FilterValue } from "@/types/filters";
 
 type ModuleSchema<M extends ModuleRegistryKeys> =
   (typeof moduleRegistry)[M]["dataSchema"];
@@ -53,12 +52,81 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   type ModuleChartData<M extends ModuleRegistryKeys> = z.infer<ModuleSchema<M>>;
   type DataType = ModuleChartData<M>;
 
-  const { moduleName, mockData, ...baseProps } = props;
-  const [filters, setFilters] = useChartState(baseProps.filterConfig);
-  const { chartID, chartTitle, chartDescription, filterConfig } = baseProps;
+  const { moduleName, mockData, filterBindings, drill, ...baseProps } = props;
+  const { chartID, chartTitle, chartDescription } = baseProps;
   const { component, dataSchema } = moduleRegistry[moduleName];
 
-  const Module = component as React.ComponentType<
+  const filterValues = useFilterStore((state) => state.values);
+  const activeTab = useFilterStore((state) => state.activeTab);
+  const dimensions = useFilterStore((state) => state.dimensions);
+  const applySelection = useFilterStore((state) => state.applySelection);
+
+  const params = useMemo(() => {
+    const resolved: Record<string, string | number | null> = {};
+
+    if (filterBindings) {
+      for (const [dimensionId, sqlParam] of Object.entries(filterBindings)) {
+        const value =
+          filterValues[globalKey(dimensionId)] ??
+          filterValues[tabKey(activeTab, dimensionId)];
+
+        resolved[sqlParam] = toQueryParam(value);
+      }
+    }
+
+    return resolved;
+  }, [filterBindings, filterValues, activeTab]);
+
+  const handleSelectionChange = useMemo(() => {
+    if (!drill) {
+      return undefined;
+    }
+
+    return (rows: DataType[]) => {
+      const entries: Record<string, FilterValue> = {};
+
+      for (const [selectionKey, dimensionId] of Object.entries(
+        drill.selectionBindings,
+      )) {
+        const selected = rows
+          .map((row) => (row as Record<string, unknown>)[selectionKey])
+          .filter(
+            (value): value is string | number =>
+              value !== null && value !== undefined,
+          )
+          .map(String);
+
+        if (selected.length === 0) {
+          continue;
+        }
+
+        const dimension = dimensions.find((entry) => entry.id === dimensionId);
+
+        // Write at the dimension's own scope: global filters every tab,
+        // a tab dimension filters its own page.
+        const key =
+          dimension?.scope === "global"
+            ? globalKey(dimension.id)
+            : dimension?.tab
+              ? tabKey(dimension.tab, dimension.id)
+              : null;
+
+        if (!key) {
+          continue;
+        }
+
+        entries[key] =
+          drill.selectionMode === "multi" ? selected.join(",") : selected[0];
+      }
+
+      if (Object.keys(entries).length > 0) {
+        // targetTab omitted -> cross-filter in place; set -> navigate (drill).
+        applySelection(entries, drill.targetTab);
+      }
+    };
+  }, [drill, dimensions, applySelection]);
+
+  const Module = component as unknown as React.ComponentType<
     ChartWrapperInjectedProps<DataType, ChartConfigs>
   >;
 
@@ -85,11 +153,11 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     isError,
     error,
   } = useQuery<DataType[], Error>({
-    queryKey: ["chart-data", chartID, filters],
+    queryKey: ["chart-data", chartID, params],
     queryFn: () =>
       fetchChartData(
         chartID,
-        filters,
+        params,
         dataSchema as unknown as z.ZodType<DataType>,
       ),
     enabled: parsedMockData === undefined,
@@ -113,14 +181,6 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
-        {filterConfig.length > 0 && (
-          <ChartFilters
-            filterConfig={filterConfig}
-            filters={filters}
-            setFilter={setFilters}
-          />
-        )}
-
         {isLoading || isFetching ? (
           <ChartState height={props.height}>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -168,6 +228,8 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
             isLoading={isLoading}
             isFetching={isFetching}
             isError={isError}
+            selectionMode={drill?.selectionMode}
+            onSelectionChange={handleSelectionChange}
           />
         ) : null}
       </CardContent>
@@ -177,9 +239,22 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
 export default ChartWrapper;
 
+function toQueryParam(value: FilterValue | undefined): string | number | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return value;
+  }
+
+  // dateRange values are resolved by dedicated bindings in a later phase.
+  return null;
+}
+
 async function fetchChartData<TSchema extends z.ZodTypeAny>(
   chartID: string,
-  filters: ChartFiltersState,
+  filters: Record<string, string | number | null>,
   dataSchema: TSchema,
 ): Promise<z.infer<TSchema>[]> {
   const response = await fetch(`/api/data/${chartID}`, {

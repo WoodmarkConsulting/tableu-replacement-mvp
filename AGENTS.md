@@ -25,14 +25,19 @@ The intended end state is:
 
 ## Important paths
 
-- `pagesConfig/index.ts`: Registry of dashboards and the JSON file each dashboard uses.
-- `pagesConfig/*.json`: Declarative dashboard definitions with tabs, rows, module selections, chart metadata, filters, and module config.
-- `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename.
+- `pagesConfig/pages.json`: Registry the generator reads — maps each `dashboardName` to its config JSON. (`pagesConfig/index.ts` is legacy and not used by generation.)
+- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filterLayout, filters, tabs }` (see Filtering framework). Each component carries `chartID`, `chartConfig`, optional `filterBindings`, and optional `drill`.
+- `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename. Named parameters (`:name`) are bound from resolved filter values.
 - `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
-- `scripts/pages/generateNextPage.ts`: Creates `app/Dashboards/<DashboardName>/page.tsx` from `pagesConfig/index.ts` and the referenced JSON.
-- `components/TapsWrapper/index.tsx`: Renders tab and row layout from declarative config and passes each chart config into `ChartWrapper`.
-- `components/ChartWrapper/index.tsx`: Resolves the module by `moduleName`, fetches chart data from `/api/data/<chartID>`, validates it with the module's Zod schema, and injects runtime props.
-- `app/api/data/[...chartIDs]/route.ts`: Loads `pagesConfig/sql/<chartID>.sql`, executes it, and returns the query result.
+- `scripts/pages/generateNextPage.ts`: Creates `app/Dashboards/<DashboardName>/page.tsx` from `pagesConfig/pages.json` and the referenced JSON; renders `DashboardShell` wrapped in `FilterProvider`.
+- `components/DashboardShell/index.tsx`: Report shell — report name, global/tab filter UI, applied-filter chips, Share button, and the controlled `TapsWrapper`.
+- `components/TapsWrapper/index.tsx`: Controlled tab and row layout renderer; passes each chart config into `ChartWrapper`.
+- `components/ChartWrapper/index.tsx`: Resolves the module by `moduleName`, maps `filterBindings` to SQL params from the filter store, fetches chart data from `/api/data/<chartID>`, validates it with the module's Zod schema, and injects runtime props (incl. drill callbacks).
+- `stores/filterProvider.tsx`: Per-dashboard Zustand filter store (`FilterProvider`, `useFilterStore`).
+- `components/FilterBar`, `components/TabFilters`, `components/FilterControl`, `components/ActiveFilters`, `components/ShareButton`: Filter UI.
+- `hooks/useFilterUrlSync.ts`: Keeps `activeTab` in the URL and restores shared state from a `?s=<id>` snapshot.
+- `app/api/data/[...chartIDs]/route.ts`: Loads `pagesConfig/sql/<chartID>.sql`, executes it with the posted `filters`, and returns the query result.
+- `app/api/filters/snapshot/*`: Save/load shareable filter snapshots (Databricks-backed).
 - `modules/modulRegistry.ts`: Auto-generated registry of available modules and the union of chart config types.
 - `scripts/modules/generateModuleRegistry.ts`: Regenerates `modules/modulRegistry.ts` from module folders.
 - `scripts/modules/validateModules.ts`: Validates the required module file contract.
@@ -43,8 +48,8 @@ The intended end state is:
 
 For normal dashboard creation and updates, the agent should modify only:
 
-- `pagesConfig/index.ts` when adding a new dashboard entry
-- `pagesConfig/*.json` for tabs, rows, module selection, chart metadata, filters, and module configuration
+- `pagesConfig/pages.json` when adding a new dashboard entry
+- `pagesConfig/*.json` for `reportName`, `filterLayout`, `filters` (dimensions), tabs, rows, module selection, chart metadata, `filterBindings`, optional `drill`, and module configuration
 - `pagesConfig/sql/*.sql` for the data transformation feeding each chart
 
 Do not implement dashboard-specific behavior in `app/` page components.
@@ -53,15 +58,43 @@ Do not change module implementation files for normal dashboard requests.
 
 The runtime flow is:
 
-1. `pagesConfig/index.ts` lists dashboards.
-2. `scripts/pages/generateNextPage.ts` embeds the referenced JSON config into a generated page under `app/Dashboards/`.
-3. The generated page renders `TapsWrapper` with `tabsConfig`.
-4. `TapsWrapper` renders `ChartWrapper` for each configured component.
-5. `ChartWrapper` resolves the configured `moduleName` from `moduleRegistry`.
-6. `ChartWrapper` fetches `/api/data/<chartID>`.
-7. The API route reads `pagesConfig/sql/<chartID>.sql` and executes the query.
+1. `pagesConfig/pages.json` lists dashboards.
+2. `scripts/pages/generateNextPage.ts` embeds the referenced `DashboardConfig` JSON into a generated page under `app/Dashboards/`.
+3. The generated page renders `DashboardShell` wrapped in `FilterProvider` (seeded with the dashboard `filters` and initial tab).
+4. `DashboardShell` renders the filter UI (`FilterBar`/`TabFilters`/`ActiveFilters`) and a controlled `TapsWrapper`.
+5. `TapsWrapper` renders `ChartWrapper` for each configured component.
+6. `ChartWrapper` resolves `moduleName` from `moduleRegistry`, maps `filterBindings` (dimension id → SQL param) against the filter store, and fetches `/api/data/<chartID>` with those params.
+7. The API route reads `pagesConfig/sql/<chartID>.sql` and executes the query with the posted named parameters.
 8. `ChartWrapper` validates the returned array against the selected module's `chartDataSchema.ts`.
-9. The module receives `ChartWrapperInjectedProps<...>` including `chartData`, loading state, error state, and configured metadata.
+9. The module receives `ChartWrapperInjectedProps<...>` including `chartData`, loading/error state, configured metadata, and (for drill sources) `selectionMode`/`onSelectionChange`.
+
+## Filtering framework
+
+Dashboards share a filter framework driven entirely by config:
+
+- **Dimensions** — `DashboardConfig.filters: FilterDimension[]`, each `{ id, label, type, scope, tab?, options?, defaultValue? }`.
+  - `type`: `"string" | "number" | "dateString" | "dateRange" | "select"` (all single-value today).
+  - `scope`: `"global"` (every tab) or `"tab"` (requires `tab` = the tab `trigger`).
+- **Bindings** — each chart maps dimensions to its SQL named parameters via `filterBindings: Record<dimensionId, sqlParamName>`. `ChartWrapper` resolves the active value (`global:<id>` or `tab:<activeTab>:<id>`) and posts it; unset → `null`.
+- **Layout** — `filterLayout: "sidebar" | "top"` controls where global filters render; `reportName` shows in the header.
+- **Applied filters** — `ActiveFilters` renders removable chips and doubles as the print/export summary (interactive controls are `print:hidden`).
+
+### Drill & cross-filter
+
+A component may declare `drill: { targetTab?, selectionMode: "single" | "multi", selectionBindings: Record<selectionKey, dimensionId> }`. Selecting data maps each selected row's `selectionKey` to the bound dimension and writes the value at that dimension's own scope — `global:<id>` (filters every tab) or `tab:<dim.tab>:<id>` (filters that page).
+
+- Omit `targetTab` → the selection filters in place (same-page cross-filter, or global when the bound dimension is `global`).
+- Set `targetTab` → additionally navigate to that tab (classic cross-tab drill); pair it with a `tab`-scoped dimension on that tab.
+
+`multi` joins values with `,`, so the target SQL must expand it:
+
+```sql
+(:p IS NULL OR array_contains(split(:p, ','), col))
+```
+
+### Shareable state
+
+Filter selections can be large, so they are never placed in the URL. `ShareButton` persists a snapshot via `POST /api/filters/snapshot` (Databricks table `filter_snapshots`) and shares a `?s=<id>&tab=<trigger>` permalink; only the small `activeTab` stays in the URL live.
 
 ## Module contract
 
@@ -74,7 +107,7 @@ The runtime flow is:
 - The default-exported component in `modules/<ModuleName>/index.tsx` must use `ChartWrapperInjectedProps` as its props type. Example:
 
 ```ts
-import { ChartWrapperInjectedProps } from "../../components/ChartWrapper";
+import type { ChartWrapperInjectedProps } from "@/types/baseChart";
 
 type ExampleProps = ChartWrapperInjectedProps<ExampleChartData>;
 
@@ -87,6 +120,7 @@ export default ExampleModule;
 
 - `modules/<ModuleName>/chartDataSchema.ts` must default-export a Zod schema and must also export the module data type.
 - `modules/<ModuleName>/chartType.d.ts` must contain exactly one `type` declaration.
+- Drill-source charts additionally receive optional injected `selectionMode` and `onSelectionChange(rows)` props; call `onSelectionChange` with the selected rows to trigger a cross-tab drill.
 - `modules/<ModuleName>/instructions.md` must follow `docs/instructions.template.md`.
 - The `moduleName` used in dashboard JSON must match a key in `modules/modulRegistry.ts`.
 
@@ -122,7 +156,7 @@ For module-development or framework work:
   - `chartDataSchema.ts` exports the module data type.
   - `chartType.d.ts` exists and contains exactly one `type` declaration.
   - `instructions.md` exists.
-  - `instructions.md` follows `.github/agents/instructions.template.md`.
+  - `instructions.md` follows `docs/instructions.template.md`.
 - After changing module folders, run `npm run module:validate`.
 - After adding, removing, renaming, or changing module exports, config types, or schema files, run `npm run module:generateRegistry`.
 - Do not leave a module folder in a partially migrated or non-compliant state, even temporarily at the end of a task.
@@ -134,8 +168,8 @@ For module-development or framework work:
 
 ## Known implementation details
 
-- The component is named `TapsWrapper`, but it is the tab layout renderer for dashboards.
-- `ChartWrapper` owns data fetching, empty/loading/error states, and schema validation.
+- The component is named `TapsWrapper`, but it is the (controlled) tab layout renderer for dashboards; `DashboardShell` owns the active tab and filter UI.
+- `ChartWrapper` owns filter-param resolution, data fetching, empty/loading/error states, schema validation, and drill callbacks.
 - `ChartConfigs` is generated as a union of module chart config types in `modules/modulRegistry.ts`.
 
 ## Agent Permissions

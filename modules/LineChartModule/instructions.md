@@ -708,7 +708,6 @@ import LineChartModule from "@/modules/LineChartModule";
   chartTitle="Revenue"
   chartDescription="Daily revenue"
   chartID="revenue-daily"
-  filterConfig={[]}
   chartConfig={chartConfig}
   chartData={[
     { x: 1782864000000, y: [12] },
@@ -729,10 +728,6 @@ import LineChartModule from "@/modules/LineChartModule";
   chartTitle="Revenue vs Forecast"
   chartDescription="Daily comparison of actuals and forecast"
   chartID="revenue-vs-forecast"
-  filterConfig={[
-    { key: "country", value: "DE", type: "string" },
-    { key: "from", value: "1782864000000", type: "number" },
-  ]}
   chartConfig={chartConfig}
   chartData={[
     { x: 1782864000000, y: [12, 9] },
@@ -801,21 +796,33 @@ Source:
 
 `application`
 
-### `filterConfig`
+### `selectionMode`
 
 Type:
 
 ```ts
-Array<{
-  key: string;
-  value: string | null;
-  type: "dateString" | "number" | "string";
-}>;
+"single" | "multi" | undefined;
 ```
 
 Description:
 
-Filter metadata passed through the wrapper contract.
+Present only when this chart is configured as a drill source (`drill` in the dashboard config). Indicates whether one or many points may be selected.
+
+Source:
+
+`application`
+
+### `onSelectionChange`
+
+Type:
+
+```ts
+((rows: LineChartData[]) => void) | undefined;
+```
+
+Description:
+
+Present only for drill/cross-filter sources. Call it with the clicked data point(s); the framework maps the configured `selectionBindings` to the bound filter dimensions and applies them (cross-filtering in place, or navigating to `drill.targetTab` when set).
 
 Source:
 

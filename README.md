@@ -78,15 +78,17 @@ In practice that means:
 
 ## Dashboard config model
 
-The generated dashboard pages consume `TabsConfig[]` from `types/tabs.d.ts`.
+The generated dashboard pages consume a `DashboardConfig` object from `types/tabs.d.ts`.
 
 At a high level, each JSON file contains:
 
-- tabs identified by `trigger`
+- `reportName` and `filterLayout` (`"sidebar" | "top"`)
+- `filters`: dashboard-level filter dimensions (`FilterDimension[]`)
+- `tabs` identified by `trigger`
 - rows with optional `height`
 - `components` entries
 - one `moduleName` per chart entry
-- chart metadata such as `chartID`, `chartTitle`, `chartDescription`, `filterConfig`, and `chartConfig`
+- chart metadata such as `chartID`, `chartTitle`, `chartDescription`, `chartConfig`, and per-chart `filterBindings` (dimension id → SQL parameter)
 
 The row layout uses a 12-column grid. If a row uses less than 12 columns, `TapsWrapper` assigns the remaining width to the last component in that row.
 

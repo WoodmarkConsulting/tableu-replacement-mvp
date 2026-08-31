@@ -3,13 +3,10 @@ import path from "node:path";
 import { readFile } from "node:fs/promises";
 
 import { buildErrorMessage } from "../../router/errorhandler";
-import { runQuery } from "../../warehouse/connection";
+import { runQuery, type QueryParameters } from "../../warehouse/connection";
 
 export type RequestBody = {
-  filters?: {
-    from?: string;
-    to?: string;
-  };
+  filters?: QueryParameters;
 };
 
 const pathToSqlDir = path.join(process.cwd(), "pagesConfig", "sql");

@@ -22,21 +22,26 @@ const fillRow = (components: TabsConfig["rows"][number]["components"]) => {
 
 type Props = {
   tabsConfig: TabsConfig[];
+  value?: string;
+  onValueChange?: (value: string) => void;
 };
 
-export function TapsWrapper({ tabsConfig }: Props) {
+export function TapsWrapper({ tabsConfig, value, onValueChange }: Props) {
   return (
-    <Tabs defaultValue="overview">
+    <Tabs
+      value={value}
+      onValueChange={onValueChange}
+      defaultValue={value === undefined ? tabsConfig[0]?.trigger : undefined}>
       <TabsList>
         {tabsConfig.map((tab) => (
-          <TabsTrigger key={tab.trigger} value={tab.trigger.toLowerCase()}>
+          <TabsTrigger key={tab.trigger} value={tab.trigger}>
             {tab.trigger}
           </TabsTrigger>
         ))}
       </TabsList>
 
       {tabsConfig.map((tab) => (
-        <TabsContent key={tab.trigger} value={tab.trigger.toLowerCase()}>
+        <TabsContent key={tab.trigger} value={tab.trigger}>
           <div className="flex flex-col gap-4">
             {tab.rows.map((row, rowIndex) => {
               const components = fillRow(row.components);
