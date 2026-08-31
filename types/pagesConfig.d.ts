@@ -1,6 +1,9 @@
-export type PagesConfig = {
+type FilterConfig = import("./baseChart").FilterConfig;
+
+type PagesConfig = {
   dashboardName: string;
   dashboardConfigName: string;
+  globalFilters: FilterConfig[] | [];
 };
 // Example
 // [

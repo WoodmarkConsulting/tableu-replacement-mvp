@@ -1,6 +1,6 @@
+"use client";
 import ChartPageWrapper from "@/components/ChartPageWrapper";
 import { TapsWrapper } from "@/components/TapsWrapper";
-import { FilterProvider } from "@/stores/filterProvider";
 import type { TabsConfig } from "@/types/tabs";
 
 const tabsConfig: TabsConfig[] = [
@@ -16,6 +16,7 @@ const tabsConfig: TabsConfig[] = [
             chartID: "dummy-line-chart",
             chartTitle: "Fleet activity",
             chartDescription: "Dummy sample data for the test page.",
+            filterConfig: [],
             mockData: [
               { x: 1714521600000, y: [12, 8] },
               { x: 1714608000000, y: [15, 10] },
@@ -127,6 +128,7 @@ const tabsConfig: TabsConfig[] = [
             chartID: "dummy-map-chart",
             chartTitle: "Regional coverage",
             chartDescription: "Dummy map data for the test page.",
+            filterConfig: [],
             mockData: [
               { kind: "region", regionCode: "US", value: 82, label: "United States" },
               { kind: "region", regionCode: "DE", value: 64, label: "Germany" },
@@ -203,12 +205,30 @@ const tabsConfig: TabsConfig[] = [
   },
 ];
 
-export default function TestPage() {
+  const globalFilters: PagesConfig["globalFilters"] = [
+    {
+      key: "exampleFilterFrom",
+      label: "Example Filter From",
+      type: "dateString",
+      value: "",
+    },
+    {
+      key: "exampleFilterTo",
+      label: "Example Filter To",
+      type: "dateString",
+      value: "",
+    },
+  ];
+
+  useLayoutEffect(() => {
+    setGlobalFilterConfig(globalFilters);
+
+    //eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <ChartPageWrapper>
-      <FilterProvider dimensions={[]} initialActiveTab="Overview">
-        <TapsWrapper tabsConfig={tabsConfig} />
-      </FilterProvider>
+      <TapsWrapper tabsConfig={tabsConfig} />
     </ChartPageWrapper>
   );
 }

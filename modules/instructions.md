@@ -6,8 +6,8 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 
 1. A dashboard JSON file references a module by its exported component name, for example `"module": "LineChartModule"`.
 2. `scripts/pages/generateNextPage.ts` scans that JSON file and generates the matching imports.
-3. The generated page renders `DashboardShell` (with the dashboard `filters` and tabs), which renders the filter UI and a controlled `TapsWrapper`.
-4. `TapsWrapper` renders each module via `ChartWrapper`, which resolves `filterBindings` to SQL params and passes the configured row `height`.
+3. The generated page passes the resolved components into `TabsWrapper` as part of `tabsConfig`.
+4. `TabsWrapper` renders the module and passes the configured row `height` as a prop.
 
 ## Module contract
 

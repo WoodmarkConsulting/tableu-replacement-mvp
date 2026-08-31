@@ -1,5 +1,4 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TabsConfig } from "@/types/tabs";
 import ChartWrapper from "../ChartWrapper";
 
 /**
@@ -26,7 +25,7 @@ type Props = {
   onValueChange?: (value: string) => void;
 };
 
-export function TapsWrapper({ tabsConfig, value, onValueChange }: Props) {
+export function TabsWrapper({ tabsConfig, value, onValueChange }: Props) {
   return (
     <Tabs
       value={value}

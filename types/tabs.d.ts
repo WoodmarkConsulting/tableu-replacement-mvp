@@ -1,5 +1,5 @@
-import type { ModuleRegistryKeys } from "@/modules/modulRegistry";
-import type { BaseChartProps } from "./baseChart";
+type BaseChartProps = import("./baseChart").BaseChartProps;
+type ModuleRegistryKeys = import("@/modules/modulRegistry").ModuleRegistryKeys;
 import type { DrillConfig, FilterDimension, FilterLayout } from "./filters";
 
 type Enumerate<

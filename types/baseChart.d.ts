@@ -9,11 +9,10 @@ export type FilterConfig = {
   key: string;
   value: string | null;
   type: FilterTypes;
+  label?: string;
 };
 
-export type BaseChartProps<
-  C extends ChartConfigs = ChartConfigs,
-> = {
+export type BaseChartProps<C extends ChartConfigs = ChartConfigs> = {
   chartTitle?: string;
   chartDescription: string;
   chartID: string;

@@ -1,6 +1,5 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
 import { CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,10 +15,14 @@ import {
 import type { ChartFiltersState } from "@/hooks/useChartState";
 import { FilterConfig } from "@/types/baseChart";
 
+type SetFilterCallback = (
+  currentFilters: ChartFiltersState,
+) => ChartFiltersState;
+
 type ChartFiltersProps = {
   filterConfig: FilterConfig[];
   filters: ChartFiltersState;
-  setFilter: Dispatch<SetStateAction<ChartFiltersState>>;
+  setFilter: (callback: SetFilterCallback) => ChartFiltersState;
 };
 
 function parseDate(value: string | number | null): Date | undefined {
@@ -45,7 +48,7 @@ function formatDateForState(date: Date): string {
 }
 
 function formatDateForDisplay(date: Date): string {
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("de-DE", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -81,7 +84,7 @@ const ChartFilters = ({
 
                 {selectedDate
                   ? formatDateForDisplay(selectedDate)
-                  : "Select date"}
+                  : (filter.label ?? "Select date")}
               </Button>
             </PopoverTrigger>
 
@@ -141,7 +144,7 @@ const ChartFilters = ({
     <div className="flex flex-wrap gap-4">
       {filterConfig.map((filter) => (
         <div key={filter.key} className="flex min-w-60 flex-col gap-2">
-          <Label>{filter.key}</Label>
+          <Label>{filter.label ?? filter.key}</Label>
 
           {renderFilter(filter)}
         </div>

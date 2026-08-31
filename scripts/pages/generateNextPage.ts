@@ -1,7 +1,5 @@
 import fs from "fs";
 import { validateRootDirectoryAndPagesConfig } from "../utils";
-import type { PagesConfig } from "@/types/pagesConfig";
-import type { DashboardConfig } from "@/types/tabs";
 
 const generatedDashboardsDir = "app/Dashboards";
 
@@ -23,7 +21,7 @@ function generateNextPage() {
   const pagesConfig = readPagesConfig();
 
   pagesConfig.forEach((dashboard) => {
-    const { dashboardName, dashboardConfigName } = dashboard;
+    const { dashboardName, dashboardConfigName, globalFilters } = dashboard;
 
     const pageFolderPath = `${generatedDashboardsDir}/${dashboardName}`;
     const pageFilePath = `${pageFolderPath}/page.tsx`;
@@ -55,23 +53,32 @@ function generateNextPage() {
 
       // Generate the Next.js page.
       const boilerplateCode = `
-          import React from "react";
+          "use client";
+          import useGlobalFilters from "@/context/globalFilter";
+          import { useShallow } from "zustand/shallow";
+          import { useLayoutEffect } from "react";
+
           import ChartPageWrapper from "@/components/ChartPageWrapper";
-          import { DashboardShell } from "@/components/DashboardShell";
-          import { FilterProvider } from "@/stores/filterProvider";
-          import { DashboardConfig } from "@/types/tabs";
+          import { TabsWrapper } from "@/components/TabsWrapper";
+          import { TabsConfig } from "@/types/tabs";
 
           export default function ${dashboardName}() {
-            const dashboardConfig: DashboardConfig = ${JSON.stringify(dashboardConfig, null, 2)};
+              const setGlobalFilterConfig = useGlobalFilters(
+                useShallow((state) => state.setGlobalFilterConfig),
+              );
+
+            const tabsConfig: TabsConfig[] = ${JSON.stringify(dashboardConfig, null, 2)};
+            const globalFilters: PagesConfig["globalFilters"] = ${JSON.stringify(globalFilters, null, 2)};
+
+            useLayoutEffect(() => {
+              setGlobalFilterConfig(globalFilters);
+
+              //eslint-disable-next-line react-hooks/exhaustive-deps
+            }, []);
 
             return (
               <ChartPageWrapper>
-                <FilterProvider
-                  dimensions={dashboardConfig.filters}
-                  initialActiveTab={dashboardConfig.tabs[0]?.trigger ?? ""}
-                >
-                  <DashboardShell config={dashboardConfig} />
-                </FilterProvider>
+                <TabsWrapper tabsConfig={tabsConfig} />
               </ChartPageWrapper>
             );
           }

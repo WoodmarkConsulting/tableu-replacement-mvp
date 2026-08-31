@@ -32,7 +32,7 @@ For normal dashboard work, the source of truth is config plus SQL, not page-spec
 - `pagesConfig/*.json`: Declarative dashboard definitions with tabs, rows, chart metadata, filters, and module config.
 - `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. The `chartID` maps directly to the SQL filename.
 - `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router pages for dashboards.
-- `components/TapsWrapper/index.tsx`: Renders tabs and rows and passes each chart entry into `ChartWrapper`.
+- `components/TabsWrapper/index.tsx`: Renders tabs and rows and passes each chart entry into `ChartWrapper`.
 - `components/ChartWrapper/index.tsx`: Resolves the selected module, fetches chart data, validates it against the module schema, and injects runtime props.
 - `app/api/data/[...chartIDs]/route.ts`: Loads `pagesConfig/sql/<chartID>.sql`, executes it, and returns the query result.
 - `modules/`: Reusable visualization modules.
@@ -53,7 +53,7 @@ flowchart TD
     B --> C[npm run pageConfig:generatePage]
     C --> D[app/Dashboards/<DashboardName>/page.tsx]
     D --> E[ChartPageWrapper]
-    E --> F[TapsWrapper]
+    E --> F[TabsWrapper]
     F --> G[ChartWrapper]
     G --> H[moduleRegistry via moduleName]
     G --> I[/api/data/<chartID>]
@@ -68,8 +68,8 @@ In practice that means:
 
 1. `pagesConfig/index.ts` points to a dashboard JSON file.
 2. `npm run pageConfig:generatePage` embeds that JSON into `app/Dashboards/<DashboardName>/page.tsx`.
-3. The generated page renders `ChartPageWrapper` and `TapsWrapper`.
-4. `TapsWrapper` lays out rows in a 12-column grid and passes each configured chart entry to `ChartWrapper`.
+3. The generated page renders `ChartPageWrapper` and `TabsWrapper`.
+4. `TabsWrapper` lays out rows in a 12-column grid and passes each configured chart entry to `ChartWrapper`.
 5. `ChartWrapper` resolves the selected module from `modules/modulRegistry.ts` using `moduleName`.
 6. `ChartWrapper` fetches `/api/data/<chartID>`.
 7. The API route loads `pagesConfig/sql/<chartID>.sql` and executes it.
@@ -90,7 +90,7 @@ At a high level, each JSON file contains:
 - one `moduleName` per chart entry
 - chart metadata such as `chartID`, `chartTitle`, `chartDescription`, `chartConfig`, and per-chart `filterBindings` (dimension id → SQL parameter)
 
-The row layout uses a 12-column grid. If a row uses less than 12 columns, `TapsWrapper` assigns the remaining width to the last component in that row.
+The row layout uses a 12-column grid. If a row uses less than 12 columns, `TabsWrapper` assigns the remaining width to the last component in that row.
 
 ## Module system
 

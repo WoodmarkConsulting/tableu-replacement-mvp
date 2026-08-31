@@ -3,6 +3,8 @@ import { Geist, Geist_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { TanstackProvider } from "@/components/Tanstack/providers";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar.tsx";
 
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
@@ -37,7 +39,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         ibmPlexSans.variable,
       )}>
       <body className="min-h-full flex flex-col" cz-shortcut-listen="true">
-        <TanstackProvider>{children}</TanstackProvider>
+        <TanstackProvider>
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarTrigger />
+            <main>{children}</main>
+          </SidebarProvider>
+        </TanstackProvider>
       </body>
     </html>
   );
