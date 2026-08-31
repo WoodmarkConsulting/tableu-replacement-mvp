@@ -1,5 +1,7 @@
 type ModuleRegistryKeys = import("@/modules/modulRegistry").ModuleRegistryKeys;
 
+type DrillConfig = import("./filters").DrillConfig;
+
 type Enumerate<
   N extends number,
   Acc extends number[] = [],
