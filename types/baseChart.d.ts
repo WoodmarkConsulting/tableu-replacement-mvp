@@ -1,5 +1,5 @@
 type ChartConfigs = import("@/modules/modulRegistry").ChartConfigs;
-type SelectionMode = import("./filters").SelectionMode;
+type BaseChartPropsSelectionMode = import("./filters").SelectionMode;
 
 type ChartDataTemplate = object;
 
@@ -32,6 +32,6 @@ interface ChartWrapperInjectedProps<
   isError: boolean;
   error: Error | null;
   // Present only when the chart is configured as a drill source.
-  selectionMode?: SelectionMode;
+  selectionMode?: BaseChartPropsSelectionMode;
   onSelectionChange?: (rows: D[]) => void;
 }
