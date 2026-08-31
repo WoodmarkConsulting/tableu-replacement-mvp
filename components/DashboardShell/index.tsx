@@ -6,7 +6,7 @@ import { ActiveFilters } from "@/components/ActiveFilters";
 import { FilterBar } from "@/components/FilterBar";
 import { ShareButton } from "@/components/ShareButton";
 import { TabFilters } from "@/components/TabFilters";
-import { TapsWrapper } from "@/components/TapsWrapper";
+import { TabsWrapper } from "@/components/TabsWrapper";
 import { useFilterUrlSync } from "@/hooks/useFilterUrlSync";
 import { useFilterStore } from "@/stores/filterProvider";
 import type { DashboardConfig } from "@/types/tabs";
@@ -55,7 +55,7 @@ export function DashboardShell({ config }: DashboardShellProps) {
         <TabFilters dimensions={filters} />
       </div>
 
-      <TapsWrapper
+      <TabsWrapper
         tabsConfig={tabs}
         value={activeTab}
         onValueChange={setActiveTab}
