@@ -32,6 +32,7 @@ import {
 import useFilterStore, { globalKey, tabKey } from "@/stores/filterProvider";
 
 import type { FilterValue } from "@/types/filters";
+// import useChartState from "@/hooks/useChartState";
 
 type ModuleSchema<M extends ModuleRegistryKeys> =
   (typeof moduleRegistry)[M]["dataSchema"];
@@ -53,6 +54,8 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const { moduleName, mockData, filterBindings, drill, ...baseProps } = props;
   const { chartID, chartTitle, chartDescription } = baseProps;
   const { component, dataSchema } = moduleRegistry[moduleName];
+
+  // const [filters, setFilters] = useChartState(baseProps.filterConfig);
 
   const filterValues = useFilterStore((state) => state.values);
   const activeTab = useFilterStore((state) => state.activeTab);
@@ -179,6 +182,16 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
+        {/* TODO: REMOVE OR ENABLE FILTERS */}
+
+        {/* {filterConfig.length > 0 && (
+          <ChartFilters
+            filterConfig={filterConfig}
+            filters={filters}
+            setFilter={setFilters}
+          />
+        )} */}
+
         {isLoading || isFetching ? (
           <ChartState height={props.height}>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

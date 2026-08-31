@@ -16,6 +16,8 @@ type BaseChartProps<C extends ChartConfigs = ChartConfigs> = {
   chartTitle?: string;
   chartDescription: string;
   chartID: string;
+  // TODO: Remove or update the filterConfig for the Chartspecifiy Filtersection
+  // filterConfig: FilterConfig[];
   chartConfig: C;
 };
 

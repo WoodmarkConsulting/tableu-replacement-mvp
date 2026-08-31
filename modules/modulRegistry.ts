@@ -20,14 +20,14 @@ export const moduleRegistry = {
     ),
     dataSchema: LineChartModuleDataSchema,
   },
-  // "MapModule": {
-  //   component: dynamic(() =>
-  //     import("@/modules/MapModule").then(
-  //       (loadedModule) => loadedModule.default,
-  //     ),
-  //   ),
-  //   dataSchema: MapModuleDataSchema,
-  // },
+  MapModule: {
+    component: dynamic(() =>
+      import("@/modules/MapModule").then(
+        (loadedModule) => loadedModule.default,
+      ),
+    ),
+    dataSchema: MapModuleDataSchema,
+  },
 } as const;
 
 export type ModuleRegistryKey = keyof typeof moduleRegistry;
