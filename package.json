@@ -36,7 +36,7 @@
     "react": "19.2.8",
     "react-day-picker": "^10.0.1",
     "react-dom": "19.2.8",
-    "react-simple-maps": "^3.0.0",
+    "react-simple-maps": "^5.0.0",
     "recharts": "^3.8.0",
     "shadcn": "^4.16.2",
     "tailwind-merge": "^3.6.0",
