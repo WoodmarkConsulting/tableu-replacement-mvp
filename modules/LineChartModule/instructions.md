@@ -44,7 +44,7 @@ The file contains exactly one type declaration: `LineChartConfig`.
 
 Contains the usage instructions for this module.
 
-It must follow `.github/agents/instructions.template.md`.
+It must follow `docs/instructions.template.md`.
 
 ---
 
