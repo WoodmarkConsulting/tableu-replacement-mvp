@@ -16,14 +16,14 @@ export function useShareFilters(dashboard: string) {
     setStatus("sharing");
 
     try {
-      const { values, activeTab } = useFiltersStore.getState();
+      const { appliedValues, activeTab } = useFiltersStore.getState();
 
       const { id } = await apiFetch("/api/filters/snapshot", {
         method: "POST",
 
         body: JSON.stringify({
           dashboard,
-          state: { values, activeTab },
+          state: { values: appliedValues, activeTab },
         }),
       });
 

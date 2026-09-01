@@ -53,12 +53,15 @@ export function useFilterUrlSync(): void {
         const current = useFiltersStore.getState();
 
         for (const [key, value] of Object.entries(snapshot.values ?? {})) {
-          current.setFilter(key, value);
+          current.setDraftFilter(key, value);
         }
 
         if (snapshot.activeTab) {
           current.setActiveTab(snapshot.activeTab);
         }
+
+        // Auto-apply so the recipient sees data without pressing Apply.
+        useFiltersStore.getState().applyFilters();
       } catch {
         // Ignore snapshot load failures; the dashboard renders with defaults.
       }

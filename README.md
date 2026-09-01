@@ -76,6 +76,23 @@ In practice that means:
 8. The returned data is validated against the selected module's `chartDataSchema.ts`.
 9. The module receives `ChartWrapperInjectedProps<...>` with `chartData`, loading state, error state, and the configured chart metadata.
 
+## Deferred queries (Apply to run)
+
+Charts do **not** fetch on dashboard open. Editing a filter updates a *draft*
+layer only; queries fire when the user presses **Apply**.
+
+- The filter store (`stores/filterProvider.ts`) keeps two layers: `draftValues`
+  (edited by controls) and `appliedValues` (drives queries + chips), plus a
+  `hasApplied` gate that is `false` until the first Apply.
+- `components/FilterActions/index.tsx` renders **Apply**/**Reset**; Reset discards
+  pending draft edits. A dirty indicator shows when draft ≠ applied.
+- `ChartWrapper` reads `appliedValues`, gates `useQuery` on `hasApplied`, and shows
+  an idle prompt until the first Apply.
+- **Chip removal** (`clearDimension`) and **drill** (`applySelection`) bypass the
+  gate on purpose: they write to both layers and re-query immediately.
+- A shared permalink (`?s=<id>`) auto-applies on hydration so recipients see data
+  without pressing Apply.
+
 ## Dashboard config model
 
 The generated dashboard pages consume a `DashboardConfig` object from `types/tabs.d.ts`.
