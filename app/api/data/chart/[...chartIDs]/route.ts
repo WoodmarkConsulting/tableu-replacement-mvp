@@ -2,9 +2,9 @@ import type { NextRequest } from "next/server";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 
-import { buildErrorMessage } from "../../router/errorhandler";
-import { runQuery } from "../../warehouse/connection";
-import type { APIEndpoint, ChartDataPath } from "../../utils/types";
+import { buildErrorMessage } from "../../../router/errorhandler";
+import { runQuery } from "../../../warehouse/connection";
+import type { APIEndpoint, ChartDataPath } from "../../../utils/types";
 
 type RequestBody = APIEndpoint<ChartDataPath>["POST"]["body"];
 type Response = APIEndpoint<ChartDataPath>["POST"]["response"];
@@ -13,7 +13,7 @@ const pathToSqlDir = path.join(process.cwd(), "pagesConfig", "sql");
 
 export async function POST(
   _req: NextRequest,
-  ctx: RouteContext<"/api/data/[...chartIDs]">,
+  ctx: RouteContext<"/api/data/chart/[...chartIDs]">,
 ) {
   const { chartIDs } = await ctx.params;
   const { filters } = (await _req.json()) as RequestBody;

@@ -4,51 +4,51 @@ import type { FilterSnapshot } from "@/types/filters";
 // --------------- Chart data API types ---------------
 type ChartDataQueryParams = string | number | boolean | bigint | Date | null;
 export type QueryParameters = Record<string, ChartDataQueryParams>;
-export type ChartDataPath = `/api/data/${string}`;
+export type ChartDataPath = `/api/data/chart/${string}`;
 
 // --------------- Tooltip API types ---------------
-export type TooltipPath = "/api/data/tooltip";
+export type TooltipPath = "/api/data/chart/tooltip";
 
 // --------------- Snapshot API types ---------------
 export type SnapshotRequestBody = {
   dashboard?: string;
   state?: FilterSnapshot;
 };
-export type SnapshotPath = `/api/filters/snapshot/`;
+export type SnapshotPath = `/api/filters/snapshot`;
 export type SnapshotIdPath = `/api/filters/snapshot/${string}`;
 
 // --------------- API endpoint types ---------------
 type Endpoints = ChartDataPath | TooltipPath | SnapshotPath | SnapshotIdPath;
 
-export type APIEndpoint<Path extends Endpoints> = Path extends ChartDataPath
+export type APIEndpoint<Path extends Endpoints> = Path extends TooltipPath
   ? {
       POST: {
         body: {
-          filters?: QueryParameters;
+          dataPoint?: QueryParameters;
         };
-        response: unknown[];
+        response: Record<string, unknown>;
       };
     }
-  : Path extends TooltipPath
+  : Path extends SnapshotPath
     ? {
         POST: {
-          body: {
-            dataPoint?: QueryParameters;
-          };
-          response: Record<string, unknown>;
+          body: SnapshotRequestBody;
+          response: Record<"id", string>;
         };
       }
-    : Path extends SnapshotPath
+    : Path extends SnapshotIdPath
       ? {
-          POST: {
-            body: SnapshotRequestBody;
-            response: Record<"id", string>;
+          GET: {
+            response: FilterSnapshot;
           };
         }
-      : Path extends SnapshotIdPath
+      : Path extends ChartDataPath
         ? {
-            GET: {
-              response: FilterSnapshot;
+            POST: {
+              body: {
+                filters?: QueryParameters;
+              };
+              response: unknown[];
             };
           }
         : never;

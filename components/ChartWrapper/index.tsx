@@ -286,7 +286,7 @@ async function fetchChartData<TSchema extends z.ZodTypeAny>(
   filters: Record<string, string | number | null>,
   dataSchema: TSchema,
 ): Promise<z.infer<TSchema>[]> {
-  const response = await apiFetch(`/api/data/${chartID}`, {
+  const response = await apiFetch(`/api/data/chart/${chartID}`, {
     method: "POST",
     body: {
       filters,
