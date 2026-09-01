@@ -133,7 +133,7 @@ const TestPage = () => {
       trigger: "Maps",
       rows: [
         {
-          height: 40,
+          height: 35,
           components: [
             {
               moduleName: "MapModule",
@@ -229,6 +229,140 @@ const TestPage = () => {
                       minColor: "#fbbf24",
                       maxColor: "#f97316",
                     },
+                  },
+                  stroke: "white",
+                  strokeWidth: 1,
+                  opacity: 0.8,
+                },
+                tooltip: {
+                  show: true,
+                },
+                regionLabels: {
+                  show: true,
+                  color: "#0f172a",
+                  fontSize: 10,
+                  fontWeight: 600,
+                },
+                legend: {
+                  show: true,
+                  position: "top-right",
+                },
+              },
+            },
+          ],
+        },
+        {
+          height: 35,
+          components: [
+            {
+              moduleName: "MapModule",
+              space: 12,
+              chartID: "dummy-map-chart-ranges",
+              chartTitle: "Regional volume (ranges)",
+              chartDescription:
+                "Dummy map data bucketed into five value ranges.",
+              mockData: [
+                {
+                  kind: "region",
+                  regionCode: "US",
+                  value: 50,
+                  label: "United States",
+                },
+                {
+                  kind: "region",
+                  regionCode: "DE",
+                  value: 500,
+                  label: "Germany",
+                },
+                {
+                  kind: "region",
+                  regionCode: "FR",
+                  value: 5000,
+                  label: "France",
+                },
+                {
+                  kind: "region",
+                  regionCode: "JP",
+                  value: 50000,
+                  label: "Japan",
+                },
+                {
+                  kind: "region",
+                  regionCode: "BR",
+                  value: 500000,
+                  label: "Brazil",
+                },
+                {
+                  kind: "region",
+                  regionCode: "CA",
+                  value: 750,
+                  label: "Canada",
+                },
+                {
+                  kind: "region",
+                  regionCode: "AU",
+                  value: 25000,
+                  label: "Australia",
+                },
+                {
+                  kind: "region",
+                  regionCode: "IN",
+                  value: 300000,
+                  label: "India",
+                },
+                {
+                  kind: "region",
+                  regionCode: "CN",
+                  value: 8000,
+                  label: "China",
+                },
+                {
+                  kind: "region",
+                  regionCode: "GB",
+                  value: 90,
+                  label: "United Kingdom",
+                },
+              ],
+              chartConfig: {
+                projection: {
+                  type: "geoMercator",
+                  center: [0, 20],
+                  scale: 130,
+                },
+                zoom: {
+                  enabled: true,
+                  min: 1,
+                  max: 8,
+                  initial: 1,
+                },
+                geography: {
+                  stroke: "#cbd5e1",
+                  strokeWidth: 0.7,
+                  defaultFill: "#e2e8f0",
+                },
+                choropleth: {
+                  enabled: true,
+                  colorScale: {
+                    type: "buckets",
+                    buckets: [
+                      { threshold: 0, color: "#eff6ff" },
+                      { threshold: 100, color: "#bfdbfe" },
+                      { threshold: 1000, color: "#93c5fd" },
+                      { threshold: 10000, color: "#60a5fa" },
+                      { threshold: 100000, color: "#2563eb" },
+                    ],
+                  },
+                  noDataColor: "#f1f5f9",
+                },
+                bubbles: {
+                  enabled: false,
+                  radius: {
+                    min: 6,
+                    max: 18,
+                  },
+                  color: {
+                    mode: "fixed",
+                    fixedColor: "#3b82f6",
                   },
                   stroke: "white",
                   strokeWidth: 1,

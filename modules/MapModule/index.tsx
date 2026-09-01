@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import countries from "i18n-iso-countries";
 import enLocale from "i18n-iso-countries/langs/en.json";
 import { scaleLinear, scaleSqrt, scaleThreshold } from "d3-scale";
@@ -10,11 +10,46 @@ import { Zoom } from "@visx/zoom";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Feature, Geometry } from "geojson";
 
-import worldAtlas from "world-atlas/countries-110m.json";
-
 import type { MapChartData } from "./chartDataSchema";
 
 countries.registerLocale(enLocale);
+
+// Fallback map height (in svh) used when the wrapper does not provide one.
+const MAP_HEIGHT_FALLBACK = 15;
+
+const numberFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 2,
+});
+
+function formatValue(value: number): string {
+  return Number.isFinite(value) ? numberFormatter.format(value) : "\u2014";
+}
+
+function minMax(values: number[]): [number, number] {
+  if (values.length === 0) {
+    return [0, 1];
+  }
+
+  let min = values[0];
+  let max = values[0];
+
+  for (const value of values) {
+    if (value < min) {
+      min = value;
+    }
+    if (value > max) {
+      max = value;
+    }
+  }
+
+  return [min, max];
+}
+
+function rowKey(entry: MapChartData): string {
+  return entry.kind === "region"
+    ? `region:${entry.regionCode}`
+    : `point:${entry.lat},${entry.lng}`;
+}
 
 type WorldFeature = Feature<Geometry, { name?: string }>;
 
@@ -43,62 +78,32 @@ type TooltipState = {
   y: number;
 };
 
+type RegionEntry = { value: number; label?: string };
+
 function getRegionValueMap(chartData: MapChartData[]) {
-  const regionValues = new Map<string, number>();
+  const regionValues = new Map<string, RegionEntry>();
 
   for (const entry of chartData) {
     if (entry.kind !== "region") {
       continue;
     }
 
-    const code = entry.regionCode.toUpperCase();
     const numericValue = Number(entry.value);
 
     if (!Number.isFinite(numericValue)) {
       continue;
     }
 
-    regionValues.set(code, numericValue);
+    // Duplicate region codes are aggregated (summed) rather than overwritten.
+    const existing = regionValues.get(entry.regionCode);
+
+    regionValues.set(entry.regionCode, {
+      value: (existing?.value ?? 0) + numericValue,
+      label: entry.label ?? existing?.label,
+    });
   }
 
   return regionValues;
-}
-
-function getColorForScale(
-  value: number,
-  min: number,
-  max: number,
-  minColor: string,
-  maxColor: string,
-): string {
-  if (!Number.isFinite(value) || min === max) {
-    return minColor;
-  }
-
-  const colorScale = scaleLinear<string, string>()
-    .domain([min, max])
-    .range([minColor, maxColor])
-    .clamp(true);
-
-  return colorScale(value) ?? minColor;
-}
-
-function getBucketColor(
-  value: number,
-  colorScale: MapChartConfig["choropleth"]["colorScale"],
-  noDataColor: string,
-): string {
-  if (colorScale.type !== "buckets" || !colorScale.buckets?.length) {
-    return noDataColor;
-  }
-
-  const thresholds = colorScale.buckets.map((bucket) => bucket.threshold);
-  const colors = colorScale.buckets.map((bucket) => bucket.color);
-  const thresholdScale = scaleThreshold<number, string>()
-    .domain(thresholds)
-    .range([noDataColor, ...colors]);
-
-  return thresholdScale(value) ?? noDataColor;
 }
 
 function getLegendPosition(position: MapChartConfig["legend"]["position"]) {
@@ -118,23 +123,26 @@ function getLegendPosition(position: MapChartConfig["legend"]["position"]) {
 function MapLegend({
   colorScale,
   bubbleConfig,
-  regionValues,
-  bubbleValues,
+  regionMin,
+  regionMax,
+  bubbleMin,
+  bubbleMax,
+  hasRegionValues,
+  hasBubbleValues,
   position,
   noDataColor,
 }: {
   colorScale: MapChartConfig["choropleth"]["colorScale"] | null;
   bubbleConfig: MapChartConfig["bubbles"] | null;
-  regionValues: number[];
-  bubbleValues: number[];
+  regionMin: number;
+  regionMax: number;
+  bubbleMin: number;
+  bubbleMax: number;
+  hasRegionValues: boolean;
+  hasBubbleValues: boolean;
   position: MapChartConfig["legend"]["position"];
   noDataColor: string;
 }) {
-  const minRegionValue = regionValues.length > 0 ? Math.min(...regionValues) : 0;
-  const maxRegionValue = regionValues.length > 0 ? Math.max(...regionValues) : 1;
-  const minBubbleValue = bubbleValues.length > 0 ? Math.min(...bubbleValues) : 0;
-  const maxBubbleValue = bubbleValues.length > 0 ? Math.max(...bubbleValues) : 1;
-
   const gradientColors =
     colorScale && colorScale.type === "gradient"
       ? [
@@ -143,22 +151,19 @@ function MapLegend({
         ]
       : ["#e2e8f0", "#2563eb"];
 
-  // Bubble size and color encode the same value, so the size legend doubles
-  // as the color legend: the small swatch uses the min-value color, the large
-  // swatch uses the max-value color.
-  const bubbleMinColor =
-    bubbleConfig?.color.mode === "value" && bubbleConfig.color.gradient
-      ? bubbleConfig.color.gradient.minColor
-      : bubbleConfig?.color.fixedColor ?? "#3b82f6";
-  const bubbleMaxColor =
-    bubbleConfig?.color.mode === "value" && bubbleConfig.color.gradient
-      ? bubbleConfig.color.gradient.maxColor
-      : bubbleConfig?.color.fixedColor ?? "#3b82f6";
+  // In "fixed" mode the bubble color carries no value information, so the
+  // legend shows a single representative swatch instead of a fake gradient.
+  const bubbleGradient =
+    bubbleConfig?.color.mode === "value" ? bubbleConfig.color.gradient : undefined;
+  const bubbleFixedColor = bubbleConfig?.color.fixedColor ?? "#3b82f6";
+  const bubbleIsGradient = Boolean(bubbleGradient);
+  const bubbleMinColor = bubbleGradient?.minColor ?? bubbleFixedColor;
+  const bubbleMaxColor = bubbleGradient?.maxColor ?? bubbleFixedColor;
 
   return (
     <div
       className={`absolute z-10 rounded-md border border-slate-200 bg-white/90 p-2 text-xs text-slate-700 shadow-sm backdrop-blur-sm ${getLegendPosition(position)}`}>
-      {colorScale && colorScale.type === "gradient" && (
+      {colorScale && colorScale.type === "gradient" && hasRegionValues && (
         <div className="mb-2">
           <div className="mb-1 font-medium">Value</div>
           <div
@@ -169,8 +174,8 @@ function MapLegend({
             }}
           />
           <div className="mt-1 flex w-28 justify-between">
-            <span>{minRegionValue}</span>
-            <span>{maxRegionValue}</span>
+            <span>{formatValue(regionMin)}</span>
+            <span>{formatValue(regionMax)}</span>
           </div>
         </div>
       )}
@@ -186,7 +191,7 @@ function MapLegend({
                   style={{ backgroundColor: bucket.color }}
                 />
                 <span>
-                  {`\u2265${bucket.threshold}`}
+                  {`\u2265${formatValue(bucket.threshold)}`}
                 </span>
               </div>
             ))}
@@ -201,30 +206,46 @@ function MapLegend({
         </div>
       )}
 
-      {bubbleConfig?.enabled && (
+      {bubbleConfig?.enabled && hasBubbleValues && (
         <div>
           <div className="mb-1 font-medium">Bubble value</div>
-          <div className="flex items-center gap-2">
-            <span
-              className="inline-block rounded-full"
-              style={{
-                width: `${Math.max(6, bubbleConfig.radius.min * 0.9)}px`,
-                height: `${Math.max(6, bubbleConfig.radius.min * 0.9)}px`,
-                backgroundColor: bubbleMinColor,
-              }}
-            />
-            <span
-              className="inline-block rounded-full"
-              style={{
-                width: `${bubbleConfig.radius.max}px`,
-                height: `${bubbleConfig.radius.max}px`,
-                backgroundColor: bubbleMaxColor,
-              }}
-            />
-            <span className="text-[10px] text-slate-500">
-              {minBubbleValue} - {maxBubbleValue}
-            </span>
-          </div>
+          {bubbleIsGradient ? (
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-block rounded-full"
+                style={{
+                  width: `${Math.max(6, bubbleConfig.radius.min * 0.9)}px`,
+                  height: `${Math.max(6, bubbleConfig.radius.min * 0.9)}px`,
+                  backgroundColor: bubbleMinColor,
+                }}
+              />
+              <span
+                className="inline-block rounded-full"
+                style={{
+                  width: `${bubbleConfig.radius.max}px`,
+                  height: `${bubbleConfig.radius.max}px`,
+                  backgroundColor: bubbleMaxColor,
+                }}
+              />
+              <span className="text-[10px] text-slate-500">
+                {formatValue(bubbleMin)} - {formatValue(bubbleMax)}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-block rounded-full"
+                style={{
+                  width: `${bubbleConfig.radius.max}px`,
+                  height: `${bubbleConfig.radius.max}px`,
+                  backgroundColor: bubbleFixedColor,
+                }}
+              />
+              <span className="text-[10px] text-slate-500">
+                {formatValue(bubbleMin)} - {formatValue(bubbleMax)}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -232,39 +253,59 @@ function MapLegend({
 }
 
 function MapModule(props: Props) {
-  const { chartConfig: config, chartData, height, onSelectionChange } = props;
+  const {
+    chartConfig: config,
+    chartData,
+    height,
+    onSelectionChange,
+    selectionMode,
+  } = props;
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
   const selectionEnabled = typeof onSelectionChange === "function";
 
-  const handleRegionSelect = (code: string | null | undefined) => {
-    if (!onSelectionChange || !code) {
+  const toggleSelection = (key: string) => {
+    if (!onSelectionChange) {
       return;
     }
 
-    const upper = code.toUpperCase();
-    const rows = chartData.filter(
-      (entry) =>
-        entry.kind === "region" && entry.regionCode.toUpperCase() === upper,
-    );
+    const next =
+      selectionMode === "multi" ? new Set(selectedKeys) : new Set<string>();
 
-    if (rows.length > 0) {
-      onSelectionChange(rows);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
     }
+
+    setSelectedKeys(next);
+    onSelectionChange(chartData.filter((entry) => next.has(rowKey(entry))));
+  };
+
+  const handleRegionSelect = (code: string | null | undefined) => {
+    if (!code) {
+      return;
+    }
+
+    toggleSelection(`region:${code.toUpperCase()}`);
   };
 
   const handlePointSelect = (
     entry: Extract<MapChartData, { kind: "point" }>,
   ) => {
-    if (!onSelectionChange) {
-      return;
-    }
-
-    onSelectionChange([entry]);
+    toggleSelection(rowKey(entry));
   };
 
   const regionValues = useMemo(() => getRegionValueMap(chartData), [chartData]);
-  const regionValueList = useMemo(() => [...regionValues.values()], [regionValues]);
+  const regionValueList = useMemo(
+    () => [...regionValues.values()].map((entry) => entry.value),
+    [regionValues],
+  );
+  const [regionMin, regionMax] = useMemo(
+    () => minMax(regionValueList),
+    [regionValueList],
+  );
 
   const pointRows = useMemo(
     () =>
@@ -279,92 +320,129 @@ function MapModule(props: Props) {
     () => pointRows.map((entry) => entry.value),
     [pointRows],
   );
+  const [pointMin, pointMax] = useMemo(
+    () => minMax(pointValues),
+    [pointValues],
+  );
 
   const choroplethScale = useMemo(() => {
     if (!config.choropleth.enabled) {
       return null;
     }
 
-    if (config.choropleth.colorScale.type === "gradient") {
-      const gradient = config.choropleth.colorScale.gradient;
+    const colorScale = config.choropleth.colorScale;
+
+    if (colorScale.type === "gradient") {
+      const gradient = colorScale.gradient;
 
       if (!gradient) {
         return null;
       }
 
-      const min = regionValueList.length > 0 ? Math.min(...regionValueList) : 0;
-      const max = regionValueList.length > 0 ? Math.max(...regionValueList) : 1;
+      if (regionMin === regionMax) {
+        return () => gradient.minColor;
+      }
 
-      return (value: number) =>
-        getColorForScale(value, min, max, gradient.minColor, gradient.maxColor);
+      const scale = scaleLinear<string, string>()
+        .domain([regionMin, regionMax])
+        .range([gradient.minColor, gradient.maxColor])
+        .clamp(true);
+
+      return (value: number) => scale(value) ?? gradient.minColor;
     }
 
-    if (config.choropleth.colorScale.type === "buckets") {
-      return (value: number) =>
-        getBucketColor(value, config.choropleth.colorScale, config.choropleth.noDataColor);
+    if (colorScale.type === "buckets" && colorScale.buckets?.length) {
+      const thresholds = colorScale.buckets.map((bucket) => bucket.threshold);
+      const colors = colorScale.buckets.map((bucket) => bucket.color);
+
+      // The first bucket color also covers everything below the first
+      // threshold, so genuine low values are never painted with the no-data
+      // color. `noDataColor` is reserved for regions without a data row.
+      const scale = scaleThreshold<number, string>()
+        .domain(thresholds)
+        .range([colors[0], ...colors]);
+
+      return (value: number) => scale(value) ?? config.choropleth.noDataColor;
     }
 
     return null;
-  }, [config, regionValueList]);
+  }, [config.choropleth, regionMin, regionMax]);
 
   const bubbleRadiusScale = useMemo(() => {
-    if (!config.bubbles.enabled || pointValues.length === 0) {
+    if (!config.bubbles.enabled || pointRows.length === 0) {
       return null;
     }
 
-    const min = Math.min(...pointValues);
-    const max = Math.max(...pointValues);
-
-    if (min === max) {
-      return () => config.bubbles.radius.max;
+    if (pointMin === pointMax) {
+      const radius = config.bubbles.radius.max;
+      return () => radius;
     }
 
-    return scaleSqrt<number, number>()
-      .domain([min, max])
+    const scale = scaleSqrt<number, number>()
+      .domain([pointMin, pointMax])
       .range([config.bubbles.radius.min, config.bubbles.radius.max])
       .clamp(true);
-  }, [config, pointValues]);
+
+    return (value: number) => scale(value);
+  }, [
+    config.bubbles.enabled,
+    config.bubbles.radius.min,
+    config.bubbles.radius.max,
+    pointMin,
+    pointMax,
+    pointRows.length,
+  ]);
 
   const bubbleColorScale = useMemo(() => {
-    if (!config.bubbles.enabled || config.bubbles.color.mode !== "value") {
+    if (
+      !config.bubbles.enabled ||
+      config.bubbles.color.mode !== "value" ||
+      pointRows.length === 0
+    ) {
       return null;
     }
-
-    if (pointValues.length === 0) {
-      return null;
-    }
-
-    const min = Math.min(...pointValues);
-    const max = Math.max(...pointValues);
 
     const gradient = config.bubbles.color.gradient;
+
     if (!gradient) {
-      return () => config.bubbles.color.fixedColor ?? "#3b82f6";
+      const fixed = config.bubbles.color.fixedColor ?? "#3b82f6";
+      return () => fixed;
     }
 
-    return (value: number) =>
-      getColorForScale(value, min, max, gradient.minColor, gradient.maxColor);
-  }, [config, pointValues]);
+    if (pointMin === pointMax) {
+      return () => gradient.minColor;
+    }
 
+    const scale = scaleLinear<string, string>()
+      .domain([pointMin, pointMax])
+      .range([gradient.minColor, gradient.maxColor])
+      .clamp(true);
+
+    return (value: number) => scale(value) ?? gradient.minColor;
+  }, [config.bubbles, pointMin, pointMax, pointRows.length]);
+
+  const [defaultAtlas, setDefaultAtlas] = useState<unknown>(null);
   const [fetchedGeo, setFetchedGeo] = useState<unknown>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
+  // The bundled world atlas is loaded lazily so it is only fetched/parsed when
+  // no custom geography URL is configured.
   useEffect(() => {
-    const url = config.geography.url;
-    if (!url) {
+    if (config.geography.url) {
       return;
     }
 
     let active = true;
-    fetch(url)
-      .then((response) => response.json())
-      .then((data) => {
+
+    import("world-atlas/countries-110m.json")
+      .then((module) => {
         if (active) {
-          setFetchedGeo(data);
+          setDefaultAtlas((module as { default?: unknown }).default ?? module);
         }
       })
       .catch(() => {
         if (active) {
-          setFetchedGeo(null);
+          setGeoError("Failed to load the default map geography.");
         }
       });
 
@@ -373,27 +451,115 @@ function MapModule(props: Props) {
     };
   }, [config.geography.url]);
 
-  const geoFeatures = useMemo<WorldFeature[]>(() => {
-    const geoData = config.geography.url ? fetchedGeo : worldAtlas;
-    if (!geoData) {
-      return [];
+  useEffect(() => {
+    const url = config.geography.url;
+    if (!url) {
+      // No custom URL: the default atlas is used and any previously fetched
+      // geography is ignored by `geoResult`, so no state reset is needed.
+      return;
     }
 
-    const topology = geoData as { objects: Record<string, object> };
+    const controller = new AbortController();
+
+    fetch(url, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setFetchedGeo(data);
+        setGeoError(null);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        setFetchedGeo(null);
+        setGeoError("Failed to load the map geography.");
+      });
+
+    return () => controller.abort();
+  }, [config.geography.url]);
+
+  const geoResult = useMemo<{ features: WorldFeature[]; error: string | null }>(() => {
+    const geoData = config.geography.url ? fetchedGeo : defaultAtlas;
+
+    if (!geoData || typeof geoData !== "object") {
+      return { features: [], error: null };
+    }
+
+    const topology = geoData as { objects?: Record<string, unknown> };
+
+    if (
+      !topology.objects ||
+      typeof topology.objects !== "object" ||
+      Object.keys(topology.objects).length === 0
+    ) {
+      return {
+        features: [],
+        error: "Map geography is missing topology objects.",
+      };
+    }
+
     const object =
       topology.objects.countries ?? Object.values(topology.objects)[0];
 
     if (!object) {
-      return [];
+      return { features: [], error: "Map geography has no usable object." };
     }
 
-    const collection = feature(
-      topology as Parameters<typeof feature>[0],
-      object as Parameters<typeof feature>[1],
-    ) as unknown as FeatureCollection<Geometry, { name?: string }>;
+    try {
+      const collection = feature(
+        topology as Parameters<typeof feature>[0],
+        object as Parameters<typeof feature>[1],
+      ) as unknown as FeatureCollection<Geometry, { name?: string }>;
 
-    return collection.features ?? [];
-  }, [config.geography.url, fetchedGeo]);
+      return { features: collection.features ?? [], error: null };
+    } catch {
+      return { features: [], error: "Failed to parse the map geography." };
+    }
+  }, [config.geography.url, fetchedGeo, defaultAtlas]);
+
+  const geoFeatures = geoResult.features;
+  const displayError = geoError ?? geoResult.error;
+
+  // ISO normalization, region lookup, and geographic centroids are computed
+  // once per feature per data change and reused by both the fill and label
+  // passes.
+  const featureMeta = useMemo(() => {
+    const map = new Map<
+      WorldFeature,
+      {
+        alpha2: string | null;
+        value?: number;
+        label?: string;
+        centroid: [number, number];
+      }
+    >();
+
+    for (const geo of geoFeatures) {
+      const featureId = geo.id?.toString() ?? "";
+      const paddedId = featureId ? featureId.padStart(3, "0") : "";
+      const alpha2 = paddedId
+        ? countries.numericToAlpha2(paddedId) ?? null
+        : null;
+      const region = alpha2 ? regionValues.get(alpha2) : undefined;
+
+      map.set(geo, {
+        alpha2,
+        value: region?.value,
+        label: region?.label,
+        centroid: geoCentroid(geo as Parameters<typeof geoCentroid>[0]) as [
+          number,
+          number,
+        ],
+      });
+    }
+
+    return map;
+  }, [geoFeatures, regionValues]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -445,14 +611,11 @@ function MapModule(props: Props) {
         <>
           <g>
             {features.map(({ feature: geo, path, index }) => {
-              const featureId = geo.id?.toString() ?? "";
-              const paddedId = featureId ? featureId.padStart(3, "0") : "";
-              const normalized = paddedId
-                ? countries.numericToAlpha2(paddedId)
-                : null;
-              const regionValue = normalized
-                ? regionValues.get(normalized.toUpperCase())
-                : undefined;
+              const meta = featureMeta.get(geo);
+              const alpha2 = meta?.alpha2 ?? null;
+              const regionValue = meta?.value;
+              const isSelected =
+                alpha2 !== null && selectedKeys.has(`region:${alpha2}`);
 
               const fill =
                 regionValue !== undefined && config.choropleth.enabled
@@ -463,57 +626,96 @@ function MapModule(props: Props) {
                     : config.geography.defaultFill;
 
               const title =
-                normalized ?? geo.properties?.name ?? "Unknown region";
+                meta?.label ??
+                alpha2 ??
+                geo.properties?.name ??
+                "Unknown region";
 
-              const showLabel =
-                config.regionLabels.show && regionValue !== undefined;
-              const centroid = showLabel
-                ? (geoCentroid(geo as never) as [number, number])
-                : null;
-              const projectedCentroid = centroid
-                ? projection(centroid)
-                : null;
+              const selectable = selectionEnabled && regionValue !== undefined;
 
               return (
-                <Fragment key={`${featureId}-${index}`}>
-                  <path
-                    d={path ?? ""}
-                    fill={fill}
-                    stroke={config.geography.stroke}
-                    strokeWidth={config.geography.strokeWidth}
-                    onMouseMove={(event) => {
-                      if (regionValue === undefined) {
-                        return;
-                      }
-                      handleTooltip(event, title, regionValue);
-                    }}
-                    onMouseLeave={() => setTooltip(null)}
-                    onClick={() => handleRegionSelect(normalized)}
-                    style={{
-                      outline: "none",
-                      cursor: selectionEnabled ? "pointer" : "default",
-                    }}
-                  />
-                  {showLabel && projectedCentroid && (
-                    <text
-                      x={projectedCentroid[0]}
-                      y={projectedCentroid[1]}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      style={{
-                        pointerEvents: "none",
-                        fill: config.regionLabels.color,
-                        fontSize: config.regionLabels.fontSize,
-                        fontWeight: config.regionLabels.fontWeight,
-                      }}
-                    >
-                      {regionValue}
-                    </text>
-                  )}
-                </Fragment>
+                <path
+                  key={`${geo.id?.toString() ?? ""}-${index}`}
+                  d={path ?? ""}
+                  fill={fill}
+                  stroke={isSelected ? "#0f172a" : config.geography.stroke}
+                  strokeWidth={
+                    isSelected
+                      ? Math.max(config.geography.strokeWidth, 1.5)
+                      : config.geography.strokeWidth
+                  }
+                  role={selectable ? "button" : undefined}
+                  tabIndex={selectable ? 0 : undefined}
+                  aria-label={
+                    regionValue !== undefined
+                      ? `${title}: ${formatValue(regionValue)}`
+                      : title
+                  }
+                  aria-pressed={selectable ? isSelected : undefined}
+                  onMouseMove={(event) => {
+                    if (regionValue === undefined) {
+                      return;
+                    }
+                    handleTooltip(event, title, regionValue);
+                  }}
+                  onMouseLeave={() => setTooltip(null)}
+                  onClick={() => handleRegionSelect(alpha2)}
+                  onKeyDown={(event) => {
+                    if (!selectable) {
+                      return;
+                    }
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleRegionSelect(alpha2);
+                    }
+                  }}
+                  style={{
+                    outline: "none",
+                    cursor: selectable ? "pointer" : "default",
+                  }}
+                />
               );
             })}
           </g>
+
+          {/* Labels render in a second pass so they sit above every country
+              fill and are never clipped by a neighboring region's path. */}
+          {config.regionLabels.show && (
+            <g>
+              {features.map(({ feature: geo, index }) => {
+                const meta = featureMeta.get(geo);
+                const regionValue = meta?.value;
+
+                if (!meta || regionValue === undefined) {
+                  return null;
+                }
+
+                const projectedCentroid = projection(meta.centroid);
+
+                if (!projectedCentroid) {
+                  return null;
+                }
+
+                return (
+                  <text
+                    key={`${geo.id?.toString() ?? ""}-${index}-label`}
+                    x={projectedCentroid[0]}
+                    y={projectedCentroid[1]}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    style={{
+                      pointerEvents: "none",
+                      fill: config.regionLabels.color,
+                      fontSize: config.regionLabels.fontSize,
+                      fontWeight: config.regionLabels.fontWeight,
+                    }}
+                  >
+                    {formatValue(regionValue)}
+                  </text>
+                );
+              })}
+            </g>
+          )}
 
           {config.bubbles.enabled &&
             pointRows.map((entry) => {
@@ -529,26 +731,42 @@ function MapModule(props: Props) {
                 config.bubbles.color.mode === "value" && bubbleColorScale
                   ? bubbleColorScale(entry.value)
                   : config.bubbles.color.fixedColor ?? "#3b82f6";
+              const key = rowKey(entry);
+              const isSelected = selectedKeys.has(key);
+              const title = entry.label ?? `${entry.lat}, ${entry.lng}`;
 
               return (
                 <circle
-                  key={`${entry.lat}-${entry.lng}-${entry.label ?? "point"}`}
+                  key={key}
                   cx={projected[0]}
                   cy={projected[1]}
                   r={radius}
                   fill={bubbleColor}
                   fillOpacity={config.bubbles.opacity}
-                  stroke={config.bubbles.stroke}
-                  strokeWidth={config.bubbles.strokeWidth}
+                  stroke={isSelected ? "#0f172a" : config.bubbles.stroke}
+                  strokeWidth={
+                    isSelected
+                      ? Math.max(config.bubbles.strokeWidth, 2)
+                      : config.bubbles.strokeWidth
+                  }
+                  role={selectionEnabled ? "button" : undefined}
+                  tabIndex={selectionEnabled ? 0 : undefined}
+                  aria-label={`${title}: ${formatValue(entry.value)}`}
+                  aria-pressed={selectionEnabled ? isSelected : undefined}
                   onMouseMove={(event) => {
-                    handleTooltip(
-                      event,
-                      entry.label ?? `${entry.lat}, ${entry.lng}`,
-                      entry.value,
-                    );
+                    handleTooltip(event, title, entry.value);
                   }}
                   onMouseLeave={() => setTooltip(null)}
                   onClick={() => handlePointSelect(entry)}
+                  onKeyDown={(event) => {
+                    if (!selectionEnabled) {
+                      return;
+                    }
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handlePointSelect(entry);
+                    }
+                  }}
                   style={{ cursor: selectionEnabled ? "pointer" : "default" }}
                 />
               );
@@ -565,7 +783,7 @@ function MapModule(props: Props) {
     <div
       ref={containerRef}
       className="relative w-full overflow-hidden rounded-md border border-slate-200 bg-slate-50"
-      style={{ height: `${height || 15}svh` }}
+      style={{ height: `${height || MAP_HEIGHT_FALLBACK}svh` }}
     >
       {canRender &&
         (config.zoom.enabled ? (
@@ -591,6 +809,8 @@ function MapModule(props: Props) {
                 width={size.width}
                 height={size.height}
                 className="h-full w-full"
+                role="group"
+                aria-label="Geographic map"
                 style={{
                   cursor: zoom.isDragging ? "grabbing" : "grab",
                   touchAction: "none",
@@ -605,10 +825,23 @@ function MapModule(props: Props) {
             width={size.width}
             height={size.height}
             className="h-full w-full"
+            role="group"
+            aria-label="Geographic map"
           >
             {renderMapBody()}
           </svg>
         ))}
+
+      {displayError && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-4">
+          <div
+            role="alert"
+            className="rounded-md border border-red-200 bg-white/90 px-3 py-2 text-xs text-red-700 shadow-sm"
+          >
+            {displayError}
+          </div>
+        </div>
+      )}
 
       {config.tooltip.show && tooltip && (
         <div
@@ -619,7 +852,7 @@ function MapModule(props: Props) {
           }}
         >
           <div className="font-medium">{tooltip.title}</div>
-          <div>{tooltip.value}</div>
+          <div>{formatValue(tooltip.value)}</div>
         </div>
       )}
 
@@ -627,8 +860,12 @@ function MapModule(props: Props) {
         <MapLegend
           colorScale={config.choropleth.enabled ? config.choropleth.colorScale : null}
           bubbleConfig={config.bubbles.enabled ? config.bubbles : null}
-          regionValues={regionValueList}
-          bubbleValues={pointValues}
+          regionMin={regionMin}
+          regionMax={regionMax}
+          bubbleMin={pointMin}
+          bubbleMax={pointMax}
+          hasRegionValues={regionValueList.length > 0}
+          hasBubbleValues={pointValues.length > 0}
           position={config.legend.position}
           noDataColor={config.choropleth.noDataColor}
         />

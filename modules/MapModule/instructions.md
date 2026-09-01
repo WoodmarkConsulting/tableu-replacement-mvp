@@ -177,6 +177,8 @@ Rules:
 - `value` must always be present and finite.
 - Region rows and point rows can be mixed in the same response.
 - Each record may optionally provide a human-readable `label` for tooltip display.
+- Region `label`, when present, is used as the tooltip and accessibility title for that region; otherwise the ISO code or geography name is used.
+- Multiple region rows that share the same `regionCode` are aggregated by summing their `value`; the first non-empty `label` is retained.
 
 ---
 
@@ -233,6 +235,12 @@ type MapChartConfig = {
     opacity: number;
   };
   tooltip: { show: boolean };
+  regionLabels: {
+    show: boolean;
+    color: string;
+    fontSize: number;
+    fontWeight?: number | string;
+  };
   legend: {
     show: boolean;
     position: "bottom-left" | "bottom-right" | "top-left" | "top-right";
@@ -435,7 +443,7 @@ Required:
 
 Description:
 
-Color used when a region has no matching value.
+Color used only when a region has no matching data row. When the color scale is `buckets`, values below the smallest threshold are painted with the first bucket's color, not `noDataColor`, so genuine low values stay distinguishable from missing data.
 
 ### `bubbles`
 
@@ -540,6 +548,74 @@ Description:
 
 Controls whether tooltips are rendered for hovered regions and markers.
 
+### `regionLabels`
+
+Description of the numeric value labels drawn on top of each region.
+
+#### `regionLabels.show`
+
+Type:
+
+```ts
+boolean;
+```
+
+Required:
+
+`yes`
+
+Description:
+
+Controls whether a region's value is drawn as a text label at the region centroid. Labels are only rendered for regions that have a matching data row.
+
+#### `regionLabels.color`
+
+Type:
+
+```ts
+string;
+```
+
+Required:
+
+`yes`
+
+Description:
+
+Fill color of the region value labels.
+
+#### `regionLabels.fontSize`
+
+Type:
+
+```ts
+number;
+```
+
+Required:
+
+`yes`
+
+Description:
+
+Font size of the region value labels, in pixels.
+
+#### `regionLabels.fontWeight`
+
+Type:
+
+```ts
+number | string | undefined;
+```
+
+Required:
+
+`no`
+
+Description:
+
+Optional font weight of the region value labels (for example `600` or `"bold"`).
+
 ### `legend`
 
 #### `legend.show`
@@ -582,6 +658,7 @@ Places the legend in a fixed corner of the map container.
 - Region matching relies on ISO alpha-2 codes and a valid country dataset.
 - Bubble sizing is based on the `value` field and uses a square-root scale.
 - `choropleth.colorScale.type` must match the configured color mapping shape.
+- For `choropleth.colorScale.type: "buckets"`, each bucket's `color` applies to values greater than or equal to its `threshold`; the first bucket's color also applies to any value below the smallest threshold. `choropleth.noDataColor` is used only for regions without a data row.
 - `bubbles.color.mode: "value"` requires a valid value-driven gradient range.
 - `bubbles.color.mode: "fixed"` uses `fixedColor` when present.
 - `legend.show` is independent from `tooltip.show`, but they are often used together.
