@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import {
   Area,
   CartesianGrid,
   ComposedChart,
   Legend,
   Line,
+  MouseHandlerDataParam,
   XAxis,
   YAxis,
 } from "recharts";
@@ -19,6 +20,8 @@ import {
 } from "@/components/ui/chart";
 
 import { LineChartData } from "./chartDataSchema";
+import useTooltipStore from "@/stores/tooltip";
+import { useShallow } from "zustand/shallow";
 
 /**
  * Compact transport format returned by the API.
@@ -146,11 +149,18 @@ function createRechartsData(
 type Props = ChartWrapperInjectedProps<LineChartData, LineChartConfig>;
 
 function LineChartModule(props: Props) {
-  const { chartConfig, chartData, height, onSelectionChange } = props;
-
+  const { chartConfig, chartData, height, onSelectionChange, chartID } = props;
   const { xAxis, yAxis, grid, tooltip, legend, margin, lines } = chartConfig;
-
   const selectionEnabled = typeof onSelectionChange === "function";
+
+  const lastTooltipDataPoint = useRef<LineChartData | null>(null);
+  const { showTooltip, hideTooltip } = useTooltipStore(
+    useShallow((state) => ({
+      showTooltip: state.showTooltip,
+
+      hideTooltip: state.hideTooltip,
+    })),
+  );
 
   const handleChartClick = (state: unknown) => {
     if (!onSelectionChange) {
@@ -179,6 +189,39 @@ function LineChartModule(props: Props) {
     [chartData, lines],
   );
 
+  const handleTooltipMouseMove = (
+    state: MouseHandlerDataParam,
+    event: React.MouseEvent<Element>,
+  ) => {
+    hideTooltip();
+
+    const x = Number(state.activeLabel);
+
+    if (!Number.isFinite(x)) {
+      return;
+    }
+
+    const dataPoint = chartData.find((point) => point.x === x);
+
+    if (!dataPoint) {
+      return;
+    }
+
+    showTooltip({
+      chartID,
+      dataPoint,
+      position: {
+        x: event.clientX,
+        y: event.clientY,
+      },
+    });
+  };
+
+  const handleTooltipMouseLeave = () => {
+    lastTooltipDataPoint.current = null;
+    hideTooltip();
+  };
+
   return (
     <ChartContainer
       config={dataConfig}
@@ -190,7 +233,9 @@ function LineChartModule(props: Props) {
         accessibilityLayer
         data={rechartsData}
         margin={margin}
-        onClick={selectionEnabled ? handleChartClick : undefined}>
+        onClick={selectionEnabled ? handleChartClick : undefined}
+        onMouseMove={handleTooltipMouseMove}
+        onMouseLeave={handleTooltipMouseLeave}>
         {grid.show && (
           <CartesianGrid
             horizontal={grid.horizontal}

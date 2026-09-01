@@ -22,10 +22,8 @@ type ApiFetchOptions<Path extends Endpoints, Method extends APIMethod<Path>> = {
 export async function apiFetch<
   Path extends Endpoints,
   Method extends APIMethod<Path>,
->(
-  path: Path,
-  options: ApiFetchOptions<Path, Method>,
-): Promise<ResponseOf<Path, Method>> {
+  Res = ResponseOf<Path, Method>,
+>(path: Path, options: ApiFetchOptions<Path, Method>): Promise<Res> {
   const response = await fetch(path, {
     method: String(options.method),
     headers: {
@@ -58,5 +56,5 @@ export async function apiFetch<
     throw new Error(`API request failed: ${errorMessage}`);
   }
 
-  return responseBody as ResponseOf<Path, Method>;
+  return responseBody as Res;
 }

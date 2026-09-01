@@ -34,6 +34,8 @@ import useQueryTimingStore from "@/stores/queryTimingStore";
 
 import type { FilterValue } from "@/types/filters";
 import { apiFetch } from "@/app/api/utils/apiFetch";
+import useTooltipStore from "@/stores/tooltip";
+import TooltipCard from "../TooltipCard";
 // import useChartState from "@/hooks/useChartState";
 
 type ModuleSchema<M extends ModuleRegistryKeys> =
@@ -56,6 +58,8 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const { moduleName, mockData, filterBindings, drill, ...baseProps } = props;
   const { chartID, chartTitle, chartDescription } = baseProps;
   const { component, dataSchema } = moduleRegistry[moduleName];
+  const tooltip = useTooltipStore((state) => state.tooltip);
+  const position = useTooltipStore((state) => state.position);
 
   //TODO: remove or replace with proper chart state management
   // const [filters, setFilters] = useChartState(baseProps.filterConfig);
@@ -281,6 +285,8 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
             onSelectionChange={handleSelectionChange}
           />
         ) : null}
+
+        <TooltipCard tooltip={tooltip} position={position} />
       </CardContent>
     </Card>
   );

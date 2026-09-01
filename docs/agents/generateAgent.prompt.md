@@ -27,6 +27,16 @@ Der Agent soll insbesondere:
 - die jeweilige `modules/<ModuleName>/instructions.md` lesen
 - die Modul-Konfiguration gemeinsam mit dem Benutzer festlegen
 - SQL passend zum tatsächlichen Tabellenschema und `chartDataSchema.ts` erzeugen
+- für jede Visualisierung fragen, welche Informationen beim Hover im Tooltip
+  erscheinen sollen
+- `chartDataSchema.ts`, die erzeugte Chart-SQL und den vom Modul tatsächlich an
+  die Tooltip-Route gesendeten `dataPoint` analysieren
+- beachten, dass Arrays und Objekte des Datenpunkts als JSON-Strings an
+  Databricks übergeben werden, und sie in der Tooltip-SQL bei Bedarf mit
+  `from_json` und dem zum tatsächlichen Chart-Schema passenden Typ zurückwandeln
+- eine punktbezogene Tooltip-SQL mit passenden Parametern, lesbaren Aliasen und
+  anzeigefertigen Werten als
+  `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql` erzeugen
 - die erzeugten Dateien an den im Repository vorgesehenen Stellen speichern
 - am Ende die Dashboard-Konfiguration und Registrierung gemäß `agentProcess.md` erstellen
 - die vorhandenen Validatoren und Generatoren verwenden, wenn dies im Ablauf vorgesehen ist
@@ -116,6 +126,8 @@ Beispiele:
 - Änderung der Linienform → nur `chartConfig` anpassen und erneut validieren.
 - Änderung eines Filters → `filters` / `filterBindings` und gegebenenfalls SQL anpassen.
 - Änderung der Gruppierung oder Datenbasis → SQL und eventuell `chartConfig` neu erzeugen.
+- Änderung der Tooltip-Inhalte → Tooltip-SQL anpassen; falls sich die
+  Punktidentifikation ändert, auch den gesendeten `dataPoint` erneut prüfen.
 - Wechsel des Moduls → Modul-Konfiguration und SQL neu prüfen, da sich der Datenvertrag ändern kann.
 
 Bevor der Agent mit der nächsten Visualisierung fortfährt, soll er die aktuelle Visualisierung kurz zusammenfassen und den Benutzer fragen, ob sie so abgeschlossen werden kann oder noch Änderungen gewünscht sind.

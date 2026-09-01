@@ -2,20 +2,28 @@ import type { SnapshotRequestBody } from "../filters/snapshot/route";
 import type { FilterSnapshot } from "@/types/filters";
 
 // --------------- Chart data API types ---------------
-type ChartDataQueryParams = string | number | boolean | bigint | Date | null;
-export type QueryParameters = Record<string, ChartDataQueryParams>;
+export type QueryParameters = Record<string, unknown>;
 export type ChartDataPath = `/api/data/chart/${string}`;
+export type ChartDataPathResponse = unknown[];
 
 // --------------- Tooltip API types ---------------
 export type TooltipPath = "/api/data/chart/tooltip";
+export type TooltipPathRequestBody = {
+  dataPoint?: Record<string, unknown | null> | null;
+  chartID: string;
+};
+export type TooltipPathResponse = Record<string, unknown>;
 
 // --------------- Snapshot API types ---------------
+export type SnapshotPath = `/api/filters/snapshot`;
 export type SnapshotRequestBody = {
   dashboard?: string;
   state?: FilterSnapshot;
 };
-export type SnapshotPath = `/api/filters/snapshot`;
+export type SnapshotPathResponse = Record<"id", string>;
+
 export type SnapshotIdPath = `/api/filters/snapshot/${string}`;
+export type SnapshotIdPathResponse = FilterSnapshot;
 
 // --------------- API endpoint types ---------------
 type Endpoints = ChartDataPath | TooltipPath | SnapshotPath | SnapshotIdPath;
@@ -23,23 +31,21 @@ type Endpoints = ChartDataPath | TooltipPath | SnapshotPath | SnapshotIdPath;
 export type APIEndpoint<Path extends Endpoints> = Path extends TooltipPath
   ? {
       POST: {
-        body: {
-          dataPoint?: QueryParameters;
-        };
-        response: Record<string, unknown>;
+        body: TooltipPathRequestBody;
+        response: TooltipPathResponse;
       };
     }
   : Path extends SnapshotPath
     ? {
         POST: {
           body: SnapshotRequestBody;
-          response: Record<"id", string>;
+          response: SnapshotPathResponse;
         };
       }
     : Path extends SnapshotIdPath
       ? {
           GET: {
-            response: FilterSnapshot;
+            response: SnapshotIdPathResponse;
           };
         }
       : Path extends ChartDataPath
@@ -48,7 +54,7 @@ export type APIEndpoint<Path extends Endpoints> = Path extends TooltipPath
               body: {
                 filters?: QueryParameters;
               };
-              response: unknown[];
+              response: ChartDataPathResponse;
             };
           }
         : never;

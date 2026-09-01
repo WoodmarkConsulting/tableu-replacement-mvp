@@ -52,7 +52,7 @@ export async function POST(
   let data;
 
   try {
-    data = await runQuery(sqlQuery, filters);
+    data = await runQuery<Response[]>(sqlQuery, filters);
   } catch (error) {
     console.error(
       `Failed to execute SQL query for chartID "${chartID}":`,

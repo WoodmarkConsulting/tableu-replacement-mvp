@@ -25,20 +25,11 @@ const TestPage = () => {
           components: [
             {
               moduleName: "LineChartModule",
-              space: 12,
-
-              chartID: "dummy-line-chart",
-              chartTitle: "Fleet activity",
-              chartDescription: "Dummy sample data for the test page.",
-              mockData: [
-                { x: 1714521600000, y: [12, 8] },
-                { x: 1714608000000, y: [15, 10] },
-                { x: 1714694400000, y: [18, 13] },
-                { x: 1714780800000, y: [20, 16] },
-                { x: 1714867200000, y: [17, 15] },
-                { x: 1714953600000, y: [24, 21] },
-                { x: 1715040000000, y: [28, 22] },
-              ],
+              space: 6,
+              chartID: "active-users-over-time",
+              chartTitle: "Aktive Nutzer über Zeit",
+              chartDescription:
+                "Wie viele unterschiedliche Nutzer erstellen pro Tag Fleets?",
               chartConfig: {
                 xAxis: {
                   show: true,
@@ -64,7 +55,7 @@ const TestPage = () => {
                   cursor: true,
                 },
                 legend: {
-                  show: true,
+                  show: false,
                 },
                 margin: {
                   top: 8,
@@ -75,7 +66,7 @@ const TestPage = () => {
                 lines: [
                   {
                     seriesIndex: 0,
-                    name: "Created",
+                    name: "Aktive Nutzer",
                     curve: "monotone",
                     stroke: "var(--chart-1)",
                     strokeWidth: 2,
@@ -97,66 +88,18 @@ const TestPage = () => {
                     fill: {
                       enabled: true,
                       color: "var(--chart-1)",
-                      opacity: 0.12,
-                    },
-                  },
-                  {
-                    seriesIndex: 1,
-                    name: "Completed",
-                    curve: "monotone",
-                    stroke: "var(--chart-2)",
-                    strokeWidth: 2,
-                    connectNulls: false,
-                    dots: {
-                      show: false,
-                      radius: 3,
-                      fill: "var(--chart-2)",
-                      stroke: "var(--chart-2)",
-                      strokeWidth: 1,
-                    },
-                    activeDot: {
-                      show: true,
-                      radius: 5,
-                      fill: "var(--chart-2)",
-                      stroke: "white",
-                      strokeWidth: 2,
-                    },
-                    fill: {
-                      enabled: false,
-                      color: "var(--chart-2)",
                       opacity: 0.12,
                     },
                   },
                 ],
               },
             },
-          ],
-        },
-      ],
-    },
-    {
-      trigger: "Analytics",
-      rows: [
-        {
-          height: 40,
-          components: [
             {
               moduleName: "LineChartModule",
               space: 6,
-
-              chartID: "dummy-line-chart",
-              chartTitle: "Fleet activity",
-              chartDescription:
-                "Dummy sample data for the Analytics test page.",
-              mockData: [
-                { x: 1714521600000, y: [120, 8] },
-                { x: 1714608000000, y: [150, 10] },
-                { x: 1714694400000, y: [180, 13] },
-                { x: 1714780800000, y: [200, 16] },
-                { x: 1714867200000, y: [170, 15] },
-                { x: 1714953600000, y: [240, 21] },
-                { x: 1715040000000, y: [280, 22] },
-              ],
+              chartID: "cumulative-fleets",
+              chartTitle: "Kumulierte Anzahl Fleets",
+              chartDescription: "Wie wächst der Bestand über die Zeit?",
               chartConfig: {
                 xAxis: {
                   show: true,
@@ -182,7 +125,7 @@ const TestPage = () => {
                   cursor: true,
                 },
                 legend: {
-                  show: true,
+                  show: false,
                 },
                 margin: {
                   top: 8,
@@ -193,34 +136,7 @@ const TestPage = () => {
                 lines: [
                   {
                     seriesIndex: 0,
-                    name: "Created",
-                    curve: "monotone",
-                    stroke: "var(--chart-1)",
-                    strokeWidth: 2,
-                    connectNulls: false,
-                    dots: {
-                      show: false,
-                      radius: 3,
-                      fill: "var(--chart-1)",
-                      stroke: "var(--chart-1)",
-                      strokeWidth: 1,
-                    },
-                    activeDot: {
-                      show: true,
-                      radius: 5,
-                      fill: "var(--chart-1)",
-                      stroke: "white",
-                      strokeWidth: 2,
-                    },
-                    fill: {
-                      enabled: true,
-                      color: "var(--chart-1)",
-                      opacity: 0.12,
-                    },
-                  },
-                  {
-                    seriesIndex: 1,
-                    name: "Completed",
+                    name: "Fleets gesamt",
                     curve: "monotone",
                     stroke: "var(--chart-2)",
                     strokeWidth: 2,
@@ -240,7 +156,7 @@ const TestPage = () => {
                       strokeWidth: 2,
                     },
                     fill: {
-                      enabled: false,
+                      enabled: true,
                       color: "var(--chart-2)",
                       opacity: 0.12,
                     },
@@ -322,11 +238,7 @@ const TestPage = () => {
 
   return (
     <ChartPageWrapper>
-      {/* <FilterProvider
-        dimensions={dashboardConfig.filters}
-        initialActiveTab={dashboardConfig.tabs[0]?.trigger ?? ""}> */}
       <DashboardShell config={dashboardConfig} />
-      {/* </FilterProvider> */}
     </ChartPageWrapper>
   );
 };

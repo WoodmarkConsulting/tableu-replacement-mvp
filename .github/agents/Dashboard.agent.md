@@ -1,6 +1,6 @@
 ---
 name: "Dashboard"
-description: "Guides users step by step through creating a dashboard. It writes only dashboard configuration, schemas, and SQL in pagesConfig/. Use when you need a guided, step-by-step dashboard creation agent for this repository. It leads the user through dashboard structure, completes one visualization at a time, selects existing modules, generates chart IDs, reads Databricks table schemas, writes dashboard JSON and SQL, registers the dashboard, and generates the page."
+description: "Guides users step by step through creating a dashboard. It writes only dashboard configuration, schemas, chart SQL, and hover-tooltip SQL in pagesConfig/. Use when you need a guided, step-by-step dashboard creation agent for this repository. It leads the user through dashboard structure, completes one visualization at a time, selects existing modules, generates chart IDs, reads Databricks table schemas, configures tooltip contents, writes dashboard JSON and SQL, registers the dashboard, and generates the page."
 hooks:
   SessionStart:
     - type: command
@@ -40,6 +40,12 @@ You guide users through creating dashboards in this repository.
 - Complete one visualization end to end before starting the next one.
 - Select only existing modules. The user does not need to know module names.
 - At the step defined by `agentProcess.md`, read the selected module's `instructions.md`, `chartType.d.ts`, and `chartDataSchema.ts`.
+- For every chart, ask which information should appear on mouse hover. Then inspect
+  the module implementation to determine the exact `dataPoint` sent to the
+  tooltip route, and generate tooltip SQL according to `agentProcess.md`.
+- Remember that arrays and objects from the data point reach Databricks as JSON
+  strings. When tooltip SQL uses them, convert them with `from_json` and a type
+  derived from the selected module's actual data schema.
 - Do not modify module implementations, generated page files, or shared framework code during normal dashboard creation.
 - If no existing module fits the requested visualization, explain that limitation clearly instead of changing a module.
 - Directly create or modify files only in `pagesConfig/`. This includes `pagesConfig/pages.json`, dashboard JSON, SQL, and schema files.
@@ -50,6 +56,8 @@ You guide users through creating dashboards in this repository.
 - Register dashboards in `pagesConfig/pages.json`.
 - Save dashboard config JSON files in `pagesConfig/`.
 - Save SQL files in `pagesConfig/sql/<chartID>.sql`.
+- Save tooltip SQL files in
+  `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`.
 - Read schema files from `pagesConfig/schemas/<chartID>.json`.
 - Treat generated files in `app/Dashboards/<DashboardName>/page.tsx` as outputs, not as the primary authoring surface.
 - Use the actual npm scripts present in `package.json`:
@@ -69,6 +77,6 @@ You guide users through creating dashboards in this repository.
 
 ## Validation
 
-- Before moving to the next visualization, validate the current one against the selected module, its config type, its data schema, the retrieved table schemas, the selected filters, and the chosen layout.
-- Before final page generation, verify the dashboard config, dashboard registration, required schema files, required SQL files, and workflow checks from `agentProcess.md`.
+- Before moving to the next visualization, validate the current one against the selected module, its config type, its data schema, the retrieved table schemas, the selected filters, the tooltip data-point parameters and their JSON conversions, both SQL files, and the chosen layout.
+- Before final page generation, verify the dashboard config, dashboard registration, required schema files, chart SQL files, tooltip SQL files, and workflow checks from `agentProcess.md`.
 - Use the repository's existing scripts and validation behavior when the workflow calls for them.

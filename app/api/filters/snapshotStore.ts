@@ -45,10 +45,8 @@ export async function saveSnapshot(
   return id;
 }
 
-export async function loadSnapshot(
-  id: string,
-): Promise<FilterSnapshot | null> {
-  const rows = await runQuery<{ state: string }>(
+export async function loadSnapshot(id: string): Promise<FilterSnapshot | null> {
+  const rows = await runQuery<{ state: string }[]>(
     `SELECT state FROM ${FQTN} WHERE id = :id LIMIT 1`,
     { id },
   );

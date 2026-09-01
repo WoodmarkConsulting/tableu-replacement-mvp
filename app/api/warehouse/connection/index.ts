@@ -77,10 +77,10 @@ const resetClient = async () => {
   }
 };
 
-export const runQuery = async <T extends object>(
+export const runQuery = async <T extends object = object[]>(
   query: string,
   parameters: QueryParameters = {},
-): Promise<T[]> => {
+): Promise<T> => {
   let session;
   let queryOperation;
 
@@ -95,7 +95,7 @@ export const runQuery = async <T extends object>(
     });
 
     const result = await queryOperation.fetchAll();
-    return result as T[];
+    return result as T;
   } catch (error) {
     await resetClient();
 

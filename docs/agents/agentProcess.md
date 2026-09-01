@@ -396,7 +396,97 @@ pagesConfig/sql/123456as.sql
 
 ---
 
-## 13. Configure Layout
+## 13. Configure the Hover Tooltip
+
+Every visualization requires a tooltip query for the data point under the
+mouse pointer.
+
+Ask the user which information should be shown when hovering over this chart.
+Use simple, visible examples based on the visualization, such as:
+
+```text
+What should the tooltip show for a point in this chart?
+
+1. Date and active users
+2. Date, active users, and department
+3. Other information
+```
+
+Do not decide the tooltip contents without the user.
+
+Before writing the tooltip SQL, analyze all of the following for the selected
+module and visualization:
+
+- `modules/<ModuleName>/chartDataSchema.ts`, which defines the chart data
+- `modules/<ModuleName>/index.tsx`, specifically the object passed as
+  `dataPoint` to the tooltip route
+- `pagesConfig/sql/<chartID>.sql`, which defines how source rows are transformed
+  into chart rows
+- the retrieved source table schemas
+
+The tooltip route converts every property of the sent `dataPoint` into a named
+SQL parameter with the same name. The tooltip SQL must use those exact names.
+For example, if the module sends `{ x, y }`, the available parameters are `:x`
+and `:y`. Use the identifying parameter such as `:x` to find the source data
+for exactly the hovered chart point. Do not assume that displayed chart series
+names or source column names are available as parameters unless they are
+actually present in the sent `dataPoint`.
+
+Databricks named parameters accept scalar values. The tooltip route therefore
+keeps strings, numbers, booleans, and `null` unchanged, but serializes arrays
+and objects as JSON strings. The complete data point remains available, but the
+tooltip SQL must convert complex parameters back to the correct type when it
+uses them. Derive that type from `chartDataSchema.ts` and the actual `dataPoint`.
+
+For example, when `y` is an array of nullable numbers, use:
+
+```sql
+from_json(:y, 'ARRAY<DOUBLE>')
+```
+
+Use the Databricks SQL type that matches the real value. Do not assume that all
+arrays contain numbers or that every module sends the same data-point shape.
+
+If the selected module does not send a `dataPoint` to the tooltip route on
+hover, explain that the module does not currently support this tooltip workflow.
+Do not create tooltip SQL that cannot be called, and do not modify the module
+during normal dashboard creation.
+
+Write a separate tooltip query that:
+
+- uses only tables and columns from the retrieved schemas
+- reverses or mirrors the transformation in the chart SQL as needed to identify
+  the hovered point
+- returns only the information requested by the user
+- formats technical values for display, for example dates as `dd.MM.yyyy`
+- gives every result column a concise, human-readable alias
+
+Choose aliases that `formatLabel` can turn into visible labels, for example
+`datum` and `aktive_nutzer`, which become `Datum` and `Aktive Nutzer`. Return
+display-ready values so a result can be read as:
+
+```text
+Datum          30.07.2024
+Aktive Nutzer  1
+```
+
+Save this SQL as:
+
+```text
+pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql
+```
+
+Example:
+
+```text
+pagesConfig/sql/tooltipSql/123456as.tooltip.sql
+```
+
+The tooltip SQL filename must use the same `chartID` as the visualization.
+
+---
+
+## 14. Configure Layout
 
 Ask how the visualization should be positioned on the current tab.
 
@@ -430,7 +520,7 @@ Translate the answer into the appropriate `space` value.
 
 ---
 
-## 14. Validate the Visualization
+## 15. Validate the Visualization
 
 Before continuing with the next visualization, verify:
 
@@ -443,13 +533,21 @@ Before continuing with the next visualization, verify:
 - SQL uses only valid tables and columns from the retrieved schemas.
 - SQL returns exactly the structure required by `chartDataSchema.ts`.
 - Filters are reflected correctly in the SQL where required.
+- The user selected the tooltip contents.
+- The sent tooltip `dataPoint` and its available parameter names were verified
+  in the selected module implementation.
+- `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql` exists, uses only available
+  data-point parameters, and returns the requested display-ready values with
+  readable aliases.
+- Serialized array or object parameters are converted from JSON using types
+  that match the module's data schema.
 - Layout values are valid.
 
 Only after these checks succeed is the visualization complete.
 
 ---
 
-## 15. Continue With the Next Visualization
+## 16. Continue With the Next Visualization
 
 After one visualization is complete, continue with the next visualization in the dashboard structure.
 
@@ -464,14 +562,15 @@ Repeat the complete visualization workflow:
 7. Configure the visualization.
 8. Configure filters.
 9. Generate SQL.
-10. Configure layout.
-11. Validate the visualization.
+10. Configure the hover tooltip and generate its SQL.
+11. Configure layout.
+12. Validate the visualization.
 
 Do not mix unfinished visualizations.
 
 ---
 
-## 16. Create DashboardConfig
+## 17. Create DashboardConfig
 
 After all visualizations are complete, build the full dashboard configuration.
 
@@ -514,7 +613,7 @@ One trigger may contain multiple rows and multiple modules. Omit `filterBindings
 
 ---
 
-## 17. Save Dashboard Config
+## 18. Save Dashboard Config
 
 Save the finished `DashboardConfig` as JSON in:
 
@@ -532,7 +631,7 @@ The filename should clearly belong to the dashboard.
 
 ---
 
-## 18. Register Dashboard
+## 19. Register Dashboard
 
 Register the dashboard in:
 
@@ -568,7 +667,7 @@ Preserve all existing entries when adding another dashboard.
 
 ---
 
-## 19. Final Validation
+## 20. Final Validation
 
 Before generating the page, verify:
 
@@ -577,8 +676,12 @@ Before generating the page, verify:
 - All visualizations are complete.
 - Every visualization has a unique `chartID`.
 - Every required schema file exists.
-- Every required SQL file exists.
-- Every SQL file belongs to the correct `chartID`.
+- Every chart SQL file exists and belongs to the correct `chartID`.
+- Every tooltip SQL file exists at
+  `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql` and belongs to the correct
+  `chartID`.
+- Every tooltip SQL uses parameters provided by the data point that its module
+  sends and returns the information requested by the user with readable labels.
 - Every module configuration is valid.
 - The dashboard config is valid JSON.
 - The dashboard config conforms to `DashboardConfig`.
@@ -586,7 +689,7 @@ Before generating the page, verify:
 
 ---
 
-## 20. Generate the Page
+## 21. Generate the Page
 
 After all configuration, schemas, and SQL files are complete and valid, use the repository's existing page generation process.
 
@@ -630,9 +733,12 @@ Examples:
 - Changing line style only requires updating and validating `chartConfig`.
 - Changing a filter may require updating the dashboard `filters` / a chart's `filterBindings` and SQL.
 - Changing the selected data or grouping may require regenerating SQL and parts
-  of `chartConfig`.
+  of `chartConfig`, then rechecking the tooltip parameters and tooltip SQL.
+- Changing the tooltip contents requires updating and validating only the
+  tooltip SQL unless the requested information cannot be identified from the
+  currently sent data point.
 - Changing the module may require redoing the module configuration and SQL
-  because the data contract can be different.
+  because the data contract and sent tooltip data point can be different.
 
 ## Configure Layout
 
