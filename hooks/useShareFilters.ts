@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import useFiltersStore from "@/stores/filterProvider";
+import { apiFetch } from "@/app/api/utils/apiFetch";
 
 type ShareStatus = "idle" | "sharing" | "copied" | "error";
 
@@ -17,20 +18,14 @@ export function useShareFilters(dashboard: string) {
     try {
       const { values, activeTab } = useFiltersStore.getState();
 
-      const response = await fetch("/api/filters/snapshot", {
+      const { id } = await apiFetch("/api/filters/snapshot", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+
         body: JSON.stringify({
           dashboard,
           state: { values, activeTab },
         }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to create snapshot");
-      }
-
-      const { id } = (await response.json()) as { id: string };
 
       const params = new URLSearchParams();
       params.set("s", id);
