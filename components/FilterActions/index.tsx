@@ -8,11 +8,15 @@ import useFiltersStore, { isDirty } from "@/stores/filterProvider";
 export function FilterActions() {
   const applyFilters = useFiltersStore((state) => state.applyFilters);
   const resetDraft = useFiltersStore((state) => state.resetDraft);
+  const hasApplied = useFiltersStore((state) => state.hasApplied);
   const dirty = useFiltersStore(isDirty);
+
+  // Allow the first Apply even with no edits, so charts can run once on open.
+  const canApply = dirty || !hasApplied;
 
   return (
     <div className="flex items-center gap-2 print:hidden">
-      <Button size="sm" onClick={applyFilters} disabled={!dirty}>
+      <Button size="sm" onClick={applyFilters} disabled={!canApply}>
         Anwenden
       </Button>
 
