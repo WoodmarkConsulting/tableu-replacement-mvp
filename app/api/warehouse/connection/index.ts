@@ -2,10 +2,7 @@ import { DBSQLClient } from "@databricks/sql";
 import IDBSQLClient, {
   ConnectionOptions,
 } from "@databricks/sql/dist/contracts/IDBSQLClient";
-
-type QueryParameterValue = string | number | boolean | bigint | Date | null;
-
-export type QueryParameters = Record<string, QueryParameterValue>;
+import { QueryParameters } from "../../utils/types";
 
 const server_hostname = process.env.HOSTNAME;
 const http_path = process.env.HTTP_PATH;
@@ -14,7 +11,9 @@ const clientID = process.env.DATABRICKS_OAUTH_CLIENT_ID;
 const clientSecret = process.env.DATABRICKS_OAUTH_CLIENT_SECRET;
 
 if (!server_hostname || !http_path) {
-  throw new Error("Missing required environment variables: HOSTNAME, HTTP_PATH");
+  throw new Error(
+    "Missing required environment variables: HOSTNAME, HTTP_PATH",
+  );
 }
 
 const dbsqlClient = new DBSQLClient();

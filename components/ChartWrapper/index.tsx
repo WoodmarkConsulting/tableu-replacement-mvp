@@ -33,6 +33,7 @@ import useFilterStore, { globalKey, tabKey } from "@/stores/filterProvider";
 import useQueryTimingStore from "@/stores/queryTimingStore";
 
 import type { FilterValue } from "@/types/filters";
+import { apiFetch } from "@/app/api/utils/apiFetch";
 // import useChartState from "@/hooks/useChartState";
 
 type ModuleSchema<M extends ModuleRegistryKeys> =
@@ -56,6 +57,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const { chartID, chartTitle, chartDescription } = baseProps;
   const { component, dataSchema } = moduleRegistry[moduleName];
 
+  //TODO: remove or replace with proper chart state management
   // const [filters, setFilters] = useChartState(baseProps.filterConfig);
 
   const filterValues = useFilterStore((state) => state.values);
@@ -284,39 +286,14 @@ async function fetchChartData<TSchema extends z.ZodTypeAny>(
   filters: Record<string, string | number | null>,
   dataSchema: TSchema,
 ): Promise<z.infer<TSchema>[]> {
-  const response = await fetch(`/api/data/${chartID}`, {
+  const response = await apiFetch(`/api/data/${chartID}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+    body: {
       filters,
-    }),
+    },
   });
 
-  let responseBody: unknown;
-
-  try {
-    responseBody = await response.json();
-  } catch {
-    throw new Error(
-      "Failed to load chart data: API response is not valid JSON.",
-    );
-  }
-
-  if (!response.ok) {
-    const errorMessage =
-      typeof responseBody === "object" &&
-      responseBody !== null &&
-      "error" in responseBody &&
-      typeof responseBody.error === "string"
-        ? responseBody.error
-        : "Unknown error";
-
-    throw new Error(`Failed to load chart data: ${errorMessage}`);
-  }
-
-  const validationResult = z.array(dataSchema).safeParse(responseBody);
+  const validationResult = z.array(dataSchema).safeParse(response);
 
   if (!validationResult.success) {
     throw new Error(
