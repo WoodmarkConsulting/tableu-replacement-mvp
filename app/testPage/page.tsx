@@ -127,126 +127,130 @@ const TestPage = () => {
             },
           ],
         },
-        // {
-        //   height: 40,
-        //   components: [
-        //     {
-        //       moduleName: "MapModule",
-        //       space: 12,
-        //       chartID: "dummy-map-chart",
-        //       chartTitle: "Regional coverage",
-        //       chartDescription: "Dummy map data for the test page.",
-        //       filterConfig: [],
-        //       mockData: [
-        //         {
-        //           kind: "region",
-        //           regionCode: "US",
-        //           value: 82,
-        //           label: "United States",
-        //         },
-        //         {
-        //           kind: "region",
-        //           regionCode: "DE",
-        //           value: 64,
-        //           label: "Germany",
-        //         },
-        //         {
-        //           kind: "region",
-        //           regionCode: "FR",
-        //           value: 58,
-        //           label: "France",
-        //         },
-        //         { kind: "region", regionCode: "JP", value: 76, label: "Japan" },
-        //         {
-        //           kind: "region",
-        //           regionCode: "BR",
-        //           value: 45,
-        //           label: "Brazil",
-        //         },
-        //         {
-        //           kind: "point",
-        //           lat: 40.7128,
-        //           lng: -74.006,
-        //           value: 14,
-        //           label: "New York",
-        //         },
-        //         {
-        //           kind: "point",
-        //           lat: 51.5074,
-        //           lng: -0.1278,
-        //           value: 19,
-        //           label: "London",
-        //         },
-        //         {
-        //           kind: "point",
-        //           lat: 35.6762,
-        //           lng: 139.6503,
-        //           value: 16,
-        //           label: "Tokyo",
-        //         },
-        //       ],
-        //       chartConfig: {
-        //         projection: {
-        //           type: "geoMercator",
-        //           center: [0, 20],
-        //           scale: 130,
-        //         },
-        //         zoom: {
-        //           enabled: true,
-        //           min: 1,
-        //           max: 8,
-        //           initial: 1,
-        //         },
-        //         geography: {
-        //           stroke: "#cbd5e1",
-        //           strokeWidth: 0.7,
-        //           defaultFill: "#e2e8f0",
-        //         },
-        //         choropleth: {
-        //           enabled: true,
-        //           colorScale: {
-        //             type: "gradient",
-        //             gradient: {
-        //               minColor: "#dbeafe",
-        //               maxColor: "#2563eb",
-        //             },
-        //           },
-        //           noDataColor: "#f1f5f9",
-        //         },
-        //         bubbles: {
-        //           enabled: true,
-        //           radius: {
-        //             min: 6,
-        //             max: 18,
-        //           },
-        //           color: {
-        //             mode: "value",
-        //             gradient: {
-        //               minColor: "#fbbf24",
-        //               maxColor: "#f97316",
-        //             },
-        //           },
-        //           stroke: "white",
-        //           strokeWidth: 1,
-        //           opacity: 0.8,
-        //         },
-        //         tooltip: {
-        //           show: true,
-        //         },
-        //         regionLabels: {
-        //           show: true,
-        //           color: "#0f172a",
-        //           fontSize: 10,
-        //           fontWeight: 600,
-        //         },
-        //         legend: {
-        //           show: true,
-        //           position: "top-right",
-        //         },
-        //       },
-        //     },
-        //   ],
-        // },
+      ],
+    },
+    {
+      trigger: "Maps",
+      rows: [
+        {
+          height: 40,
+          components: [
+            {
+              moduleName: "MapModule",
+              space: 12,
+              chartID: "dummy-map-chart",
+              chartTitle: "Regional coverage",
+              chartDescription: "Dummy map data for the test page.",
+              mockData: [
+                {
+                  kind: "region",
+                  regionCode: "US",
+                  value: 82,
+                  label: "United States",
+                },
+                {
+                  kind: "region",
+                  regionCode: "DE",
+                  value: 64,
+                  label: "Germany",
+                },
+                {
+                  kind: "region",
+                  regionCode: "FR",
+                  value: 58,
+                  label: "France",
+                },
+                { kind: "region", regionCode: "JP", value: 76, label: "Japan" },
+                {
+                  kind: "region",
+                  regionCode: "BR",
+                  value: 45,
+                  label: "Brazil",
+                },
+                {
+                  kind: "point",
+                  lat: 40.7128,
+                  lng: -74.006,
+                  value: 14,
+                  label: "New York",
+                },
+                {
+                  kind: "point",
+                  lat: 51.5074,
+                  lng: -0.1278,
+                  value: 19,
+                  label: "London",
+                },
+                {
+                  kind: "point",
+                  lat: 35.6762,
+                  lng: 139.6503,
+                  value: 16,
+                  label: "Tokyo",
+                },
+              ],
+              chartConfig: {
+                projection: {
+                  type: "geoMercator",
+                  center: [0, 20],
+                  scale: 130,
+                },
+                zoom: {
+                  enabled: true,
+                  min: 1,
+                  max: 8,
+                  initial: 1,
+                },
+                geography: {
+                  stroke: "#cbd5e1",
+                  strokeWidth: 0.7,
+                  defaultFill: "#e2e8f0",
+                },
+                choropleth: {
+                  enabled: true,
+                  colorScale: {
+                    type: "gradient",
+                    gradient: {
+                      minColor: "#dbeafe",
+                      maxColor: "#2563eb",
+                    },
+                  },
+                  noDataColor: "#f1f5f9",
+                },
+                bubbles: {
+                  enabled: true,
+                  radius: {
+                    min: 6,
+                    max: 18,
+                  },
+                  color: {
+                    mode: "value",
+                    gradient: {
+                      minColor: "#fbbf24",
+                      maxColor: "#f97316",
+                    },
+                  },
+                  stroke: "white",
+                  strokeWidth: 1,
+                  opacity: 0.8,
+                },
+                tooltip: {
+                  show: true,
+                },
+                regionLabels: {
+                  show: true,
+                  color: "#0f172a",
+                  fontSize: 10,
+                  fontWeight: 600,
+                },
+                legend: {
+                  show: true,
+                  position: "top-right",
+                },
+              },
+            },
+          ],
+        },
       ],
     },
   ] as const satisfies TabsConfig[];

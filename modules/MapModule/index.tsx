@@ -143,6 +143,18 @@ function MapLegend({
         ]
       : ["#e2e8f0", "#2563eb"];
 
+  // Bubble size and color encode the same value, so the size legend doubles
+  // as the color legend: the small swatch uses the min-value color, the large
+  // swatch uses the max-value color.
+  const bubbleMinColor =
+    bubbleConfig?.color.mode === "value" && bubbleConfig.color.gradient
+      ? bubbleConfig.color.gradient.minColor
+      : bubbleConfig?.color.fixedColor ?? "#3b82f6";
+  const bubbleMaxColor =
+    bubbleConfig?.color.mode === "value" && bubbleConfig.color.gradient
+      ? bubbleConfig.color.gradient.maxColor
+      : bubbleConfig?.color.fixedColor ?? "#3b82f6";
+
   return (
     <div
       className={`absolute z-10 rounded-md border border-slate-200 bg-white/90 p-2 text-xs text-slate-700 shadow-sm backdrop-blur-sm ${getLegendPosition(position)}`}>
@@ -191,20 +203,22 @@ function MapLegend({
 
       {bubbleConfig?.enabled && (
         <div>
-          <div className="mb-1 font-medium">Bubble size</div>
+          <div className="mb-1 font-medium">Bubble value</div>
           <div className="flex items-center gap-2">
             <span
-              className="inline-block rounded-full bg-slate-400"
+              className="inline-block rounded-full"
               style={{
                 width: `${Math.max(6, bubbleConfig.radius.min * 0.9)}px`,
                 height: `${Math.max(6, bubbleConfig.radius.min * 0.9)}px`,
+                backgroundColor: bubbleMinColor,
               }}
             />
             <span
-              className="inline-block rounded-full bg-slate-500"
+              className="inline-block rounded-full"
               style={{
                 width: `${bubbleConfig.radius.max}px`,
                 height: `${bubbleConfig.radius.max}px`,
+                backgroundColor: bubbleMaxColor,
               }}
             />
             <span className="text-[10px] text-slate-500">
