@@ -2,6 +2,9 @@ import type { NextRequest } from "next/server";
 
 import { buildErrorMessage } from "../../../router/errorhandler";
 import { loadSnapshot } from "../../snapshotStore";
+import { APIEndpoint, SnapshotIdPath } from "@/app/api/utils/types";
+
+type Response = APIEndpoint<SnapshotIdPath>["GET"]["response"];
 
 export async function GET(
   _req: NextRequest,
@@ -36,5 +39,5 @@ export async function GET(
     });
   }
 
-  return Response.json(snapshot);
+  return Response.json(snapshot satisfies Response);
 }

@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import type { FilterSnapshot } from "@/types/filters";
 import useFiltersStore, { FilterStoreState } from "@/stores/filterProvider";
+import { apiFetch } from "@/app/api/utils/apiFetch";
 
 const SNAPSHOT_PARAM = "s";
 const TAB_PARAM = "tab";
@@ -42,13 +42,9 @@ export function useFilterUrlSync(): void {
 
     void (async () => {
       try {
-        const response = await fetch(`/api/filters/snapshot/${snapshotId}`);
-
-        if (!response.ok || cancelled) {
-          return;
-        }
-
-        const snapshot = (await response.json()) as FilterSnapshot;
+        const snapshot = await apiFetch(`/api/filters/snapshot/${snapshotId}`, {
+          method: "GET",
+        });
 
         if (cancelled) {
           return;

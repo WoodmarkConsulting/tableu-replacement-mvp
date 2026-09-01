@@ -3,11 +3,11 @@ import path from "node:path";
 import { readFile } from "node:fs/promises";
 
 import { buildErrorMessage } from "../../router/errorhandler";
-import { runQuery, type QueryParameters } from "../../warehouse/connection";
+import { runQuery } from "../../warehouse/connection";
+import type { APIEndpoint, ChartDataPath } from "../../utils/types";
 
-export type RequestBody = {
-  filters?: QueryParameters;
-};
+type RequestBody = APIEndpoint<ChartDataPath>["POST"]["body"];
+type Response = APIEndpoint<ChartDataPath>["POST"]["response"];
 
 const pathToSqlDir = path.join(process.cwd(), "pagesConfig", "sql");
 
@@ -67,5 +67,5 @@ export async function POST(
 
   console.log("Data fetched for chartID:", chartID, data);
 
-  return Response.json(data);
+  return Response.json(data satisfies Response);
 }

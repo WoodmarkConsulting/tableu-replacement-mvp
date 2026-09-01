@@ -2,12 +2,10 @@ import type { NextRequest } from "next/server";
 
 import { buildErrorMessage } from "../../router/errorhandler";
 import { saveSnapshot } from "../snapshotStore";
-import type { FilterSnapshot } from "@/types/filters";
+import { APIEndpoint, SnapshotPath } from "../../utils/types";
 
-type SnapshotRequestBody = {
-  dashboard?: string;
-  state?: FilterSnapshot;
-};
+type SnapshotRequestBody = APIEndpoint<SnapshotPath>["POST"]["body"];
+type Response = APIEndpoint<SnapshotPath>["POST"]["response"];
 
 export async function POST(req: NextRequest) {
   let body: SnapshotRequestBody;
@@ -42,7 +40,7 @@ export async function POST(req: NextRequest) {
       activeTab: typeof state.activeTab === "string" ? state.activeTab : "",
     });
 
-    return Response.json({ id });
+    return Response.json({ id } satisfies Response);
   } catch (error) {
     console.error("Failed to save filter snapshot:", error);
 
