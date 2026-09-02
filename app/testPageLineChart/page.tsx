@@ -30,6 +30,7 @@ const TestPage = () => {
               chartTitle: "Aktive Nutzer über Zeit",
               chartDescription:
                 "Wie viele unterschiedliche Nutzer erstellen pro Tag Fleets?",
+              enhancedTooltip: true,
               chartConfig: {
                 xAxis: {
                   show: true,
@@ -100,6 +101,7 @@ const TestPage = () => {
               chartID: "cumulative-fleets",
               chartTitle: "Kumulierte Anzahl Fleets",
               chartDescription: "Wie wächst der Bestand über die Zeit?",
+              enhancedTooltip: true,
               chartConfig: {
                 xAxis: {
                   show: true,
@@ -159,6 +161,110 @@ const TestPage = () => {
                       enabled: true,
                       color: "var(--chart-2)",
                       opacity: 0.12,
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        {
+          height: 40,
+          components: [
+            {
+              moduleName: "LineChartModule",
+              space: 12,
+              chartID: "dtc-table",
+              chartTitle: "Aktive und gespeicherte DTCs über Zeit",
+              chartDescription:
+                "Wie entwickeln sich aktive und gespeicherte DTC-Einträge pro Tag?",
+              enhancedTooltip: true,
+              chartConfig: {
+                xAxis: {
+                  show: true,
+                  tickLine: false,
+                  axisLine: false,
+                  tickMargin: 8,
+                  format: "date-day-month",
+                },
+                yAxis: {
+                  show: true,
+                  tickLine: false,
+                  axisLine: false,
+                  format: "compact",
+                },
+                grid: {
+                  show: true,
+                  horizontal: true,
+                  vertical: false,
+                  strokeDasharray: "3 3",
+                },
+                tooltip: {
+                  show: true,
+                  cursor: true,
+                },
+                legend: {
+                  show: true,
+                },
+                margin: {
+                  top: 8,
+                  right: 16,
+                  bottom: 8,
+                  left: 0,
+                },
+                lines: [
+                  {
+                    seriesIndex: 0,
+                    name: "Aktive DTCs",
+                    curve: "monotone",
+                    stroke: "var(--chart-1)",
+                    strokeWidth: 2,
+                    connectNulls: false,
+                    dots: {
+                      show: false,
+                      radius: 3,
+                      fill: "var(--chart-1)",
+                      stroke: "var(--chart-1)",
+                      strokeWidth: 1,
+                    },
+                    activeDot: {
+                      show: true,
+                      radius: 5,
+                      fill: "var(--chart-1)",
+                      stroke: "white",
+                      strokeWidth: 2,
+                    },
+                    fill: {
+                      enabled: false,
+                      color: "var(--chart-1)",
+                      opacity: 0,
+                    },
+                  },
+                  {
+                    seriesIndex: 1,
+                    name: "Gespeicherte DTCs",
+                    curve: "monotone",
+                    stroke: "var(--chart-2)",
+                    strokeWidth: 2,
+                    connectNulls: false,
+                    dots: {
+                      show: false,
+                      radius: 3,
+                      fill: "var(--chart-2)",
+                      stroke: "var(--chart-2)",
+                      strokeWidth: 1,
+                    },
+                    activeDot: {
+                      show: true,
+                      radius: 5,
+                      fill: "var(--chart-2)",
+                      stroke: "white",
+                      strokeWidth: 2,
+                    },
+                    fill: {
+                      enabled: false,
+                      color: "var(--chart-2)",
+                      opacity: 0,
                     },
                   },
                 ],

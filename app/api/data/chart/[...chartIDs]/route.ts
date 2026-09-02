@@ -65,7 +65,5 @@ export async function POST(
     });
   }
 
-  console.log("Data fetched for chartID:", chartID, data);
-
   return Response.json(data satisfies Response);
 }

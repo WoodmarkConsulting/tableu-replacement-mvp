@@ -796,17 +796,41 @@ Source:
 
 `application`
 
-### `selectionMode`
+### `lasso`
 
 Type:
 
 ```ts
-"single" | "multi" | undefined;
+LassoController<LineChartData>;
 ```
 
 Description:
 
-Indicates whether one or many points may be selected when the framework enables selection.
+Framework-owned controller used by the module to register its chart-specific lasso adapter.
+The LineChart adapter reports the Recharts plot bounds, selects rows whose visible series
+points fall inside the freehand selection polygon, applies progressive rectangular X-axis
+zoom, and resets zoom. Shape coordinates are normalized to the actual plot area, excluding
+axes and header UI.
+
+Source:
+
+`application`
+
+### `selectedRows`
+
+Type:
+
+```ts
+readonly LineChartData[];
+```
+
+Description:
+
+Current selection owned and injected by `ChartWrapper`. The module does not duplicate this
+state. The rendered line shape switches selected segments from their configured series color
+to amber at the same stroke width; it does not add a thicker highlight on top of the original
+line. Click and lasso selections update the same collection, while a data refetch or relevant
+chart configuration change clears the effective selection.
 
 Source:
 
@@ -822,7 +846,9 @@ Type:
 
 Description:
 
-Present when the framework enables selection. Call it with the selected data point rows so `ChartWrapper` can process them through the central selection flow.
+Present when the framework enables selection. Point clicks and successful lasso selections
+send selected data rows through the same central `ChartWrapper` selection flow. Visual lasso
+zoom does not call this callback.
 
 Source:
 

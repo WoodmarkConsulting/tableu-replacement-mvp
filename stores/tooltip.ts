@@ -23,11 +23,13 @@ export type Tooltip = {
 
 type TooltipContext = {
   _abortController: AbortController;
+  isStaticTooltip: boolean;
 
   tooltip: Tooltip | null;
   position: TooltipPosition | null;
 
-  showTooltip: (args: ShowTooltipArgs) => void;
+  showTooltipOnMove: (args: ShowTooltipArgs) => void;
+  showTooltipOnClick: (args: ShowTooltipArgs) => void;
 
   hideTooltip: () => void;
 };
@@ -36,14 +38,20 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
   const _getTooltipData = async ({
     chartID,
     dataPoint,
-  }: TooltipPathRequestBody) => {
+    position,
+  }: ShowTooltipArgs) => {
     const newAbortController = new AbortController();
 
-    try {
-      set({
-        _abortController: newAbortController,
-      });
+    set(() => ({
+      position,
+      _abortController: newAbortController,
+      tooltip: {
+        tooltipData: {} as TooltipPathResponse,
+        state: "pending",
+      },
+    }));
 
+    try {
       return await apiFetch("/api/data/chart/tooltip", {
         method: "POST",
         body: {
@@ -68,40 +76,51 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
     }
   };
 
-  const debouncedFetch = debounce(
-    async ({ chartID, dataPoint, position }: ShowTooltipArgs) => {
-      set(() => ({
-        position,
-        tooltip: {
-          tooltipData: {} as TooltipPathResponse,
-          state: "pending",
-        },
-      }));
+  const debouncedFetch = debounce(async (args: ShowTooltipArgs) => {
+    const tooltipData = await _getTooltipData(args);
 
-      const tooltipData = await _getTooltipData({
-        chartID,
-        dataPoint,
-      });
+    if (!tooltipData) {
+      return;
+    }
 
-      if (!tooltipData) {
-        return;
-      }
+    set(() => ({
+      tooltip: {
+        tooltipData,
+        state: "fulfilled",
+      },
+      isStaticTooltip: false,
+    }));
+  }, 300);
 
-      set(() => ({
-        tooltip: {
-          tooltipData,
-          state: "fulfilled",
-        },
-      }));
-    },
-    300,
-  );
-
-  const showTooltip: TooltipContext["showTooltip"] = (args) => {
+  //TODO: decide if tooltip should be shown by move or click
+  const showTooltipOnMove: TooltipContext["showTooltipOnMove"] = async (
+    args,
+  ) => {
     get()._abortController.abort();
     debouncedFetch.cancel();
 
     debouncedFetch(args);
+  };
+
+  const showTooltipOnClick: TooltipContext["showTooltipOnClick"] = async (
+    args,
+  ) => {
+    get()._abortController.abort();
+    debouncedFetch.cancel();
+
+    const tooltipData = await _getTooltipData(args);
+
+    if (!tooltipData) {
+      return;
+    }
+
+    set(() => ({
+      tooltip: {
+        tooltipData,
+        state: "fulfilled",
+      },
+      isStaticTooltip: true,
+    }));
   };
 
   const hideTooltip: TooltipContext["hideTooltip"] = () => {
@@ -128,9 +147,11 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
     _abortController: new AbortController(),
     tooltip: null,
     position: null,
+    isStaticTooltip: true,
 
-    showTooltip,
+    showTooltipOnMove,
     hideTooltip,
+    showTooltipOnClick,
   };
 });
 

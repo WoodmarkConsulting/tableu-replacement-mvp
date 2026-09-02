@@ -99,6 +99,25 @@ only hit the warehouse when **Apply** is pressed.
 Selection-capable modules report selected data through the optional
 `onSelectionChange(rows)` callback injected by `ChartWrapper`. Selection processing is
 framework behavior and does not add module-specific fields to dashboard configuration.
+`ChartWrapper` stores the current original rows and injects them back into the module as
+read-only `selectedRows`. Click and lasso selection use this same state. Data refetches and
+relevant chart configuration changes invalidate the selection. Each module owns only the
+chart-specific visual representation of those rows.
+
+Lasso support is also framework behavior and is not configured per dashboard.
+`ChartWrapper` injects a `lasso` controller and owns the toolbar, active mode, pointer
+gesture, plot-clipped overlay, and dispatch. A module registers a runtime adapter:
+
+- `select(shape)` enables lasso selection and returns the selected original data rows.
+- `applyZoom(shape)` plus `resetZoom()` enable visual-only lasso zoom.
+- `getPlotBounds()` reports the actual plot rectangle in pixels relative to the wrapper's
+  interaction surface. Freehand selection polygons and rectangular zoom shapes use
+  plot-normalized coordinates.
+
+Selection calls the central `onSelectionChange(rows)` flow only when rows were found.
+Zoom never calls that flow. Recharts-specific scales and hit detection stay inside the
+module implementation. `LineChartModule` currently supports freehand polygon selection and
+progressive rectangular X-axis zoom; other modules need not register an adapter.
 
 ### Shareable state
 
@@ -129,6 +148,10 @@ export default ExampleModule;
 - `modules/<ModuleName>/chartDataSchema.ts` must default-export a Zod schema and must also export the module data type.
 - `modules/<ModuleName>/chartType.d.ts` must contain exactly one `type` declaration.
 - Selection-capable charts receive the optional injected `onSelectionChange(rows)` prop and call it with the selected data rows.
+- Modules receive read-only `selectedRows` from `ChartWrapper` and may render those rows
+  using visualization-specific marks. Modules must not duplicate the selection state.
+- Modules receive the injected `lasso` controller. Lasso-capable modules register only
+  their chart-specific adapter; modules without lasso support do not register one.
 - `modules/<ModuleName>/instructions.md` must follow `docs/instructions.template.md`.
 - The `moduleName` used in dashboard JSON must match a key in `modules/modulRegistry.ts`.
 

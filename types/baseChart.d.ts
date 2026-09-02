@@ -32,5 +32,7 @@ interface ChartWrapperInjectedProps<
   isFetching: boolean;
   isError: boolean;
   error: Error | null;
+  selectedRows: readonly D[];
   onSelectionChange?: (rows: D[]) => void;
+  lasso: LassoController<D>;
 }

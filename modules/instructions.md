@@ -17,7 +17,11 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 - `chartDataSchema.ts` must default-export a Zod schema and also export the module data type.
 - `chartType.d.ts` must contain exactly one `type` declaration.
 - `instructions.md` must follow `docs/instructions.template.md` and describe purpose, data contract, config, and usage.
-- Selection-capable modules call the injected `onSelectionChange(rows)` when the user selects data. `LineChartModule` (point click) and `MapModule` (region/bubble click) support this.
+- Selection-capable modules call the injected `onSelectionChange(rows)` when the user selects data. `ChartWrapper` owns the resulting state and injects the current rows as read-only `selectedRows`; modules only render the appropriate visualization-specific highlight. `LineChartModule` (point click) and `MapModule` (region/bubble click) support selection.
+- Lasso capabilities are discovered at runtime through the injected `lasso` controller.
+  Registering `select` enables selection; registering `applyZoom` and `resetZoom` enables
+  visual zoom. `LineChartModule` currently supports both. This is framework/module behavior,
+  not dashboard configuration.
 
 ## Modules currently available
 
@@ -26,7 +30,10 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 - Purpose: Renders a configurable multi-series line or area chart from compact numeric API data.
 - Best use: Visualizing one or more related numeric series over a numeric or timestamp-based X axis.
 - Input: Receives `chartData` (`LineChartData[]`) and a `LineChartConfig` through `ChartWrapperInjectedProps`.
-- Notes: Not suitable for categorical string X values or per-series heterogeneous data shapes.
+- Notes: Supports freehand polygon lasso selection across visible series points and
+  progressive rectangular X-axis lasso zoom with automatic Y-axis rescaling. Corresponding
+  non-null curve segments switch from their configured series color to amber when selected.
+  Not suitable for categorical string X values or per-series heterogeneous data shapes.
 
 For module-specific details, read `modules/LineChartModule/instructions.md`.
 

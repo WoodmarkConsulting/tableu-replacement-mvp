@@ -83,6 +83,9 @@ export async function POST(_req: NextRequest) {
     }),
   );
 
+  console.log("sqlQuery", sqlQuery);
+  console.log("queryParameters", queryParameters);
+
   try {
     data = await runQuery<{ [key: string]: unknown }>(
       sqlQuery,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
@@ -32,19 +32,16 @@ import {
 import useFilterStore, { globalKey, tabKey } from "@/stores/filterProvider";
 import useQueryTimingStore from "@/stores/queryTimingStore";
 
-import type { FilterValue } from "@/types/filters";
-import { apiFetch } from "@/app/api/utils/apiFetch";
 import useTooltipStore from "@/stores/tooltip";
 import TooltipCard from "../TooltipCard";
+import ChartState from "./ChartState";
+import LassoInteractionOverlay from "./LassoInteractionOverlay";
+import LassoToolbar from "./LassoToolbar";
+import { fetchTimedChartData, parseMockData, toQueryParam } from "./utils";
 // import useChartState from "@/hooks/useChartState";
 
 type ModuleSchema<M extends ModuleRegistryKeys> =
   (typeof moduleRegistry)[M]["dataSchema"];
-
-type ChartStateProps = {
-  height?: number;
-  children: React.ReactNode;
-};
 
 function ChartWrapper<M extends ModuleRegistryKeys>(
   props: TabsComponentConfig & {
@@ -60,14 +57,23 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const { component, dataSchema } = moduleRegistry[moduleName];
   const tooltip = useTooltipStore((state) => state.tooltip);
   const position = useTooltipStore((state) => state.position);
+  const hideTooltip = useTooltipStore((state) => state.hideTooltip);
+
+  const interactionSurfaceRef = useRef<HTMLDivElement>(null);
+  const [lassoAdapter, setLassoAdapter] =
+    useState<LassoAdapter<DataType> | null>(null);
+  const [lassoMode, setLassoMode] = useState<LassoMode | null>(null);
+  const [zoomedContext, setZoomedContext] = useState<string | null>(null);
+  const [selection, setSelection] = useState<{
+    context: string;
+    rows: DataType[];
+  } | null>(null);
 
   //TODO: remove or replace with proper chart state management
   // const [filters, setFilters] = useChartState(baseProps.filterConfig);
 
   const filterValues = useFilterStore((state) => state.appliedValues);
   const activeTab = useFilterStore((state) => state.activeTab);
-  const dimensions = useFilterStore((state) => state.dimensions);
-  const applySelection = useFilterStore((state) => state.applySelection);
   const hasApplied = useFilterStore((state) => state.hasApplied);
   const recordTiming = useQueryTimingStore((state) => state.recordTiming);
 
@@ -87,37 +93,30 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     return resolved;
   }, [filterBindings, filterValues, activeTab]);
 
-  //closure, returns a valid function or undefined under specific conditions if no chart click handler should be attached
-  const handleSelectionChange = useMemo(() => {
-    // if (!drill) {
-    //   return undefined;
-    // }
+  const lasso: LassoController<DataType> = {
+    mode: lassoMode,
+    registerAdapter: setLassoAdapter,
+  };
 
-    return (rows: DataType[]) => {
-      console.log("Handle select");
-      console.log("rows", rows);
-    };
-  }, [dimensions, applySelection]);
+  const toggleLassoMode = (nextMode: LassoMode) => {
+    hideTooltip();
+    setLassoMode((currentMode) => (currentMode === nextMode ? null : nextMode));
+  };
+
+  const resetZoom = () => {
+    lassoAdapter?.resetZoom?.();
+    setZoomedContext(null);
+  };
 
   const Module = component as unknown as React.ComponentType<
     ChartWrapperInjectedProps<DataType, ChartConfigs>
   >;
 
-  const parsedMockData = useMemo(() => {
-    if (mockData === undefined) {
-      return undefined;
-    }
-
-    const result = z.array(dataSchema).safeParse(mockData);
-
-    if (!result.success) {
-      throw new Error(
-        `Invalid mockData for chartID "${chartID}": ${result.error.message}`,
-      );
-    }
-
-    return result.data as DataType[];
-  }, [mockData, dataSchema, chartID]);
+  const parsedMockData = parseMockData<DataType>(
+    mockData,
+    dataSchema as unknown as z.ZodType<DataType>,
+    chartID,
+  );
 
   const {
     data: chartData = parsedMockData ?? [],
@@ -125,31 +124,31 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     isFetching,
     isError,
     error,
+    dataUpdatedAt,
   } = useQuery<DataType[], Error>({
     queryKey: ["chart-data", chartID, params],
-    queryFn: async () => {
-      const start = performance.now();
-
-      const result = await fetchChartData(
+    queryFn: () =>
+      fetchTimedChartData(
         chartID,
+        chartTitle,
         params,
         dataSchema as unknown as z.ZodType<DataType>,
-      );
-
-      if (process.env.NODE_ENV === "development") {
-        recordTiming({
-          chartID,
-          label: chartTitle,
-          durationMs: performance.now() - start,
-          timestamp: Date.now(),
-        });
-      }
-
-      return result;
-    },
+        recordTiming,
+      ),
     enabled: parsedMockData === undefined && hasApplied,
     initialData: parsedMockData,
   });
+
+  const zoomContext = `${dataUpdatedAt}:${JSON.stringify(baseProps.chartConfig)}`;
+  const hasZoom = zoomedContext === zoomContext;
+  const selectedRows =
+    selection?.context === zoomContext ? selection.rows : ([] as DataType[]);
+
+  const handleSelectionChange = (rows: DataType[]) => {
+    setSelection({ context: zoomContext, rows });
+    console.log("Handle select");
+    console.log("rows", rows);
+  };
 
   if (error) {
     console.error("Error fetching chart data:", error);
@@ -165,6 +164,16 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
         <CardDescription className="sr-only">
           {chartDescription}
         </CardDescription>
+
+        {lassoAdapter ? (
+          <LassoToolbar
+            adapter={lassoAdapter}
+            mode={lassoMode}
+            hasZoom={hasZoom}
+            onModeChange={toggleLassoMode}
+            onResetZoom={resetZoom}
+          />
+        ) : null}
       </CardHeader>
 
       <CardContent className="flex flex-col gap-4">
@@ -237,15 +246,28 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
         ) : null}
 
         {!isLoading && !isFetching && !isError && chartData.length > 0 ? (
-          <Module
-            {...baseProps}
-            chartData={isError ? [] : chartData}
-            error={error}
-            isLoading={isLoading}
-            isFetching={isFetching}
-            isError={isError}
-            onSelectionChange={handleSelectionChange}
-          />
+          <div ref={interactionSurfaceRef} className="relative">
+            <Module
+              key={zoomContext}
+              {...baseProps}
+              chartData={isError ? [] : chartData}
+              error={error}
+              isLoading={isLoading}
+              isFetching={isFetching}
+              isError={isError}
+              selectedRows={selectedRows}
+              onSelectionChange={handleSelectionChange}
+              lasso={lasso}
+            />
+
+            <LassoInteractionOverlay
+              mode={lassoMode}
+              adapter={lassoAdapter}
+              surfaceRef={interactionSurfaceRef}
+              onSelectionChange={handleSelectionChange}
+              onZoomApplied={() => setZoomedContext(zoomContext)}
+            />
+          </div>
         ) : null}
 
         <TooltipCard tooltip={tooltip} position={position} />
@@ -255,51 +277,3 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 }
 
 export default ChartWrapper;
-
-function toQueryParam(value: FilterValue | undefined): string | number | null {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  if (typeof value === "string" || typeof value === "number") {
-    return value;
-  }
-
-  // dateRange values are resolved by dedicated bindings in a later phase.
-  return null;
-}
-
-async function fetchChartData<TSchema extends z.ZodTypeAny>(
-  chartID: string,
-  filters: Record<string, string | number | null>,
-  dataSchema: TSchema,
-): Promise<z.infer<TSchema>[]> {
-  const response = await apiFetch(`/api/data/chart/${chartID}`, {
-    method: "POST",
-    body: {
-      filters,
-    },
-  });
-
-  const validationResult = z.array(dataSchema).safeParse(response);
-
-  if (!validationResult.success) {
-    throw new Error(
-      `Invalid chart data returned by the API: ${validationResult.error.message}`,
-    );
-  }
-
-  return validationResult.data;
-}
-
-function ChartState({ height, children }: ChartStateProps) {
-  return (
-    <div
-      className="flex w-full items-center justify-center"
-      style={{
-        height: `${height}svh`,
-      }}>
-      {children}
-    </div>
-  );
-}
