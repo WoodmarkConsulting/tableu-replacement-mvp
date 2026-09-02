@@ -55,7 +55,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   type ModuleChartData<M extends ModuleRegistryKeys> = z.infer<ModuleSchema<M>>;
   type DataType = ModuleChartData<M>;
 
-  const { moduleName, mockData, filterBindings, drill, ...baseProps } = props;
+  const { moduleName, mockData, filterBindings, ...baseProps } = props;
   const { chartID, chartTitle, chartDescription } = baseProps;
   const { component, dataSchema } = moduleRegistry[moduleName];
   const tooltip = useTooltipStore((state) => state.tooltip);
@@ -87,54 +87,17 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     return resolved;
   }, [filterBindings, filterValues, activeTab]);
 
+  //closure, returns a valid function or undefined under specific conditions if no chart click handler should be attached
   const handleSelectionChange = useMemo(() => {
-    if (!drill) {
-      return undefined;
-    }
+    // if (!drill) {
+    //   return undefined;
+    // }
 
     return (rows: DataType[]) => {
-      const entries: Record<string, FilterValue> = {};
-
-      for (const [selectionKey, dimensionId] of Object.entries(
-        drill.selectionBindings,
-      )) {
-        const selected = rows
-          .map((row) => (row as Record<string, unknown>)[selectionKey])
-          .filter(
-            (value): value is string | number =>
-              value !== null && value !== undefined,
-          )
-          .map(String);
-
-        if (selected.length === 0) {
-          continue;
-        }
-
-        const dimension = dimensions.find((entry) => entry.id === dimensionId);
-
-        // Write at the dimension's own scope: global filters every tab,
-        // a tab dimension filters its own page.
-        const key =
-          dimension?.scope === "global"
-            ? globalKey(dimension.id)
-            : dimension?.tab
-              ? tabKey(dimension.tab, dimension.id)
-              : null;
-
-        if (!key) {
-          continue;
-        }
-
-        entries[key] =
-          drill.selectionMode === "multi" ? selected.join(",") : selected[0];
-      }
-
-      if (Object.keys(entries).length > 0) {
-        // targetTab omitted -> cross-filter in place; set -> navigate (drill).
-        applySelection(entries, drill.targetTab);
-      }
+      console.log("Handle select");
+      console.log("rows", rows);
     };
-  }, [drill, dimensions, applySelection]);
+  }, [dimensions, applySelection]);
 
   const Module = component as unknown as React.ComponentType<
     ChartWrapperInjectedProps<DataType, ChartConfigs>
@@ -222,8 +185,8 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
                 <EmptyTitle>Bereit zum Abfragen</EmptyTitle>
 
                 <EmptyDescription>
-                  Passen Sie die Filter an und klicken Sie auf „Anwenden“, um die
-                  Daten zu laden.
+                  Passen Sie die Filter an und klicken Sie auf „Anwenden“, um
+                  die Daten zu laden.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -281,7 +244,6 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
             isLoading={isLoading}
             isFetching={isFetching}
             isError={isError}
-            selectionMode={drill?.selectionMode}
             onSelectionChange={handleSelectionChange}
           />
         ) : null}

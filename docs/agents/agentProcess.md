@@ -380,7 +380,7 @@ Do not modify the module data schema to make the SQL easier.
 
 Adapt the SQL to the existing module contract.
 
-Guard each bound parameter so an unset (`null`) filter does not restrict results, e.g. `(:from IS NULL OR col >= :from)`. For a multi-select drill parameter (comma-joined), use `(:p IS NULL OR array_contains(split(:p, ','), col))`.
+Guard each bound parameter so an unset (`null`) filter does not restrict results, e.g. `(:from IS NULL OR col >= :from)`. For a comma-joined multi-select parameter, use `(:p IS NULL OR array_contains(split(:p, ','), col))`.
 
 Save the SQL using the same `chartID`:
 
@@ -609,7 +609,7 @@ Example:
 }
 ```
 
-One trigger may contain multiple rows and multiple modules. Omit `filterBindings` for charts without filters. Add optional `drill` on a component to enable cross-tab drill-down.
+One trigger may contain multiple rows and multiple modules. Omit `filterBindings` for charts without filters.
 
 ---
 

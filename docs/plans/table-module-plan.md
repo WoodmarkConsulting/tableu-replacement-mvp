@@ -28,9 +28,8 @@ support the three explicitly requested capabilities:
 
 It also supports the shared framework features every module participates in:
 
-- **Drill / cross-filter**: the table is a drill source; clicking (or checkbox-selecting)
-  a row calls the injected `onSelectionChange(rows)` so a row's key can filter other charts
-  and tabs. Honors the injected `selectionMode` (`"single" | "multi"`).
+- **Selection**: clicking (or checkbox-selecting) a row calls the injected
+  `onSelectionChange(rows)`. Honors the injected `selectionMode` (`"single" | "multi"`).
 - Standard `ChartWrapperInjectedProps` wiring: `chartData`, `height`, loading/error/empty
   states handled by `ChartWrapper`, config injected as `chartConfig`.
 
@@ -93,8 +92,8 @@ Each row is one node in the (optional) hierarchy. Top-level rows use `parentId: 
 
 ```ts
 {
-  id: string;                                   // unique, stable row id
-  parentId: string | null;                      // adjacency-list parent; null at top level
+  id: string; // unique, stable row id
+  parentId: string | null; // adjacency-list parent; null at top level
   values: Record<string, number | string | null>; // cell values keyed by column id
 }
 ```
@@ -140,11 +139,56 @@ export default tableRowSchema;
 
 ```json
 [
-  { "id": "eu",     "parentId": null, "values": { "region": "Europe",  "revenue": 1200000, "growth": 12.4, "margin": 0.31 } },
-  { "id": "eu-de",  "parentId": "eu", "values": { "region": "Germany", "revenue": 540000,  "growth": 8.1,  "margin": 0.28 } },
-  { "id": "eu-fr",  "parentId": "eu", "values": { "region": "France",  "revenue": 410000,  "growth": -2.3, "margin": 0.22 } },
-  { "id": "na",     "parentId": null, "values": { "region": "North America", "revenue": 2100000, "growth": 5.7, "margin": 0.35 } },
-  { "id": "na-us",  "parentId": "na", "values": { "region": "USA",     "revenue": 1800000, "growth": 6.2,  "margin": 0.37 } }
+  {
+    "id": "eu",
+    "parentId": null,
+    "values": {
+      "region": "Europe",
+      "revenue": 1200000,
+      "growth": 12.4,
+      "margin": 0.31
+    }
+  },
+  {
+    "id": "eu-de",
+    "parentId": "eu",
+    "values": {
+      "region": "Germany",
+      "revenue": 540000,
+      "growth": 8.1,
+      "margin": 0.28
+    }
+  },
+  {
+    "id": "eu-fr",
+    "parentId": "eu",
+    "values": {
+      "region": "France",
+      "revenue": 410000,
+      "growth": -2.3,
+      "margin": 0.22
+    }
+  },
+  {
+    "id": "na",
+    "parentId": null,
+    "values": {
+      "region": "North America",
+      "revenue": 2100000,
+      "growth": 5.7,
+      "margin": 0.35
+    }
+  },
+  {
+    "id": "na-us",
+    "parentId": "na",
+    "values": {
+      "region": "USA",
+      "revenue": 1800000,
+      "growth": 6.2,
+      "margin": 0.37
+    }
+  }
 ]
 ```
 
@@ -267,17 +311,6 @@ type TableChartConfig = {
     /** Text shown for null/empty cells. Default "—". */
     emptyPlaceholder?: string;
   };
-
-  /**
-   * Drill / cross-filter. When present and the chart is configured as a drill source,
-   * selecting rows emits selection keys read from the listed row value keys.
-   */
-  drill?: {
-    /** Row value keys emitted as selection keys to `onSelectionChange`. */
-    selectionKeys: string[];
-    /** Show selection checkboxes. When false, clicking a row selects it. Default false. */
-    showCheckboxes?: boolean;
-  };
 };
 ```
 
@@ -302,7 +335,7 @@ type TableChartConfig = {
 Create `modules/TableModule/index.tsx` with a default export typed as:
 
 ```ts
-ChartWrapperInjectedProps<TableRowData, TableChartConfig>
+ChartWrapperInjectedProps<TableRowData, TableChartConfig>;
 ```
 
 The component should:
@@ -326,8 +359,8 @@ The component should:
    `columnGroups[].defaultState`). Derive TanStack `columnVisibility` from the union of:
    - per-column `hidden` (initial) + user toggles from the column menu, and
    - folded groups (member columns hidden, `summaryColumnId` shown).
-   Render group headers with a fold/unfold toggle. Keep group-fold and user hide/show as
-   separate state layers, then merge into the single `columnVisibility` object each render.
+     Render group headers with a fold/unfold toggle. Keep group-fold and user hide/show as
+     separate state layers, then merge into the single `columnVisibility` object each render.
 5. **Column-visibility menu (hide UI)**: a `columnMenu` popover listing toggleable
    (non-`lockVisibility`) columns with eye icons; writes to the user-visibility state layer.
 6. **Row expansion**: use TanStack `getExpandedRowModel`; initialize expanded state from
@@ -339,10 +372,10 @@ The component should:
 9. **Parent aggregates** (optional): when `hierarchy.showParentAggregates`, compute the
    configured aggregate of each numeric column over a node's descendants and render it on the
    collapsed parent (helper `aggregateSubtree`).
-10. **Drill**: when `onSelectionChange` is a function and `drill` is configured, honor the
-    injected `selectionMode`. In `single` mode a row click selects one row; in `multi` mode
-    show checkboxes (or click-to-toggle). On change, map each selected row to an object of
-    `drill.selectionKeys → row.values[key]` and call `onSelectionChange(selectedRows)`.
+10. **Selection**: when `onSelectionChange` is a function, honor the injected
+    `selectionMode`. In `single` mode a row click selects one row; in `multi` mode
+    show checkboxes (or click-to-toggle). On change, call
+    `onSelectionChange(selectedRows)` with the original data rows.
     Mirror the guarded, no-op-when-disabled approach from `LineChartModule`.
 11. **Layout**: wrap in a scroll container sized by the injected `height` (reuse the
     `height`/svh handling used by `LineChartModule`), with an optional `stickyHeader`,
@@ -365,16 +398,18 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
 1. Create `modules/TableModule/instructions.md` following `docs/instructions.template.md`
    exactly: purpose, module files, full data contract (every field + rules), configuration
    reference (every property, recursively, including `columns[]`, `columnGroups[]`,
-   `hierarchy`, `dataBar`, `drill`), an example API response, and usage/limitations.
+   `hierarchy`, `dataBar`, and selection), an example API response, and usage/limitations.
 2. Update root `modules/instructions.md` to add a `TableModule` entry:
    - purpose: tabular display of (optionally hierarchical) data with databars and
      hide/fold column controls.
-   - best use: detailed row-level reporting, drill-down tables, KPI grids where in-cell
-     databars aid scanning.
-   - how it differs from the chart modules (exact values + hierarchy vs. visual trend/shape;
-     non-geographic vs. `MapModule`).
-   - note that hierarchy is transported as a flat `id`/`parentId` adjacency list and columns
-     are config-authored.
+
+- best use: detailed row-level reporting, expandable tables, KPI grids where in-cell
+  databars aid scanning.
+- how it differs from the chart modules (exact values + hierarchy vs. visual trend/shape;
+  non-geographic vs. `MapModule`).
+- note that hierarchy is transported as a flat `id`/`parentId` adjacency list and columns
+  are config-authored.
+
 3. Run `npm run module:validate` and `npm run module:generateRegistry` so
    `modules/modulRegistry.ts` gains the `TableModule` dynamic import, its data schema, and
    `TableChartConfig` in the `ChartConfigs` union.
@@ -416,7 +451,7 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
    `values` object whose keys match the configured column `valueKey`s (including any databar
    columns). Confirm the API route serializes `values` as an object matching the schema.
 
-2. Add a temporary dashboard entry (or reuse `pagesConfig/drillTest.json`) referencing
+2. Add a temporary dashboard entry referencing
    `moduleName: "TableModule"`, regenerate the page with
    `npm run pageConfig:generatePage`, and visually confirm:
    - rows render with correct formatting and alignment per column type
@@ -425,14 +460,15 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
    - column groups fold/unfold, swapping member columns for the summary column
    - hierarchy expands/collapses with correct indentation and default depth
    - sorting and pagination behave and keep descendants with their ancestors
-   - selecting a row drives the configured drill/cross-filter
+
+- selecting a row emits the selected data rows
 
 ---
 
 ## Relevant files
 
 - `modules/LineChartModule/*` — structural template (injected props usage, `height`/svh
-  handling, guarded drill click, `useMemo` data shaping).
+  handling, guarded selection click, `useMemo` data shaping).
 - `modules/TableModule/index.tsx` — table rendering component.
 - `modules/TableModule/chartDataSchema.ts` — Zod schema and `TableRowData` type.
 - `modules/TableModule/chartType.d.ts` — single `TableChartConfig` type.
@@ -442,7 +478,7 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
 - `modules/instructions.md` — module overview registry.
 - `modules/modulRegistry.ts` — generated registry output.
 - `types/baseChart.d.ts` — `ChartWrapperInjectedProps` contract.
-- `types/filters.d.ts` — `SelectionMode` / `DrillConfig` for drill wiring.
+- `types/filters.d.ts` — `SelectionMode` for selection wiring.
 - `scripts/modules/validateModules.ts` — validation contract.
 - `scripts/modules/generateModuleRegistry.ts` — registry generation.
 - `docs/instructions.template.md` — instruction template to follow.
@@ -462,7 +498,7 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
 - `npm run module:generateRegistry` succeeds; `ChartConfigs` includes `TableChartConfig`.
 - `npm run lint` and `npm run verify:typescript` pass.
 - Browser smoke test confirms databars, hide/fold columns, hierarchy expansion, sorting,
-  pagination, and drill.
+  pagination, and selection.
 
 ---
 

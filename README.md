@@ -78,7 +78,7 @@ In practice that means:
 
 ## Deferred queries (Apply to run)
 
-Charts do **not** fetch on dashboard open. Editing a filter updates a *draft*
+Charts do **not** fetch on dashboard open. Editing a filter updates a _draft_
 layer only; queries fire when the user presses **Apply**.
 
 - The filter store (`stores/filterProvider.ts`) keeps two layers: `draftValues`
@@ -88,7 +88,7 @@ layer only; queries fire when the user presses **Apply**.
   pending draft edits. A dirty indicator shows when draft ≠ applied.
 - `ChartWrapper` reads `appliedValues`, gates `useQuery` on `hasApplied`, and shows
   an idle prompt until the first Apply.
-- **Chip removal** (`clearDimension`) and **drill** (`applySelection`) bypass the
+- **Chip removal** (`clearDimension`) and **selection application** (`applySelection`) bypass the
   gate on purpose: they write to both layers and re-query immediately.
 - A shared permalink (`?s=<id>`) auto-applies on hydration so recipients see data
   without pressing Apply.

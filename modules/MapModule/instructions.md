@@ -6,7 +6,7 @@
 
 Use this module when you need to show values by country, region, or market footprint across a map-based surface. It is appropriate for choropleth-style comparisons, geographic distribution summaries, and dashboards where a regional or location-based view is more informative than a standard table or chart.
 
-Do not use this module for heatmap density overlays, tile-based basemaps, or click-through drill-down navigation. Those behaviors are intentionally outside the current module scope.
+Do not use this module for heatmap density overlays, tile-based basemaps, or click-through navigation. Those behaviors are intentionally outside the current module scope.
 
 The map is rendered with `@visx/geo` (projections and geography paths) and `@visx/zoom` (pan/zoom). Geography features come from `world-atlas` TopoJSON converted with `topojson-client`. Choropleth coloring and bubble sizing use `d3-scale`, ISO matching uses `i18n-iso-countries`, and region label placement uses `d3-geo` `geoCentroid`.
 
@@ -163,10 +163,27 @@ Rules:
 
 ```json
 [
-  { "kind": "region", "regionCode": "US", "value": 82, "label": "United States" },
+  {
+    "kind": "region",
+    "regionCode": "US",
+    "value": 82,
+    "label": "United States"
+  },
   { "kind": "region", "regionCode": "FR", "value": 64, "label": "France" },
-  { "kind": "point", "lat": 47.6062, "lng": -122.3321, "value": 14, "label": "Seattle" },
-  { "kind": "point", "lat": 51.5074, "lng": -0.1278, "value": 19, "label": "London" }
+  {
+    "kind": "point",
+    "lat": 47.6062,
+    "lng": -122.3321,
+    "value": 14,
+    "label": "Seattle"
+  },
+  {
+    "kind": "point",
+    "lat": 51.5074,
+    "lng": -0.1278,
+    "value": 19,
+    "label": "London"
+  }
 ]
 ```
 
@@ -197,7 +214,11 @@ chartType.d.ts
 ```ts
 type MapChartConfig = {
   projection: {
-    type: "geoEqualEarth" | "geoMercator" | "geoNaturalEarth1" | "geoOrthographic";
+    type:
+      | "geoEqualEarth"
+      | "geoMercator"
+      | "geoNaturalEarth1"
+      | "geoOrthographic";
     center: [number, number];
     scale: number;
   };
@@ -470,7 +491,10 @@ Turns marker bubbles on or off.
 Type:
 
 ```ts
-{ min: number; max: number };
+{
+  min: number;
+  max: number;
+}
 ```
 
 Required:

@@ -33,15 +33,6 @@ type FilterDimension<Tconf extends TabsConfig[] = TabsConfig[]> = {
     }
 );
 
-type DrillConfig = {
-  // When set, navigate to this tab after applying the selection (cross-tab drill).
-  // When omitted, the selection filters in place (same-page or global cross-filter).
-  targetTab?: string;
-  selectionMode: SelectionMode;
-  // Maps a selection key emitted by the module to a target filter dimension id.
-  selectionBindings: Record<string, string>;
-};
-
 type FilterSnapshot = {
   values: Record<string, FilterValue>;
   activeTab: string;

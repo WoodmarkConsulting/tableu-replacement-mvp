@@ -1,7 +1,5 @@
 type ModuleRegistryKeys = import("@/modules/modulRegistry").ModuleRegistryKeys;
 
-type DrillConfig = import("./filters").DrillConfig;
-
 type Enumerate<
   N extends number,
   Acc extends number[] = [],
@@ -17,7 +15,6 @@ type TabsComponentConfig = {
   mockData?: unknown[];
   // Maps a filter dimension id to the SQL named parameter used by this chart.
   filterBindings?: Record<string, string>;
-  drill?: DrillConfig;
 } & BaseChartProps;
 
 type TabsConfig = {

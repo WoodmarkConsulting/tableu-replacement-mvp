@@ -17,7 +17,7 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 - `chartDataSchema.ts` must default-export a Zod schema and also export the module data type.
 - `chartType.d.ts` must contain exactly one `type` declaration.
 - `instructions.md` must follow `docs/instructions.template.md` and describe purpose, data contract, config, and usage.
-- Modules that act as a drill source call the injected `onSelectionChange(rows)` when the user selects data. `LineChartModule` (point click) and `MapModule` (region/bubble click) support this.
+- Selection-capable modules call the injected `onSelectionChange(rows)` when the user selects data. `LineChartModule` (point click) and `MapModule` (region/bubble click) support this.
 
 ## Modules currently available
 

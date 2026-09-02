@@ -11,7 +11,7 @@ Tooling: Vitest (`node` for schema/helpers, `jsdom` + React Testing Library for 
 
 `MapModule` renders a choropleth country map (bundled `world-atlas` TopoJSON, or a fetched
 `geography.url`) with an optional bubble overlay for `lat`/`lng` points. Data is a
-discriminated union of `region` and `point` rows. It is a **drill source**: clicking a
+discriminated union of `region` and `point` rows. It supports **selection**: clicking a
 region or a bubble calls `onSelectionChange(rows)`.
 
 Files under test:
@@ -24,12 +24,12 @@ Files under test:
 
 ## 2. Test layers
 
-| Layer | Environment | Focus |
-| --- | --- | --- |
-| Schema | `node` | Discriminated-union parse/reject, coordinate bounds, region-code normalization |
-| Pure helpers | `node` | `getRegionValueMap`, `getColorForScale`, `getBucketColor`, `getLegendPosition` |
-| Component render | `jsdom` | Region/bubble rendering, scales, tooltip, legend, geography fetch, drill |
-| Contract | `node` | Module folder contract (shared guard test) |
+| Layer            | Environment | Focus                                                                          |
+| ---------------- | ----------- | ------------------------------------------------------------------------------ |
+| Schema           | `node`      | Discriminated-union parse/reject, coordinate bounds, region-code normalization |
+| Pure helpers     | `node`      | `getRegionValueMap`, `getColorForScale`, `getBucketColor`, `getLegendPosition` |
+| Component render | `jsdom`     | Region/bubble rendering, scales, tooltip, legend, geography fetch, selection   |
+| Contract         | `node`      | Module folder contract (shared guard test)                                     |
 
 > `getRegionValueMap`, `getColorForScale`, `getBucketColor`, and `getLegendPosition` are
 > module-private today. Export them (or move to `helpers.ts`) so they can be unit-tested
@@ -40,6 +40,7 @@ Files under test:
 ## 3. Schema tests (`chartDataSchema.test.ts`, `node`)
 
 ### Region rows
+
 - Valid `{ kind: "region", regionCode: "de", value: 42 }` parses **and normalizes**
   `regionCode` to `"DE"` (uppercase transform).
 - Optional `label` accepted.
@@ -47,12 +48,14 @@ Files under test:
 - Rejects non-finite `value`.
 
 ### Point rows
+
 - Valid `{ kind: "point", lat: 52.5, lng: 13.4, value: 10 }` parses.
 - Rejects `lat` outside `[-90, 90]` and `lng` outside `[-180, 180]` (boundary cases: exactly
   `-90`, `90`, `-180`, `180` accepted; `90.1`, `-180.1` rejected).
 - Rejects non-finite `value`.
 
 ### Union behavior
+
 - Unknown `kind` (e.g. `"line"`) rejected by the discriminated union.
 - A row missing `kind` rejected.
 - `MapChartData` type matches `z.infer` (compile-time assert via `expectTypeOf`).
@@ -60,12 +63,14 @@ Files under test:
 ## 4. Pure-helper tests (`helpers.test.ts`, `node`)
 
 ### `getRegionValueMap`
+
 - Builds a `Map` of uppercased `regionCode → value` from region rows only.
 - Skips `point` rows.
 - Skips rows whose `value` is non-finite.
 - Later duplicate `regionCode` overwrites the earlier value (last-wins).
 
 ### `getColorForScale`
+
 - Returns `minColor` when `min === max` (degenerate domain).
 - Returns `minColor` for non-finite input value.
 - Interpolates between `minColor` and `maxColor` for a mid-domain value (assert the
@@ -73,12 +78,14 @@ Files under test:
 - Clamps values below `min` / above `max` to the endpoints.
 
 ### `getBucketColor`
+
 - Returns `noDataColor` when `colorScale.type !== "buckets"` or buckets are empty.
 - Maps a value below the first threshold to `noDataColor`.
 - Maps values into the correct bucket color for a threshold scale
   (e.g. thresholds `[10, 20]` → below 10 = noData, 10–19 = bucket[0], ≥20 = bucket[1]).
 
 ### `getLegendPosition`
+
 - Each `position` (`bottom-left`, `bottom-right`, `top-left`, `top-right`) maps to the
   expected Tailwind class string; unknown/default → `top-right` classes.
 
@@ -110,11 +117,12 @@ Tests:
 - **Empty data**: `chartData: []` renders the base map without regions/bubbles and does not
   throw.
 
-### Drill / selection
+### Selection
+
 - `handleRegionSelect("de")` calls `onSelectionChange` with all region rows whose
   `regionCode` (uppercased) matches; unknown/empty code → no call.
 - `handlePointSelect(entry)` calls `onSelectionChange` with `[entry]`.
-- When `onSelectionChange` is absent, selection handlers are no-ops (drill disabled).
+- When `onSelectionChange` is absent, selection handlers are no-ops.
 
 ## 6. Fixtures
 

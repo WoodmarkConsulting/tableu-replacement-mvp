@@ -5,7 +5,7 @@ an **Apply** button to fire the queries.
 
 > Composes with the searchable multiselect work in
 > [`searchable-multiselect-filter-plan.md`](./searchable-multiselect-filter-plan.md):
-> multiselect edits go into the *draft* layer and only hit the warehouse when
+> multiselect edits go into the _draft_ layer and only hit the warehouse when
 > **Apply** is pressed. The two plans are independent and can land in either
 > order.
 
@@ -60,8 +60,8 @@ New / changed actions:
 - `clearAll()` — clears both layers; optionally keep `hasApplied` so charts show
   "no filters" results rather than reverting to the idle prompt. Decision: keep
   `hasApplied = true` after an explicit clear.
-- `applySelection(entries, navigateTo)` (drill) — merge `entries` into **both**
-  draft and applied and set `hasApplied = true` (drill is an explicit,
+- `applySelection(entries, navigateTo)` (selection) — merge `entries` into **both**
+  draft and applied and set `hasApplied = true` (selection is an explicit,
   immediate cross-filter action; syncing both layers avoids clobbering pending
   edits).
 - `initFilterStore` — seed both `draftValues` and `appliedValues` from
@@ -78,7 +78,7 @@ inequality of `draftValues` vs `appliedValues`.
 - `useQuery` → `enabled: parsedMockData === undefined && hasApplied`.
 - When `!hasApplied && parsedMockData === undefined`, render a new idle
   `ChartState` prompt instead of the spinner/empty states.
-- Drill still calls `applySelection` (immediate), unchanged from the caller's
+- Selection still calls `applySelection` (immediate), unchanged from the caller's
   perspective.
 
 ## New component — `components/FilterActions/index.tsx`
@@ -115,25 +115,25 @@ inequality of `draftValues` vs `appliedValues`.
 - **Defaults**: seeded into both layers but not auto-applied → still no fetch on
   open. (If product wants defaults auto-applied on open, flip `hasApplied` to
   `true` in `initFilterStore` — single-line toggle. Default choice: `false`.)
-- **Chip removal** and **drill** intentionally bypass the Apply gate (they are
+- **Chip removal** and **selection application** intentionally bypass the Apply gate (they are
   explicit, targeted actions). Documented above.
 
 ---
 
 ## File-by-file change list
 
-| File | Change |
-|------|--------|
-| `stores/filterProvider.ts` | Draft/applied split, `hasApplied`, `setDraftFilter`, `applyFilters`, `resetDraft`, updated `clearDimension`/`clearAll`/`applySelection`/`init`/`reset`, `isDirty` helper. |
-| `components/FilterActions/index.tsx` | **New** Apply/Reset buttons + dirty state. |
-| `components/ChartWrapper/index.tsx` | Read `appliedValues` + `hasApplied`; gate `enabled`; idle prompt state. |
-| `components/AppSidebar.tsx/index.tsx` | Use `draftValues`/`setDraftFilter` (fix `value={0}`); render `<FilterActions />`. |
-| `components/TabFilters/index.tsx` | Use `draftValues`/`setDraftFilter`. |
-| `components/DashboardShell/index.tsx` | Render `<FilterActions />` in top bar. |
-| `components/ActiveFilters/index.tsx` | Read `appliedValues`; chip removal → `clearDimension`. |
-| `hooks/useShareFilters.ts` | Snapshot `appliedValues`. |
-| `hooks/useFilterUrlSync.ts` | Auto-apply after snapshot hydration. |
-| `AGENTS.md`, `README.md` | Document Apply-to-run behavior. |
+| File                                  | Change                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stores/filterProvider.ts`            | Draft/applied split, `hasApplied`, `setDraftFilter`, `applyFilters`, `resetDraft`, updated `clearDimension`/`clearAll`/`applySelection`/`init`/`reset`, `isDirty` helper. |
+| `components/FilterActions/index.tsx`  | **New** Apply/Reset buttons + dirty state.                                                                                                                                |
+| `components/ChartWrapper/index.tsx`   | Read `appliedValues` + `hasApplied`; gate `enabled`; idle prompt state.                                                                                                   |
+| `components/AppSidebar.tsx/index.tsx` | Use `draftValues`/`setDraftFilter` (fix `value={0}`); render `<FilterActions />`.                                                                                         |
+| `components/TabFilters/index.tsx`     | Use `draftValues`/`setDraftFilter`.                                                                                                                                       |
+| `components/DashboardShell/index.tsx` | Render `<FilterActions />` in top bar.                                                                                                                                    |
+| `components/ActiveFilters/index.tsx`  | Read `appliedValues`; chip removal → `clearDimension`.                                                                                                                    |
+| `hooks/useShareFilters.ts`            | Snapshot `appliedValues`.                                                                                                                                                 |
+| `hooks/useFilterUrlSync.ts`           | Auto-apply after snapshot hydration.                                                                                                                                      |
+| `AGENTS.md`, `README.md`              | Document Apply-to-run behavior.                                                                                                                                           |
 
 Note: `useChartState` / `ChartFilters` are legacy (commented out in
 `ChartWrapper`) and out of scope. The searchable multiselect dimension is planned
@@ -160,12 +160,12 @@ any other filter.
 
 ---
 
-## Test cases — Apply-gate bypass (chip removal + drill)
+## Test cases — Apply-gate bypass (chip removal + selection)
 
 These are the highest-risk paths: `clearDimension` (chip removal) and
-`applySelection` (drill) intentionally *bypass* the Apply gate and write to both
+`applySelection` (selection) intentionally _bypasses_ the Apply gate and writes to both
 the draft and applied layers. The following cases pin down that they stay in
-sync, re-query immediately, and never clobbering pending draft edits. Author them
+sync, re-query immediately, and never clobber pending draft edits. Author them
 as store-level unit tests against `useFiltersStore` (no React needed) plus the
 two marked E2E checks.
 
@@ -191,13 +191,13 @@ shallow inequality of `draftValues` vs `appliedValues`.
   layers is a no-op: no throw, both maps unchanged, `hasApplied` unchanged.
 - **C5 — chip reflects applied, not draft.** With a pending draft edit that has
   not been applied, `ActiveFilters` renders chips from `appliedValues`; removing a
-  chip clears the *applied* dimension (and its draft counterpart per C1). Assert
+  chip clears the _applied_ dimension (and its draft counterpart per C1). Assert
   the removed chip's dimension is gone from applied.
 - **C6 (E2E) — network.** In the browser, remove a chip → exactly one
   `/api/data/*` refetch fires for affected charts; charts without that binding do
   not refetch.
 
-### Drill (`applySelection`)
+### Selection (`applySelection`)
 
 - **D1 — writes to both layers + sets `hasApplied`.** From a state with
   `hasApplied = false` (fresh open), `applySelection(entries)` merges `entries`
@@ -206,32 +206,32 @@ shallow inequality of `draftValues` vs `appliedValues`.
 - **D2 — same-page cross-filter (no `navigateTo`).** `applySelection(entries)`
   with `navigateTo` omitted leaves `activeTab` unchanged. Assert `activeTab`
   equals its prior value.
-- **D3 — cross-tab drill (`navigateTo` set).** `applySelection(entries, "TabB")`
+- **D3 — cross-tab selection (`navigateTo` set).** `applySelection(entries, "TabB")`
   sets `activeTab = "TabB"` and applies the entries. Assert both.
 - **D4 — does not clobber unrelated pending draft edits.** Given a pending draft
-  edit on dimension **A**, a drill that writes dimension **B** leaves
+  edit on dimension **A**, a selection that writes dimension **B** leaves
   `draftValues[A]` intact while adding **B** to both layers. Assert A's pending
   edit survives and B is in both maps.
-- **D5 — drilled dimension overwrites its own pending draft.** If a pending draft
-  edit exists on the *same* dimension the drill targets, the drill's value wins in
-  both layers (drill is explicit/immediate). Assert draft and applied both equal
-  the drilled value.
+- **D5 — selected dimension overwrites its own pending draft.** If a pending draft
+  edit exists on the _same_ dimension the selection targets, the selection value wins in
+  both layers (selection is explicit/immediate). Assert draft and applied both equal
+  the selected value.
 - **D6 — multi-select join.** With `selectionMode: "multi"` and multiple selected
   rows, the bound dimension value is the comma-joined string of selection keys.
   Assert `appliedValues[key] === selected.join(",")`.
-- **D7 — scope resolution.** A drill binding to a `global` dimension writes
+- **D7 — scope resolution.** A selection binding to a `global` dimension writes
   `global:<id>`; a binding to a `tab` dimension writes `tab:<dim.tab>:<id>` (the
   dimension's own scope, not the active tab). Assert the correct key form for each.
 - **D8 — empty selection is a no-op.** `applySelection` with no resolvable entries
   (all selection values null/undefined) does not mutate either layer and does not
   flip `hasApplied`.
-- **D9 (E2E) — network + gating.** In the browser, a drill selection fires the
+- **D9 (E2E) — network + gating.** In the browser, a selection fires the
   target charts' `/api/data/*` requests immediately (no Apply press), and if
   `navigateTo` is set the target tab becomes active.
 
 ### Interaction with the Apply gate
 
-- **G1 — bypass does not leak into normal edits.** After a drill or chip removal
+- **G1 — bypass does not leak into normal edits.** After a selection or chip removal
   (which set/keep `hasApplied = true`), a subsequent plain filter edit via
   `setDraftFilter` must **not** auto-fetch: it updates `draftValues` only,
   `appliedValues` is unchanged, and `isDirty(state)` becomes `true` until the next

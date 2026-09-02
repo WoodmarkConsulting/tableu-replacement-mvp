@@ -7,7 +7,7 @@ multi-check dropdown (combobox) and binds to SQL as a list.
 > [`deferred-queries-plan.md`](./deferred-queries-plan.md). Multiselect edits go
 > through the same draft layer and only hit the warehouse when **Apply** is
 > pressed. This plan can also land standalone against the current single-`values`
-> store — the only difference is *when* the query fires, not *how* the value is
+> store — the only difference is _when_ the query fires, not _how_ the value is
 > serialized. Wherever this doc says `setDraftFilter` / `appliedValues`, read the
 > pre-deferred equivalents (`setFilter` / `values`) if that work has not shipped
 > yet.
@@ -68,7 +68,7 @@ Ripple review for the widened union (all must compile + behave):
 ## Serialization to SQL (`components/ChartWrapper/index.tsx`)
 
 - `toQueryParam`: if `Array.isArray(value)` → `value.length ? value.join(",")
-  : null`. Existing string/number/null handling unchanged. `dateRange` still
+: null`. Existing string/number/null handling unchanged. `dateRange` still
   resolved separately.
 - Param resolution (`filterValues[globalKey] ?? filterValues[tabKey]`) is
   unchanged.
@@ -82,7 +82,7 @@ Charts bound to a multiselect dimension must expand the joined string:
 ```
 
 Document this in `AGENTS.md` (Filtering framework) and `README.md` next to the
-existing multi-drill example, which already uses the same pattern.
+existing multi-select example, which already uses the same pattern.
 
 ## ActiveFilters (`components/ActiveFilters/index.tsx`)
 
@@ -103,14 +103,14 @@ existing multi-drill example, which already uses the same pattern.
 
 ## File-by-file change list
 
-| File | Change |
-|------|--------|
-| `types/filters.d.ts` | Add `"multiselect"` to `FilterType`; widen `FilterValue` with `string[]`. |
-| `components/FilterControl/index.tsx` | Add `case "multiselect"` combobox. |
-| `components/ChartWrapper/index.tsx` | `toQueryParam` array handling (join → comma string). |
-| `components/ActiveFilters/index.tsx` | `isEmpty` / `formatValue` array handling. |
-| `components/ui/command.tsx` (+ `badge.tsx`) | **New** shadcn components. |
-| `AGENTS.md`, `README.md` | Document `multiselect` type + SQL `split/array_contains` convention. |
+| File                                        | Change                                                                    |
+| ------------------------------------------- | ------------------------------------------------------------------------- |
+| `types/filters.d.ts`                        | Add `"multiselect"` to `FilterType`; widen `FilterValue` with `string[]`. |
+| `components/FilterControl/index.tsx`        | Add `case "multiselect"` combobox.                                        |
+| `components/ChartWrapper/index.tsx`         | `toQueryParam` array handling (join → comma string).                      |
+| `components/ActiveFilters/index.tsx`        | `isEmpty` / `formatValue` array handling.                                 |
+| `components/ui/command.tsx` (+ `badge.tsx`) | **New** shadcn components.                                                |
+| `AGENTS.md`, `README.md`                    | Document `multiselect` type + SQL `split/array_contains` convention.      |
 
 Note: `docs/plans/filter-framework-plan.md` mentions all filter types are
 "single-value today" — update that note once multiselect lands.

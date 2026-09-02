@@ -18,7 +18,7 @@ Tooling: Vitest (`node` for schema/helpers, `jsdom` + React Testing Library for 
 row per bin: `{ binStart, binEnd, counts: (number | null)[], binLabel? }`, with all series
 sharing the same bin grid. It supports overlay/group/stack layouts, optional density
 normalization, an optional cumulative overlay on a secondary axis, and mean/median/value
-reference lines. It is a **drill source**: clicking a bin calls `onSelectionChange(rows)`
+reference lines. It supports **selection**: clicking a bin calls `onSelectionChange(rows)`
 with the selected bin range.
 
 Files under test:
@@ -31,13 +31,13 @@ Files under test:
 
 ## 2. Test layers
 
-| Layer | Environment | Focus |
-| --- | --- | --- |
-| Schema | `node` | Bin/count parse & reject rules |
-| Data-shape validation | `node` | Ordering, contiguity, series-index bounds (helper-level guards) |
-| Pure helpers | `node` | Recharts row builder, density, cumulative, mean/median, axis formatters |
-| Component render | `jsdom` | Layout modes, axes, cumulative axis, reference lines, drill, empty data |
-| Contract | `node` | Module folder contract (shared guard test) |
+| Layer                 | Environment | Focus                                                                       |
+| --------------------- | ----------- | --------------------------------------------------------------------------- |
+| Schema                | `node`      | Bin/count parse & reject rules                                              |
+| Data-shape validation | `node`      | Ordering, contiguity, series-index bounds (helper-level guards)             |
+| Pure helpers          | `node`      | Recharts row builder, density, cumulative, mean/median, axis formatters     |
+| Component render      | `jsdom`     | Layout modes, axes, cumulative axis, reference lines, selection, empty data |
+| Contract              | `node`      | Module folder contract (shared guard test)                                  |
 
 > Expose the transform helpers (bin→recharts row builder, density, cumulative, mean/median
 > approximation, `getSeriesKey`, axis formatters) as testable exports (`helpers.ts`) so the
@@ -74,6 +74,7 @@ guard helper directly:
 ## 5. Pure-helper tests (`helpers.test.ts`, `node`)
 
 ### Recharts row builder
+
 - Maps each bin to `{ binStart, binEnd, binMid, binLabel, series_<i>: counts[i] }`.
 - `binMid === (binStart + binEnd) / 2`.
 - Selects correct `counts[seriesIndex]` for non-contiguous series indices.
@@ -82,18 +83,21 @@ guard helper directly:
 - Passes `null` counts through as gaps.
 
 ### Density normalization (`density.enabled`)
+
 - Transforms `counts[i]` to `count / (total_i * binWidth)` where `binWidth = binEnd - binStart`.
 - `total_i` is the sum of non-null counts for series `i`.
 - Works with variable bin widths.
 - Density values integrate to ~1 across bins for a single series (assert within tolerance).
 
 ### Cumulative overlay (`cumulative.enabled`)
+
 - `mode: "count"` produces a monotonically non-decreasing running total per series; final
   value equals the series total.
 - `mode: "percent"` runs 0→100; final value is 100 (within tolerance) for a non-empty series.
 - Null counts treated as 0 contribution but do not break monotonicity.
 
 ### Reference lines
+
 - `source: "value"` uses the explicit `value`.
 - `source: "mean"` approximates from bin midpoints weighted by `counts[seriesIndex]`
   (assert against a hand-computed expected mean for a small fixture).
@@ -102,6 +106,7 @@ guard helper directly:
 - `seriesIndex` defaults to `0` when omitted.
 
 ### Axis formatters
+
 - X `format`: `"range"` → `"0–10"`; `"start"` → `"0"`; `"midpoint"` → `"5"`; `"label"` uses
   `binLabel` when present, else falls back to `"range"`.
 - Y `format`: `"count"` raw, `"compact"` → `"12.5K"`, `"percent"` → share of total.
@@ -120,10 +125,11 @@ guard helper directly:
 - **Height**: `height` prop drives container sizing.
 - **Empty data**: `chartData: []` renders without throwing.
 
-### Drill / selection
+### Selection
+
 - Clicking a bin calls `onSelectionChange` with the bin row(s) covering the clicked range.
 - `selectionMode: "multi"` selection returns multiple bin rows when applicable.
-- When `onSelectionChange` is absent, clicks are inert (drill disabled).
+- When `onSelectionChange` is absent, selection clicks are inert.
 
 ## 7. Fixtures
 

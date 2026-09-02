@@ -16,6 +16,7 @@ type BaseChartProps<C extends ChartConfigs = ChartConfigs> = {
   chartTitle?: string;
   chartDescription: string;
   chartID: string;
+  enhancedTooltip?: boolean;
   // TODO: Remove or update the filterConfig for the Chartspecifiy Filtersection
   // filterConfig: FilterConfig[];
   chartConfig: C;
@@ -31,7 +32,5 @@ interface ChartWrapperInjectedProps<
   isFetching: boolean;
   isError: boolean;
   error: Error | null;
-  // Present only when the chart is configured as a drill source.
-  selectionMode?: BaseChartPropsSelectionMode;
   onSelectionChange?: (rows: D[]) => void;
 }

@@ -18,7 +18,7 @@ The module renders a **frequency histogram** with **pre-computed bins** using
 - optional **density normalization** (counts → frequency density)
 - optional **cumulative distribution overlay** (line on a secondary Y axis)
 - optional **mean / median reference lines** (explicit value or bin-approximated)
-- **drill / cross-filter**: clicking a bin calls `onSelectionChange` with the bin range
+- **selection**: clicking a bin calls `onSelectionChange` with the bin range
 - configurable axes, grid, tooltip, legend, and margins mirroring `LineChartModule`
 
 ---
@@ -35,8 +35,7 @@ The module renders a **frequency histogram** with **pre-computed bins** using
 - **Series: multiple.** Data uses a compact `counts: (number | null)[]` array per bin
   (mirroring `LineChartModule`'s `{ x, y: [...] }`). All series share the same bin grid so
   overlaid/grouped comparison is aligned by construction.
-- **Drill: enabled.** The module is a drill source; clicking a bar calls
-  `onSelectionChange(rows)` with the selected bin row(s) so a bin range can filter other charts.
+- **Selection: enabled.** Clicking a bar calls `onSelectionChange(rows)` with the selected bin row(s).
 - **Extras: included.** v1 ships density normalization, a cumulative overlay, and
   mean/median reference lines. All are config-gated and default off.
 
@@ -104,7 +103,7 @@ export default histogramDataSchema;
 
 ```json
 [
-  { "binStart": 0,  "binEnd": 10, "counts": [4, 1] },
+  { "binStart": 0, "binEnd": 10, "counts": [4, 1] },
   { "binStart": 10, "binEnd": 20, "counts": [9, 3] },
   { "binStart": 20, "binEnd": 30, "counts": [12, 7] },
   { "binStart": 30, "binEnd": 40, "counts": [6, 11] },
@@ -228,7 +227,7 @@ type HistogramChartConfig = {
 Create `modules/HistogramModule/index.tsx` with a default export typed as:
 
 ```ts
-ChartWrapperInjectedProps<HistogramData, HistogramChartConfig>
+ChartWrapperInjectedProps<HistogramData, HistogramChartConfig>;
 ```
 
 The component should:
@@ -255,7 +254,7 @@ The component should:
    - `<ReferenceLine>` per configured entry (value resolved from `source`).
 7. Compute mean/median approximations from bins when a reference line uses
    `source: "mean" | "median"` (helper `computeStatFromBins`).
-8. Drill: when `onSelectionChange` is a function, set `onClick` on the chart; on bar click,
+8. Selection: when `onSelectionChange` is a function, set `onClick` on the chart; on bar click,
    resolve the active bin and call `onSelectionChange([binRow])`. Mirror the guarded
    `handleChartClick` approach in `LineChartModule` (no-op when selection disabled).
 9. Wrap in `ChartContainer` with the same `height`/`svh` handling used by `LineChartModule`.
@@ -321,21 +320,22 @@ Optional helper extraction (not required by the contract):
    row per bin, contiguous edges, and a `counts` array whose index order matches the
    configured `series[].seriesIndex`.
 
-2. Add a temporary dashboard entry (or reuse `pagesConfig/drillTest.json`) referencing
+2. Add a temporary dashboard entry referencing
    `moduleName: "HistogramModule"`, regenerate the page with
    `npx tsx scripts/pages/generateNextPage.ts`, and visually confirm:
    - bars render with correct bin ranges and counts
    - overlay/group/stack layouts behave as configured
    - density and cumulative toggles produce sensible output
    - mean/median reference lines appear at plausible positions
-   - clicking a bar drives the configured drill/cross-filter
+
+- clicking a bar emits the selected bin rows
 
 ---
 
 ## Relevant files
 
 - `modules/LineChartModule/*` — structural + implementation template (series indexing,
-  axis formatting, drill click handling, `ChartContainer` usage).
+  axis formatting, selection click handling, `ChartContainer` usage).
 - `modules/HistogramModule/index.tsx` — histogram rendering component.
 - `modules/HistogramModule/chartDataSchema.ts` — Zod schema and `HistogramData` type.
 - `modules/HistogramModule/chartType.d.ts` — single `HistogramChartConfig` type.
@@ -360,7 +360,7 @@ Optional helper extraction (not required by the contract):
 - `npm run module:validate` passes.
 - `npm run module:generateRegistry` succeeds; `ChartConfigs` includes `HistogramChartConfig`.
 - `npm run lint` passes and TypeScript compiles without errors.
-- Browser smoke test renders correctly (bars, layouts, extras, drill).
+- Browser smoke test renders correctly (bars, layouts, extras, selection).
 
 ---
 

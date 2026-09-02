@@ -806,7 +806,7 @@ Type:
 
 Description:
 
-Present only when this chart is configured as a drill source (`drill` in the dashboard config). Indicates whether one or many points may be selected.
+Indicates whether one or many points may be selected when the framework enables selection.
 
 Source:
 
@@ -822,7 +822,7 @@ Type:
 
 Description:
 
-Present only for drill/cross-filter sources. Call it with the clicked data point(s); the framework maps the configured `selectionBindings` to the bound filter dimensions and applies them (cross-filtering in place, or navigating to `drill.targetTab` when set).
+Present when the framework enables selection. Call it with the selected data point rows so `ChartWrapper` can process them through the central selection flow.
 
 Source:
 

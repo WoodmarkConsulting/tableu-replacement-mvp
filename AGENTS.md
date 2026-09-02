@@ -26,7 +26,7 @@ The intended end state is:
 ## Important paths
 
 - `pagesConfig/pages.json`: Registry the generator reads — maps each `dashboardName` to its config JSON. (`pagesConfig/index.ts` is legacy and not used by generation.)
-- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filterLayout, filters, tabs }` (see Filtering framework). Each component carries `chartID`, `chartConfig`, optional `filterBindings`, and optional `drill`.
+- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filterLayout, filters, tabs }` (see Filtering framework). Each component carries `chartID`, `chartConfig`, and optional `filterBindings`.
 - `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename. Named parameters (`:name`) are bound from resolved filter values.
 - `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
 - `scripts/pages/generateNextPage.ts`: Creates `app/Dashboards/<DashboardName>/page.tsx` from `pagesConfig/index.ts` and the referenced JSON.
@@ -44,7 +44,7 @@ The intended end state is:
 For normal dashboard creation and updates, the agent should modify only:
 
 - `pagesConfig/pages.json` when adding a new dashboard entry
-- `pagesConfig/*.json` for `reportName`, `filterLayout`, `filters` (dimensions), tabs, rows, module selection, chart metadata, `filterBindings`, optional `drill`, and module configuration
+- `pagesConfig/*.json` for `reportName`, `filterLayout`, `filters` (dimensions), tabs, rows, module selection, chart metadata, `filterBindings`, and module configuration
 - `pagesConfig/sql/*.sql` for the data transformation feeding each chart
 
 Do not implement dashboard-specific behavior in `app/` page components.
@@ -61,7 +61,7 @@ The runtime flow is:
 6. `ChartWrapper` fetches `/api/data/<chartID>`.
 7. The API route reads `pagesConfig/sql/<chartID>.sql` and executes the query.
 8. `ChartWrapper` validates the returned array against the selected module's `chartDataSchema.ts`.
-9. The module receives `ChartWrapperInjectedProps<...>` including `chartData`, loading/error state, configured metadata, and (for drill sources) `selectionMode`/`onSelectionChange`.
+9. The module receives `ChartWrapperInjectedProps<...>` including `chartData`, loading/error state, configured metadata, and the optional `onSelectionChange` callback.
 
 ## Filtering framework
 
@@ -88,25 +88,17 @@ only hit the warehouse when **Apply** is pressed.
   renders an idle prompt until the first Apply.
 - `components/FilterActions/index.tsx` renders **Apply**/**Reset**. It sits in the
   sidebar footer (`filterLayout: "sidebar"`) and the top bar (`filterLayout: "top"`).
-- **Chip removal** (`clearDimension`) and **drill** (`applySelection`)
-  intentionally bypass the Apply gate: both write to draft *and* applied layers and
+- **Chip removal** (`clearDimension`) and **selection application** (`applySelection`)
+  intentionally bypass the Apply gate: both write to draft _and_ applied layers and
   re-query immediately.
 - Shared permalinks auto-apply on hydration (`useFilterUrlSync`) so recipients see
   data without pressing Apply; `useShareFilters` snapshots `appliedValues`.
 
+### Selection
 
-### Drill & cross-filter
-
-A component may declare `drill: { targetTab?, selectionMode: "single" | "multi", selectionBindings: Record<selectionKey, dimensionId> }`. Selecting data maps each selected row's `selectionKey` to the bound dimension and writes the value at that dimension's own scope — `global:<id>` (filters every tab) or `tab:<dim.tab>:<id>` (filters that page).
-
-- Omit `targetTab` → the selection filters in place (same-page cross-filter, or global when the bound dimension is `global`).
-- Set `targetTab` → additionally navigate to that tab (classic cross-tab drill); pair it with a `tab`-scoped dimension on that tab.
-
-`multi` joins values with `,`, so the target SQL must expand it:
-
-```sql
-(:p IS NULL OR array_contains(split(:p, ','), col))
-```
+Selection-capable modules report selected data through the optional
+`onSelectionChange(rows)` callback injected by `ChartWrapper`. Selection processing is
+framework behavior and does not add module-specific fields to dashboard configuration.
 
 ### Shareable state
 
@@ -136,7 +128,7 @@ export default ExampleModule;
 
 - `modules/<ModuleName>/chartDataSchema.ts` must default-export a Zod schema and must also export the module data type.
 - `modules/<ModuleName>/chartType.d.ts` must contain exactly one `type` declaration.
-- Drill-source charts additionally receive optional injected `selectionMode` and `onSelectionChange(rows)` props; call `onSelectionChange` with the selected rows to trigger a cross-tab drill.
+- Selection-capable charts receive the optional injected `onSelectionChange(rows)` prop and call it with the selected data rows.
 - `modules/<ModuleName>/instructions.md` must follow `docs/instructions.template.md`.
 - The `moduleName` used in dashboard JSON must match a key in `modules/modulRegistry.ts`.
 

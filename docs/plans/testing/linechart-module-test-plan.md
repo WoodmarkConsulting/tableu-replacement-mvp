@@ -11,7 +11,7 @@ Tooling: Vitest (`node` for schema, `jsdom` + React Testing Library for render)
 
 `LineChartModule` renders a configurable multi-series line/area chart from the compact
 transport shape `{ x: number, y: (number | null)[] }` using `recharts` (`ComposedChart`).
-It is a **drill source**: clicking a point calls `onSelectionChange(rows)` with the rows
+It supports **selection**: clicking a point calls `onSelectionChange(rows)` with the rows
 that share the clicked `x`.
 
 Files under test:
@@ -24,12 +24,12 @@ Files under test:
 
 ## 2. Test layers
 
-| Layer | Environment | Focus |
-| --- | --- | --- |
-| Schema | `node` | Zod parse/reject, type inference |
-| Pure helpers | `node` | `getSeriesKey`, `formatXAxisValue`, `formatYAxisValue`, `createRechartsData`, `createChartContainerConfig` |
-| Component render | `jsdom` | Series rendering, axis/grid/legend/tooltip gating, drill callback, empty data |
-| Contract | `node` | Module folder contract (shared guard test) |
+| Layer            | Environment | Focus                                                                                                      |
+| ---------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
+| Schema           | `node`      | Zod parse/reject, type inference                                                                           |
+| Pure helpers     | `node`      | `getSeriesKey`, `formatXAxisValue`, `formatYAxisValue`, `createRechartsData`, `createChartContainerConfig` |
+| Component render | `jsdom`     | Series rendering, axis/grid/legend/tooltip gating, selection callback, empty data                          |
+| Contract         | `node`      | Module folder contract (shared guard test)                                                                 |
 
 > The helpers listed in §4 are currently module-private. Export them (or extract to a
 > `helpers.ts` re-exported from `index.tsx`) so they can be unit-tested directly. This is
@@ -52,20 +52,24 @@ Files under test:
 ## 4. Pure-helper tests (`helpers.test.ts`, `node`)
 
 ### `getSeriesKey`
+
 - `getSeriesKey(0) === "series_0"`, `getSeriesKey(2) === "series_2"`.
 
 ### `formatXAxisValue`
+
 - `format: "number"` → `String(value)`.
 - `format: "date-month-day"` on a known UTC timestamp → `"MM-DD"` (assert UTC, not local).
 - `format: "date-day-month"` → `"DD.MM"`.
 - Padding: single-digit month/day zero-padded (e.g. `"08-05"`).
 
 ### `formatYAxisValue`
+
 - `"number"` → raw string.
 - `"compact"` → `12500` becomes `"12.5K"` (via `Intl.NumberFormat`, `en`).
 - `"percent"` → `45` becomes `"45%"`.
 
 ### `createRechartsData`
+
 - Maps `{ x, y }` rows to `{ x, series_<i> }` using each line's `seriesIndex`.
 - Selects the correct `y[seriesIndex]` for multiple lines with non-contiguous indices
   (e.g. lines with `seriesIndex` 0 and 2).
@@ -74,6 +78,7 @@ Files under test:
 - **Throws** when `seriesIndex >= y.length` (message names the line and data point index).
 
 ### `createChartContainerConfig`
+
 - Produces `{ series_<i>: { label, color } }` keyed by `seriesIndex`, using `line.name`
   and `line.stroke`.
 
@@ -96,13 +101,14 @@ so SVG elements mount.
 - **Invalid config surfaces**: a line with `seriesIndex` out of range causes the render to
   throw the descriptive error from `createRechartsData` (assert via error boundary in test).
 
-### Drill / selection
+### Selection
+
 - When `onSelectionChange` is provided, an `onClick` handler is wired on the chart.
 - Simulating a chart click with a valid `activeLabel` calls `onSelectionChange` with **all
   rows** whose `x` equals the clicked value (test the `handleChartClick` logic directly by
   invoking it with a synthetic `{ activeLabel }` state).
 - Non-finite `activeLabel` (e.g. `undefined`, `"abc"`) does **not** call `onSelectionChange`.
-- When `onSelectionChange` is absent, no click handler is attached (drill disabled).
+- When `onSelectionChange` is absent, no selection click handler is attached.
 
 ## 6. Fixtures
 

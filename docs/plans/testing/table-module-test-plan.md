@@ -22,7 +22,12 @@ One row = one table record; cell values are primitive and JSON-serializable.
 
 ```ts
 // Proposed
-const tableCellSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+const tableCellSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
 
 export const tableDataSchema = z.record(z.string(), tableCellSchema);
 export type TableData = z.infer<typeof tableDataSchema>;
@@ -37,8 +42,8 @@ Column definitions and presentation, e.g.:
 // Proposed
 type TableChartConfig = {
   columns: {
-    key: string;                 // matches a key in each TableData row
-    header: string;              // display label
+    key: string; // matches a key in each TableData row
+    header: string; // display label
     align?: "left" | "right" | "center";
     format?: "text" | "number" | "compact" | "percent" | "currency" | "date";
     width?: number;
@@ -50,18 +55,18 @@ type TableChartConfig = {
 };
 ```
 
-If the module is a **drill source**, clicking a row calls `onSelectionChange([row])`.
+If the module supports selection, clicking a row calls `onSelectionChange([row])`.
 
 ---
 
 ## 2. Test layers
 
-| Layer | Environment | Focus |
-| --- | --- | --- |
-| Schema | `node` | Row/cell parse & reject rules |
-| Pure helpers | `node` | Cell formatters, sort comparator, pagination slicing, column resolution |
-| Component render | `jsdom` | Header/row rendering, sorting, pagination, alignment, empty state, drill |
-| Contract | `node` | Module folder contract (shared guard test) |
+| Layer            | Environment | Focus                                                                        |
+| ---------------- | ----------- | ---------------------------------------------------------------------------- |
+| Schema           | `node`      | Row/cell parse & reject rules                                                |
+| Pure helpers     | `node`      | Cell formatters, sort comparator, pagination slicing, column resolution      |
+| Component render | `jsdom`     | Header/row rendering, sorting, pagination, alignment, empty state, selection |
+| Contract         | `node`      | Module folder contract (shared guard test)                                   |
 
 > Expose formatters, the sort comparator, and pagination helpers as testable exports
 > (`helpers.ts`) so the logic is unit-tested without mounting the DOM.
@@ -79,22 +84,26 @@ If the module is a **drill source**, clicking a row calls `onSelectionChange([ro
 ## 4. Pure-helper tests (`helpers.test.ts`, `node`)
 
 ### Cell formatters
+
 - `"text"` → `String(value)`; `null` → configured empty placeholder (e.g. `""` or `"—"`).
 - `"number"` → locale number; `"compact"` → `"12.5K"`; `"percent"` → `"45%"`;
   `"currency"` → currency formatting; `"date"` → date from timestamp/ISO.
 - Non-numeric value passed to a numeric format degrades gracefully (renders raw, no throw).
 
 ### Column resolution
+
 - For a column `key` missing from a row, resolves to the empty placeholder, not `undefined`.
 - Columns render in config order regardless of key order in the row object.
 
 ### Sort comparator
+
 - Ascending/descending numeric sort.
 - String sort is locale-aware and case-insensitive (assert stable, predictable order).
 - `null` values sort consistently (e.g. always last) in both directions.
 - Mixed-type column sorts deterministically (define and assert the rule).
 
 ### Pagination
+
 - `pageSize` slices rows into pages; last page may be partial.
 - Page count computed correctly (`ceil(total / pageSize)`).
 - Out-of-range page index clamps to the last valid page.
@@ -115,9 +124,10 @@ If the module is a **drill source**, clicking a row calls `onSelectionChange([ro
   does not throw.
 - **Height**: `height` prop drives container sizing / scroll region.
 
-### Drill / selection (if drill source)
+### Selection (if supported)
+
 - Clicking a row calls `onSelectionChange([row])`.
-- When `onSelectionChange` is absent, rows are not interactive (drill disabled).
+- When `onSelectionChange` is absent, rows are not interactive for selection.
 
 ## 6. Fixtures
 
