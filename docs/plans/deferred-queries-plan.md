@@ -216,8 +216,8 @@ shallow inequality of `draftValues` vs `appliedValues`.
   edit exists on the _same_ dimension the selection targets, the selection value wins in
   both layers (selection is explicit/immediate). Assert draft and applied both equal
   the selected value.
-- **D6 — multi-select join.** With `selectionMode: "multi"` and multiple selected
-  rows, the bound dimension value is the comma-joined string of selection keys.
+- **D6 — multi-select join.** With multiple selected rows (additive click/lasso
+  selection), the bound dimension value is the comma-joined string of selection keys.
   Assert `appliedValues[key] === selected.join(",")`.
 - **D7 — scope resolution.** A selection binding to a `global` dimension writes
   `global:<id>`; a binding to a `tab` dimension writes `tab:<dim.tab>:<id>` (the

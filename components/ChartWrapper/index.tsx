@@ -144,10 +144,30 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const selectedRows =
     selection?.context === zoomContext ? selection.rows : ([] as DataType[]);
 
-  const handleSelectionChange = (rows: DataType[]) => {
-    setSelection({ context: zoomContext, rows });
-    console.log("Handle select");
-    console.log("rows", rows);
+  const handleSelectionChange = (
+    rows: DataType[],
+    options?: SelectionChangeOptions,
+  ) => {
+    setSelection((prev) => {
+      const base = prev?.context === zoomContext ? prev.rows : [];
+
+      if (!options?.additive) {
+        return { context: zoomContext, rows };
+      }
+
+      // Additive click selection: toggle each clicked row (by identity) against
+      // the current selection so repeated clicks accumulate or remove rows.
+      const next = new Set(base);
+      for (const row of rows) {
+        if (next.has(row)) {
+          next.delete(row);
+        } else {
+          next.add(row);
+        }
+      }
+
+      return { context: zoomContext, rows: [...next] };
+    });
   };
 
   if (error) {

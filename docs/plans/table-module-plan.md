@@ -29,7 +29,7 @@ support the three explicitly requested capabilities:
 It also supports the shared framework features every module participates in:
 
 - **Selection**: clicking (or checkbox-selecting) a row calls the injected
-  `onSelectionChange(rows)`. Honors the injected `selectionMode` (`"single" | "multi"`).
+  `onSelectionChange(rows, options?)`. Multi-select accumulates via `{ additive: true }`.
 - Standard `ChartWrapperInjectedProps` wiring: `chartData`, `height`, loading/error/empty
   states handled by `ChartWrapper`, config injected as `chartConfig`.
 
@@ -340,7 +340,7 @@ ChartWrapperInjectedProps<TableRowData, TableChartConfig>;
 
 The component should:
 
-1. Destructure `chartConfig`, `chartData`, `height`, `selectionMode`, and `onSelectionChange`
+1. Destructure `chartConfig`, `chartData`, `height`, `selectedRows`, and `onSelectionChange`
    from injected props (same pattern as `LineChartModule`/`MapModule`).
 2. **Build the tree** (`useMemo`): convert the flat `id`/`parentId` list into nested rows
    (`{ ...row, subRows }`) for TanStack Table's `getSubRows`. Detect and guard against cycles
@@ -372,10 +372,10 @@ The component should:
 9. **Parent aggregates** (optional): when `hierarchy.showParentAggregates`, compute the
    configured aggregate of each numeric column over a node's descendants and render it on the
    collapsed parent (helper `aggregateSubtree`).
-10. **Selection**: when `onSelectionChange` is a function, honor the injected
-    `selectionMode`. In `single` mode a row click selects one row; in `multi` mode
-    show checkboxes (or click-to-toggle). On change, call
-    `onSelectionChange(selectedRows)` with the original data rows.
+10. **Selection**: when `onSelectionChange` is a function, a row click selects that
+    row. For multi-select, show checkboxes (or click-to-toggle) and call
+    `onSelectionChange(rows, { additive: true })` with the original data rows so the
+    wrapper accumulates the selection.
     Mirror the guarded, no-op-when-disabled approach from `LineChartModule`.
 11. **Layout**: wrap in a scroll container sized by the injected `height` (reuse the
     `height`/svh handling used by `LineChartModule`), with an optional `stickyHeader`,
@@ -478,7 +478,7 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
 - `modules/instructions.md` — module overview registry.
 - `modules/modulRegistry.ts` — generated registry output.
 - `types/baseChart.d.ts` — `ChartWrapperInjectedProps` contract.
-- `types/filters.d.ts` — `SelectionMode` for selection wiring.
+- `types/baseChart.d.ts` — `SelectionChangeOptions` for selection wiring.
 - `scripts/modules/validateModules.ts` — validation contract.
 - `scripts/modules/generateModuleRegistry.ts` — registry generation.
 - `docs/instructions.template.md` — instruction template to follow.

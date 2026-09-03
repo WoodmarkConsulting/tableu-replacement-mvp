@@ -1,5 +1,4 @@
 type ChartConfigs = import("@/modules/modulRegistry").ChartConfigs;
-type BaseChartPropsSelectionMode = import("./filters").SelectionMode;
 
 type ChartDataTemplate = object;
 
@@ -33,6 +32,12 @@ interface ChartWrapperInjectedProps<
   isError: boolean;
   error: Error | null;
   selectedRows: readonly D[];
-  onSelectionChange?: (rows: D[]) => void;
+  onSelectionChange?: (rows: D[], options?: SelectionChangeOptions) => void;
   lasso: LassoController<D>;
 }
+
+// `additive` toggles the passed rows against the current selection (click
+// multi-select); omitting it replaces the selection (lasso / single click).
+type SelectionChangeOptions = {
+  additive?: boolean;
+};

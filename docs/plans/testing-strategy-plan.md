@@ -92,7 +92,7 @@ Runs against the built app with the **data API mocked at the network layer** (Pl
 | Tab-scoped filter       | Filter on tab A does not affect tab B.                                                                      |
 | Tab navigation          | Switch tabs; correct components render; `?tab=` in URL updates.                                             |
 | Chart selection         | Select data on a selection-capable chart → central selection callback receives the expected rows.           |
-| Multi-selection         | `selectionMode: "multi"` returns all selected rows.                                                         |
+| Multi-selection         | Additive click/lasso selection returns all selected rows.                                                   |
 | Share link              | `ShareButton` → `POST /api/filters/snapshot` (intercepted) returns id; visiting `?s=<id>` restores filters. |
 | Applied filters / print | `ActiveFilters` chips render; `print:hidden` controls hidden in print emulation.                            |
 

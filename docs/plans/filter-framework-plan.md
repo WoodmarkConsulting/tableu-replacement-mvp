@@ -48,7 +48,7 @@ Top-level dashboard config becomes an object (was `TabsConfig[]`):
 
 ## Module contract change
 
-- Extend `ChartWrapperInjectedProps` with optional `selectionMode?` and `onSelectionChange?(rows)`.
+- Extend `ChartWrapperInjectedProps` with `onSelectionChange?(rows, options?)` supporting additive (multi-click) selection.
 - Wire multi-select in `MapModule` (regions/points) and `LineChartModule` (points/brush).
 - Update each module's `instructions.md` (+ `chartType.d.ts` if needed).
 - Run `npm run module:validate` and `npm run module:generateRegistry`.

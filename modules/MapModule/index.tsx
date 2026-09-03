@@ -258,43 +258,40 @@ function MapModule(props: Props) {
     chartData,
     height,
     onSelectionChange,
-    selectionMode,
+    selectedRows,
   } = props;
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
   const selectionEnabled = typeof onSelectionChange === "function";
 
-  const toggleSelection = (key: string) => {
-    if (!onSelectionChange) {
-      return;
-    }
-
-    const next =
-      selectionMode === "multi" ? new Set(selectedKeys) : new Set<string>();
-
-    if (next.has(key)) {
-      next.delete(key);
-    } else {
-      next.add(key);
-    }
-
-    setSelectedKeys(next);
-    onSelectionChange(chartData.filter((entry) => next.has(rowKey(entry))));
-  };
+  // Selection is owned by the framework and injected via `selectedRows`; clicks
+  // toggle rows through the wrapper (additive), mirroring the lasso flow.
+  const selectedKeys = useMemo(
+    () => new Set(selectedRows.map(rowKey)),
+    [selectedRows],
+  );
 
   const handleRegionSelect = (code: string | null | undefined) => {
-    if (!code) {
+    if (!onSelectionChange || !code) {
       return;
     }
 
-    toggleSelection(`region:${code.toUpperCase()}`);
+    const regionCode = code.toUpperCase();
+    // Toggle every region row sharing this code, matching how the line chart
+    // selects all rows at a clicked x value.
+    const rows = chartData.filter(
+      (entry) => entry.kind === "region" && entry.regionCode === regionCode,
+    );
+
+    if (rows.length > 0) {
+      onSelectionChange(rows, { additive: true });
+    }
   };
 
   const handlePointSelect = (
     entry: Extract<MapChartData, { kind: "point" }>,
   ) => {
-    toggleSelection(rowKey(entry));
+    onSelectionChange?.([entry], { additive: true });
   };
 
   const regionValues = useMemo(() => getRegionValueMap(chartData), [chartData]);

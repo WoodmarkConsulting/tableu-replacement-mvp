@@ -2,8 +2,6 @@ type FilterType = "string" | "number" | "dateString" | "dateRange" | "select";
 
 type FilterScope = "global" | "tab";
 
-export type SelectionMode = "single" | "multi";
-
 type FilterOption = {
   label: string;
   value: string;

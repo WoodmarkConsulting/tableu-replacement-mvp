@@ -128,7 +128,7 @@ guard helper directly:
 ### Selection
 
 - Clicking a bin calls `onSelectionChange` with the bin row(s) covering the clicked range.
-- `selectionMode: "multi"` selection returns multiple bin rows when applicable.
+- Additive selection (`{ additive: true }`) returns multiple bin rows when applicable.
 - When `onSelectionChange` is absent, selection clicks are inert.
 
 ## 7. Fixtures
