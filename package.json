@@ -6,6 +6,7 @@
     "node": ">=24.17.0 <25",
     "npm": ">=11.13.0 <12"
   },
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "postinstall": "npm run databricks:install",
     "dev": "next dev",
