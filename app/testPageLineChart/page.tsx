@@ -5,7 +5,7 @@ import { useShallow } from "zustand/shallow";
 import { useLayoutEffect } from "react";
 
 import { DashboardShell } from "@/components/DashboardShell";
-import { FilterValue } from "@/types/filters";
+
 import useFiltersStore from "@/stores/filterProvider";
 
 const TestPage = () => {
@@ -293,14 +293,14 @@ const TestPage = () => {
         defaultValue: "",
         tab: "Overview",
       },
-      {
-        id: "exampleFilterDimensionAnalytics",
-        label: "Example Filter Dimension Analytics",
-        scope: "tab",
-        type: "dateString",
-        defaultValue: "",
-        tab: "Analytics",
-      },
+      // {
+      //   id: "exampleFilterDimensionAnalytics",
+      //   label: "Example Filter Dimension Analytics",
+      //   scope: "tab",
+      //   type: "dateString",
+      //   defaultValue: "",
+      //   tab: "Analytics",
+      // },
     ],
 
     tabs: tabsConfig,

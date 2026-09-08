@@ -13,7 +13,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . && npm run module:validate",
-    "verify:typescript": "npx tsc --noEmit",
+    "verify:typescript": "tsc --noEmit",
     "pageConfig:generatePage": "npx tsx scripts/pages/generateNextPage.ts",
     "pageConfig:generateId": "npx tsx scripts/modules/generateDashboardID.ts",
     "databricks:install": "npx tsx scripts/databricks/installDatabricksCli.ts",
