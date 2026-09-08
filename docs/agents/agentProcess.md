@@ -396,12 +396,15 @@ pagesConfig/sql/123456as.sql
 
 ---
 
-## 13. Configure the Hover Tooltip
+## 13. Configure the Selection Tooltip
 
-Every visualization requires a tooltip query for the data point under the
-mouse pointer.
+Every visualization that enables `enhancedTooltip` or acts as the source of a
+chart connection requires a tooltip query. The same endpoint supports a clicked
+point, a lasso selection, reopening details from the right-click menu, and
+resolving outgoing connection values.
 
-Ask the user which information should be shown when hovering over this chart.
+Ask the user which information should be shown for selected rows when the
+detail tooltip opens after a click, lasso selection, or context-menu action.
 Use simple, visible examples based on the visualization, such as:
 
 ```text
@@ -418,8 +421,8 @@ Before writing the tooltip SQL, analyze all of the following for the selected
 module and visualization:
 
 - `modules/<ModuleName>/chartDataSchema.ts`, which defines the chart data
-- `modules/<ModuleName>/index.tsx`, specifically the object passed as
-  `dataPoint` to the tooltip route
+- `modules/<ModuleName>/index.tsx`, specifically the original rows reported by
+  click selection or the registered lasso adapter and any direct tooltip call
 - `pagesConfig/sql/<chartID>.sql`, which defines how source rows are transformed
   into chart rows
 - the retrieved source table schemas
@@ -428,35 +431,119 @@ The tooltip route converts every property of the sent `dataPoint` into a named
 SQL parameter with the same name. The tooltip SQL must use those exact names.
 For example, if the module sends `{ x, y }`, the available parameters are `:x`
 and `:y`. Use the identifying parameter such as `:x` to find the source data
-for exactly the hovered chart point. Do not assume that displayed chart series
+for exactly the selected chart rows. Do not assume that displayed chart series
 names or source column names are available as parameters unless they are
 actually present in the sent `dataPoint`.
 
-Databricks named parameters accept scalar values. The tooltip route therefore
-keeps strings, numbers, booleans, and `null` unchanged, but serializes arrays
-and objects as JSON strings. The complete data point remains available, but the
-tooltip SQL must convert complex parameters back to the correct type when it
-uses them. Derive that type from `chartDataSchema.ts` and the actual `dataPoint`.
+Each tooltip endpoint invocation batches every selected data point into one
+request and one Databricks query. It groups properties by name and serializes
+every group as a JSON array. This applies to a single click as well as lasso or
+multi-selection. Tooltip SQL must therefore parse every used parameter with
+`from_json`. A visible enhanced tooltip and connection resolution can invoke
+the endpoint separately, but neither may issue one query per selected row.
 
-For example, when `y` is an array of nullable numbers, use:
+Derive the element type from `chartDataSchema.ts` and the actual `dataPoint`:
+
+- scalar `x: number` becomes `ARRAY<DOUBLE>`
+- scalar `name: string` becomes `ARRAY<STRING>`
+- array `y: number[]` becomes `ARRAY<ARRAY<DOUBLE>>`
+
+For example, when `x` is a number, use:
 
 ```sql
-from_json(:y, 'ARRAY<DOUBLE>')
+from_json(CAST(:x AS STRING), 'ARRAY<DOUBLE>')
 ```
 
 Use the Databricks SQL type that matches the real value. Do not assume that all
 arrays contain numbers or that every module sends the same data-point shape.
+Never generate one tooltip request or one SQL query per selected row.
 
-If the selected module does not send a `dataPoint` to the tooltip route on
-hover, explain that the module does not currently support this tooltip workflow.
-Do not create tooltip SQL that cannot be called, and do not modify the module
-during normal dashboard creation.
+### Parameter Shape Contract
+
+For every filter or chart connection, trace one representative value through
+the complete path before finalizing SQL:
+
+```text
+source column -> source SQL result -> API JSON -> client request parameter -> target SQL -> target column
+```
+
+At each boundary, record whether the value is:
+
+- a scalar such as `"167-5188"`
+- a native array such as `["167-5188", "167-5516"]`
+- a delimited string such as `"167-5188,167-5516"`
+- a JSON string representing an array such as
+  `"[\"167-5188\",\"167-5516\"]"`
+
+Tooltip input parameters always use the last form because they are batched.
+For one selected point, the array contains one element. For 1,000 selected
+points, the same parameter contains 1,000 elements and still produces exactly
+one tooltip SQL execution.
+
+These shapes are not interchangeable. JSON serialization does not split a
+delimited string into separate values. In particular, this request is invalid
+when the target compares one `CarName` at a time:
+
+```json
+{
+  "CarName": "[\"167-5188,167-5516\",\"167-4439\"]"
+}
+```
+
+The inner CSV strings must first be normalized into atomic values. Prefer doing
+this in the source SQL so Databricks returns a real array:
+
+```sql
+SELECT array_sort(collect_set(trim(raw_value))) AS CarName
+FROM source_rows
+LATERAL VIEW explode(split(csv_column, ',')) AS raw_value
+WHERE csv_column IS NOT NULL
+  AND trim(raw_value) <> ''
+```
+
+The resulting API value must have this shape:
+
+```json
+{
+  "CarName": ["167-4439", "167-5188", "167-5516"]
+}
+```
+
+When the client sends that array as a JSON string parameter, target SQL must
+restore the same element type before comparing it:
+
+```sql
+:CarName IS NULL
+OR array_contains(
+  from_json(CAST(:CarName AS STRING), 'ARRAY<STRING>'),
+  trim(CAST(CarName AS STRING))
+)
+```
+
+For chart connections, every name in `expectedColumns` must meet all of these
+conditions:
+
+- It is a real column in the target chart's retrieved table schema.
+- The source tooltip SQL returns it with exactly the same alias.
+- Its returned value is a scalar or an array of atomic values, never an array
+  whose elements still contain delimited lists.
+- The target chart SQL declares and parses the corresponding named parameter.
+- A representative source value, after normalization, equals a representative
+  target-column value under the actual comparison expression.
+
+Do not consider the SQL complete until this end-to-end example succeeds by
+inspection or, when query execution is available, with actual query results.
+
+If the selected module cannot report original rows through click selection or a
+lasso adapter, explain that it does not currently support this selected-row
+tooltip workflow. Do not create tooltip SQL that cannot be called, and do not
+modify the module during normal dashboard creation.
 
 Write a separate tooltip query that:
 
 - uses only tables and columns from the retrieved schemas
 - reverses or mirrors the transformation in the chart SQL as needed to identify
-  the hovered point
+  the selected rows
 - returns only the information requested by the user
 - formats technical values for display, for example dates as `dd.MM.yyyy`
 - gives every result column a concise, human-readable alias
@@ -484,9 +571,60 @@ pagesConfig/sql/tooltipSql/123456as.tooltip.sql
 
 The tooltip SQL filename must use the same `chartID` as the visualization.
 
+### Runtime behavior supplied by `ChartWrapper`
+
+Do not implement tooltip, lasso, or connection-menu UI in a dashboard page or
+module. `ChartWrapper` provides it consistently:
+
+- `enhancedTooltip: true` enables the selected-row detail tooltip.
+- A successful lasso selection opens the tooltip and leaves lasso mode active
+  for another gesture. Starting a new valid gesture closes the previous tooltip.
+- Right-click **Tooltip anzeigen** reopens details for the current selection and
+  is disabled without selected rows or when `enhancedTooltip` is false.
+- Right-click **Verlinktes Diagramm filtern** is disabled until outgoing
+  connection values resolve. Choosing one target applies that target immediately.
+- The tooltip footer button applies the staged values to all linked targets.
+- Tooltip state belongs to its source `chartID`; only that wrapper renders the card.
+- Target menu labels come from `chartTitle` across all configured tabs. Require a
+  useful title for connected targets; never expose `chartID` as user-facing text.
+
 ---
 
-## 14. Configure Layout
+## 14. Configure Chart Connections
+
+After the relevant visualizations are complete, ask whether selecting data in
+one chart should filter another chart. Present source and target choices using
+their visible titles, not their internal IDs.
+
+For every requested link:
+
+1. Confirm that the source module supports selection.
+2. Resolve the selected titles to `fromChartID` and `toChartID` internally.
+3. Choose one or more real target-table columns for `expectedColumns`.
+4. Return those values from the source tooltip SQL using the exact aliases.
+5. Add matching optional named parameters to the target chart SQL. An unset
+   parameter must not restrict the target query.
+6. Normalize delimited source strings into atomic values before returning them.
+7. Verify one representative value through source row, tooltip result, API JSON,
+   client filter, target SQL parser, and target column comparison.
+
+Example:
+
+```json
+{
+  "fromChartID": "active-users-over-time",
+  "toChartID": "cumulative-fleets",
+  "expectedColumns": ["fleet_creation_date"]
+}
+```
+
+The source tooltip SQL must return `fleet_creation_date`; the target SQL must
+accept `:fleet_creation_date`, parse its JSON array using the real element type,
+and compare it to the target column. Multiple links from one source are allowed.
+
+---
+
+## 15. Configure Layout
 
 Ask how the visualization should be positioned on the current tab.
 
@@ -520,7 +658,7 @@ Translate the answer into the appropriate `space` value.
 
 ---
 
-## 15. Validate the Visualization
+## 16. Validate the Visualization
 
 Before continuing with the next visualization, verify:
 
@@ -533,7 +671,8 @@ Before continuing with the next visualization, verify:
 - SQL uses only valid tables and columns from the retrieved schemas.
 - SQL returns exactly the structure required by `chartDataSchema.ts`.
 - Filters are reflected correctly in the SQL where required.
-- The user selected the tooltip contents.
+- When `enhancedTooltip` or an outgoing connection is used, the user selected
+  the tooltip contents and the required connection values are included.
 - The sent tooltip `dataPoint` and its available parameter names were verified
   in the selected module implementation.
 - `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql` exists, uses only available
@@ -541,13 +680,21 @@ Before continuing with the next visualization, verify:
   readable aliases.
 - Serialized array or object parameters are converted from JSON using types
   that match the module's data schema.
+- Tooltip SQL treats every input parameter as a batched JSON array, including
+  single-click requests, and does not execute once per selected row.
+- Every connection parameter passed an end-to-end shape check from source value
+  through target comparison.
+- Connected targets have useful `chartTitle` values for the context menu.
+- A connection target is listed once even when multiple columns bind to it.
+- Delimited source strings were normalized before array serialization; no
+  request array contains elements that are themselves comma-separated lists.
 - Layout values are valid.
 
 Only after these checks succeed is the visualization complete.
 
 ---
 
-## 16. Continue With the Next Visualization
+## 17. Continue With the Next Visualization
 
 After one visualization is complete, continue with the next visualization in the dashboard structure.
 
@@ -562,19 +709,20 @@ Repeat the complete visualization workflow:
 7. Configure the visualization.
 8. Configure filters.
 9. Generate SQL.
-10. Configure the hover tooltip and generate its SQL.
-11. Configure layout.
-12. Validate the visualization.
+10. Configure the selection tooltip and generate its SQL when required.
+11. Configure chart connections when requested.
+12. Configure layout.
+13. Validate the visualization.
 
 Do not mix unfinished visualizations.
 
 ---
 
-## 17. Create DashboardConfig
+## 18. Create DashboardConfig
 
 After all visualizations are complete, build the full dashboard configuration.
 
-The configuration must conform to the repository's `DashboardConfig` type: a top-level object with `reportName`, `filterLayout`, `filters`, and `tabs`.
+The configuration must conform to the repository's `DashboardConfig` type: a top-level object with `reportName`, `filterLayout`, `filters`, `tabs`, and optional `connections`.
 
 Example:
 
@@ -605,15 +753,22 @@ Example:
         }
       ]
     }
+  ],
+  "connections": [
+    {
+      "fromChartID": "123456as",
+      "toChartID": "789012bc",
+      "expectedColumns": ["fleet_creation_date"]
+    }
   ]
 }
 ```
 
-One trigger may contain multiple rows and multiple modules. Omit `filterBindings` for charts without filters.
+One trigger may contain multiple rows and multiple modules. Omit `filterBindings` for charts without filters and `connections` when no chart links are configured.
 
 ---
 
-## 18. Save Dashboard Config
+## 19. Save Dashboard Config
 
 Save the finished `DashboardConfig` as JSON in:
 
@@ -631,7 +786,7 @@ The filename should clearly belong to the dashboard.
 
 ---
 
-## 19. Register Dashboard
+## 20. Register Dashboard
 
 Register the dashboard in:
 
@@ -667,7 +822,7 @@ Preserve all existing entries when adding another dashboard.
 
 ---
 
-## 20. Final Validation
+## 21. Final Validation
 
 Before generating the page, verify:
 
@@ -682,6 +837,13 @@ Before generating the page, verify:
   `chartID`.
 - Every tooltip SQL uses parameters provided by the data point that its module
   sends and returns the information requested by the user with readable labels.
+- Every chart connection has matching `expectedColumns`, source tooltip aliases,
+  atomic runtime values, target named parameters, and target SQL types.
+- Every connected target has a user-facing `chartTitle`; menu labels are never
+  derived from internal chart IDs.
+- When browser validation is available, each single-target action refetches only
+  the chosen chart with connection parameters and the tooltip footer applies all
+  staged targets.
 - Every module configuration is valid.
 - The dashboard config is valid JSON.
 - The dashboard config conforms to `DashboardConfig`.
@@ -689,7 +851,7 @@ Before generating the page, verify:
 
 ---
 
-## 21. Generate the Page
+## 22. Generate the Page
 
 After all configuration, schemas, and SQL files are complete and valid, use the repository's existing page generation process.
 

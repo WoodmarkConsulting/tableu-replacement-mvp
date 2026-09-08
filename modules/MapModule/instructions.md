@@ -695,3 +695,11 @@ Places the legend in a fixed corner of the map container.
 This module expects the API to resolve the map data into a flat array of records. The chart wrapper validates the array using the Zod schema defined in `chartDataSchema.ts`.
 
 The default source geography is the bundled countries TopoJSON shipped with `world-atlas`, which keeps the module self-contained and avoids a tile basemap or API key requirement.
+
+The configured map tooltip is a module-local hover tooltip. It is separate from the
+wrapper-owned enhanced detail tooltip backed by tooltip SQL. Region and bubble clicks report
+original rows through `onSelectionChange`; `ChartWrapper` owns the resulting `selectedRows`,
+right-click menu, enhanced tooltip, and outgoing chart connections. With selected rows,
+**Tooltip anzeigen** requires `enhancedTooltip: true`, while linked-chart actions also require
+successfully resolved `expectedColumns` values from the source tooltip SQL. Target charts are
+shown by their configured titles and a chosen target is filtered immediately.

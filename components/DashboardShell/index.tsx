@@ -1,13 +1,13 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 
 import { ActiveFilters } from "@/components/ActiveFilters";
-import { FilterActions } from "@/components/FilterActions";
 import { ShareButton } from "@/components/ShareButton";
 import { TabFilters } from "@/components/TabFilters";
 import { TabsWrapper } from "@/components/TabsWrapper";
 import { useFilterUrlSync } from "@/hooks/useFilterUrlSync";
+import useChartConnectionsStore from "@/stores/chartConnectionsStore";
 import useFilterStore from "@/stores/filterProvider";
 
 type DashboardShellProps = {
@@ -21,10 +21,19 @@ function FilterUrlSync() {
 }
 
 export function DashboardShell({ config }: DashboardShellProps) {
-  const { reportName, filterLayout, filters, tabs } = config;
+  const { reportName, filters, tabs, connections } = config;
 
   const activeTab = useFilterStore((state) => state.activeTab);
   const setActiveTab = useFilterStore((state) => state.setActiveTab);
+  const resetConnections = useChartConnectionsStore(
+    (state) => state.resetConnections,
+  );
+
+  useEffect(() => {
+    resetConnections();
+
+    return resetConnections;
+  }, [reportName, resetConnections]);
 
   const urlSync = (
     <Suspense fallback={null}>
@@ -42,16 +51,6 @@ export function DashboardShell({ config }: DashboardShellProps) {
     </div>
   );
 
-  // In the "top" layout the global filters render outside the sidebar, so the
-  // Apply/Reset control lives in the top bar. The sidebar layout gets it from
-  // AppSidebar's footer.
-  const actions =
-    filterLayout === "top" ? (
-      <div className="print:hidden">
-        <FilterActions />
-      </div>
-    ) : null;
-
   const applied = <ActiveFilters dimensions={filters} />;
 
   const main = (
@@ -62,6 +61,7 @@ export function DashboardShell({ config }: DashboardShellProps) {
 
       <TabsWrapper
         tabsConfig={tabs}
+        connections={connections}
         value={activeTab}
         onValueChange={setActiveTab}
       />
@@ -73,8 +73,6 @@ export function DashboardShell({ config }: DashboardShellProps) {
       {urlSync}
 
       {header}
-
-      {actions}
 
       {applied}
 

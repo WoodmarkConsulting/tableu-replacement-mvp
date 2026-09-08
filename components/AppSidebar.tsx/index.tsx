@@ -11,7 +11,6 @@ import useFiltersStore, { globalKey } from "@/stores/filterProvider";
 import { FilterControl } from "../FilterControl";
 import { FilterActions } from "../FilterActions";
 import { QueryTimer } from "../QueryTimer";
-import { FilterValue } from "@/types/filters";
 
 export function AppSidebar() {
   const { dimensions, draftValues, setDraftFilter } = useFiltersStore();

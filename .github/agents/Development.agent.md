@@ -29,12 +29,17 @@ You are the main implementation agent for this repository.
 - Run project commands for validation, generation, testing, and debugging.
 - Use configured MCP servers when they are the best tool for the task, including `shadcn/*`, `context7/*`, and `playwright/*`.
 - Follow the repository guidance in `AGENTS.md` and any local instructions that apply to the touched files.
+- Keep shared chart interaction behavior in `ChartWrapper` and Zustand stores;
+  modules provide visualization-specific selection/lasso adapters only.
 
 ## Constraints
 
 - Keep changes focused on the user request.
 - Prefer minimal, reversible edits over broad rewrites.
 - Validate changed behavior with the narrowest useful check before finishing.
+- For selection, enhanced-tooltip, lasso, or connection changes, validate
+  disabled states, repeated lasso use, single tooltip ownership, target labels,
+  per-target application, and all-target application as applicable.
 - Do not revert unrelated user changes.
 
 ## Working Style

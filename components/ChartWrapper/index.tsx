@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
@@ -12,6 +12,16 @@ import {
 } from "@/components/ui/empty";
 
 import { Spinner } from "@/components/ui/spinner";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { Eye, ListFilter } from "lucide-react";
 
 import {
   Card,
@@ -22,6 +32,10 @@ import {
 } from "@/components/ui/card";
 
 import { cn } from "@/lib/utils";
+import {
+  type ConnectionFilters,
+  type ConnectionFilterValue,
+} from "@/stores/chartConnectionsStore";
 
 import {
   moduleRegistry,
@@ -30,6 +44,7 @@ import {
 } from "@/modules/modulRegistry";
 
 import useFilterStore, { globalKey, tabKey } from "@/stores/filterProvider";
+import useChartConnectionsStore from "@/stores/chartConnectionsStore";
 import useQueryTimingStore from "@/stores/queryTimingStore";
 
 import useTooltipStore from "@/stores/tooltip";
@@ -37,27 +52,78 @@ import TooltipCard from "../TooltipCard";
 import ChartState from "./ChartState";
 import LassoInteractionOverlay from "./LassoInteractionOverlay";
 import LassoToolbar from "./LassoToolbar";
-import { fetchTimedChartData, parseMockData, toQueryParam } from "./utils";
+import {
+  fetchTimedChartData,
+  fetchTooltipData,
+  parseMockData,
+  toQueryParam,
+} from "./utils";
 // import useChartState from "@/hooks/useChartState";
 
 type ModuleSchema<M extends ModuleRegistryKeys> =
   (typeof moduleRegistry)[M]["dataSchema"];
 
+const EMPTY_CONNECTIONS: ChartConnection[] = [];
+
+function isConnectionFilterValue(
+  value: unknown,
+): value is ConnectionFilterValue {
+  return (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  );
+}
+
+function getConnectionValues(value: unknown): ConnectionFilterValue[] {
+  const values = Array.isArray(value) ? value : [value];
+
+  return values.filter(isConnectionFilterValue);
+}
+
 function ChartWrapper<M extends ModuleRegistryKeys>(
   props: TabsComponentConfig & {
     moduleName: M;
     height: number;
+    connections?: ChartConnection[];
+    chartLabels: Partial<Record<TableSchemaKey, string>>;
   },
 ) {
   type ModuleChartData<M extends ModuleRegistryKeys> = z.infer<ModuleSchema<M>>;
   type DataType = ModuleChartData<M>;
 
-  const { moduleName, mockData, filterBindings, ...baseProps } = props;
+  const {
+    moduleName,
+    mockData,
+    filterBindings,
+    connections = EMPTY_CONNECTIONS,
+    chartLabels,
+    ...baseProps
+  } = props;
   const { chartID, chartTitle, chartDescription } = baseProps;
   const { component, dataSchema } = moduleRegistry[moduleName];
+  const tooltipChartID = useTooltipStore((state) => state.chartID);
   const tooltip = useTooltipStore((state) => state.tooltip);
   const position = useTooltipStore((state) => state.position);
   const hideTooltip = useTooltipStore((state) => state.hideTooltip);
+  const showTooltipOnClick = useTooltipStore(
+    (state) => state.showTooltipOnClick,
+  );
+  const filtersByChart = useChartConnectionsStore(
+    (state) => state.filtersByChart,
+  );
+  const setSourceFilters = useChartConnectionsStore(
+    (state) => state.setSourceFilters,
+  );
+  const stageSourceFilters = useChartConnectionsStore(
+    (state) => state.stageSourceFilters,
+  );
+  const applyPendingSourceFilters = useChartConnectionsStore(
+    (state) => state.applyPendingSourceFilters,
+  );
+  const clearPendingSourceFilters = useChartConnectionsStore(
+    (state) => state.clearPendingSourceFilters,
+  );
 
   const interactionSurfaceRef = useRef<HTMLDivElement>(null);
   const [lassoAdapter, setLassoAdapter] =
@@ -68,6 +134,13 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     context: string;
     rows: DataType[];
   } | null>(null);
+  const [resolvedConnectionFilters, setResolvedConnectionFilters] = useState<{
+    context: string;
+    filters: ConnectionFilters;
+  } | null>(null);
+  const selectionRef = useRef<typeof selection>(null);
+  const contextMenuPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const connectionRequestRef = useRef(0);
 
   //TODO: remove or replace with proper chart state management
   // const [filters, setFilters] = useChartState(baseProps.filterConfig);
@@ -77,21 +150,43 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const hasApplied = useFilterStore((state) => state.hasApplied);
   const recordTiming = useQueryTimingStore((state) => state.recordTiming);
 
-  const params = useMemo(() => {
-    const resolved: Record<string, string | number | null> = {};
+  const incomingColumns = Array.from(
+    new Set(
+      connections
+        .filter((connection) => connection.toChartID === chartID)
+        .flatMap((connection) => connection.expectedColumns),
+    ),
+  );
 
-    if (filterBindings) {
-      for (const [dimensionId, sqlParam] of Object.entries(filterBindings)) {
-        const value =
-          filterValues[globalKey(dimensionId)] ??
-          filterValues[tabKey(activeTab, dimensionId)];
+  const outgoingConnections = connections.filter(
+    (connection) => connection.fromChartID === chartID,
+  );
+  const outgoingChartIDs = Array.from(
+    new Set(outgoingConnections.map((connection) => connection.toChartID)),
+  );
 
-        resolved[sqlParam] = toQueryParam(value);
-      }
+  const connectionFilters = filtersByChart[chartID];
+
+  const params: Record<string, string | number | null> = {};
+
+  if (filterBindings) {
+    for (const [dimensionId, sqlParam] of Object.entries(filterBindings)) {
+      const value =
+        filterValues[globalKey(dimensionId)] ??
+        filterValues[tabKey(activeTab, dimensionId)];
+
+      params[sqlParam] = toQueryParam(value);
     }
+  }
 
-    return resolved;
-  }, [filterBindings, filterValues, activeTab]);
+  for (const column of incomingColumns) {
+    const values = connectionFilters?.[column];
+
+    params[column] =
+      connectionFilters && Object.hasOwn(connectionFilters, column)
+        ? JSON.stringify(values ?? [])
+        : null;
+  }
 
   const lasso: LassoController<DataType> = {
     mode: lassoMode,
@@ -143,21 +238,100 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const hasZoom = zoomedContext === zoomContext;
   const selectedRows =
     selection?.context === zoomContext ? selection.rows : ([] as DataType[]);
+  const selectedConnectionFilters =
+    resolvedConnectionFilters?.context === zoomContext
+      ? resolvedConnectionFilters.filters
+      : null;
+
+  useEffect(() => {
+    connectionRequestRef.current += 1;
+    selectionRef.current = null;
+
+    if (connections.some((connection) => connection.fromChartID === chartID)) {
+      setSourceFilters(chartID, {});
+    }
+  }, [chartID, connections, setSourceFilters, zoomContext]);
+
+  useEffect(
+    () => () => {
+      connectionRequestRef.current += 1;
+      setSourceFilters(chartID, {});
+    },
+    [chartID, setSourceFilters],
+  );
+
+  const resolveConnectionFilters = async (rows: DataType[]) => {
+    if (outgoingConnections.length === 0) {
+      setResolvedConnectionFilters(null);
+      return;
+    }
+
+    const requestID = ++connectionRequestRef.current;
+
+    if (rows.length === 0) {
+      setResolvedConnectionFilters(null);
+      stageSourceFilters(chartID, {});
+      return;
+    }
+
+    setResolvedConnectionFilters(null);
+    clearPendingSourceFilters();
+
+    try {
+      const tooltipResult = await fetchTooltipData(
+        chartID,
+        rows as Record<string, unknown>[],
+      );
+
+      if (requestID !== connectionRequestRef.current) {
+        return;
+      }
+
+      const nextFilters: ConnectionFilters = {};
+
+      for (const connection of outgoingConnections) {
+        const targetFilters = (nextFilters[connection.toChartID] ??= {});
+
+        for (const column of connection.expectedColumns) {
+          const values = tooltipResult.dataPoint.flatMap((dataPoint) =>
+            getConnectionValues(dataPoint[column]),
+          );
+
+          targetFilters[column] = Array.from(new Set(values));
+        }
+      }
+
+      setResolvedConnectionFilters({
+        context: zoomContext,
+        filters: nextFilters,
+      });
+      stageSourceFilters(chartID, nextFilters);
+    } catch (connectionError) {
+      if (requestID !== connectionRequestRef.current) {
+        return;
+      }
+
+      setResolvedConnectionFilters(null);
+      clearPendingSourceFilters();
+      console.error(
+        `Failed to resolve chart connections for "${chartID}":`,
+        connectionError,
+      );
+    }
+  };
 
   const handleSelectionChange = (
     rows: DataType[],
     options?: SelectionChangeOptions,
   ) => {
-    setSelection((prev) => {
-      const base = prev?.context === zoomContext ? prev.rows : [];
+    const previousSelection = selectionRef.current;
+    const base =
+      previousSelection?.context === zoomContext ? previousSelection.rows : [];
+    let nextRows = rows;
 
-      if (!options?.additive) {
-        return { context: zoomContext, rows };
-      }
-
-      // Additive click selection: toggle each clicked row (by identity) against
-      // the current selection so repeated clicks accumulate or remove rows.
+    if (options?.additive) {
       const next = new Set(base);
+
       for (const row of rows) {
         if (next.has(row)) {
           next.delete(row);
@@ -166,8 +340,64 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
         }
       }
 
-      return { context: zoomContext, rows: [...next] };
+      nextRows = [...next];
+    }
+
+    const nextSelection = { context: zoomContext, rows: nextRows };
+
+    selectionRef.current = nextSelection;
+    setSelection(nextSelection);
+    void resolveConnectionFilters(nextRows);
+  };
+
+  const handleLassoSelection = (
+    rows: DataType[],
+    tooltipPosition: { x: number; y: number },
+  ) => {
+    handleSelectionChange(rows);
+
+    if (!baseProps.enhancedTooltip) {
+      return;
+    }
+
+    showTooltipOnClick({
+      chartID,
+      dataPoints: rows as Record<string, unknown>[],
+      position: tooltipPosition,
     });
+  };
+
+  const showSelectedTooltip = () => {
+    const tooltipPosition = contextMenuPositionRef.current;
+
+    if (
+      !baseProps.enhancedTooltip ||
+      selectedRows.length === 0 ||
+      !tooltipPosition
+    ) {
+      return;
+    }
+
+    showTooltipOnClick({
+      chartID,
+      dataPoints: selectedRows as Record<string, unknown>[],
+      position: tooltipPosition,
+    });
+
+    if (selectedConnectionFilters) {
+      stageSourceFilters(chartID, selectedConnectionFilters);
+    }
+  };
+
+  const applyConnectionToChart = (targetChartID: TableSchemaKey) => {
+    const targetFilters = selectedConnectionFilters?.[targetChartID];
+
+    if (!targetFilters) {
+      return;
+    }
+
+    stageSourceFilters(chartID, { [targetChartID]: targetFilters });
+    applyPendingSourceFilters();
   };
 
   if (error) {
@@ -266,31 +496,85 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
         ) : null}
 
         {!isLoading && !isFetching && !isError && chartData.length > 0 ? (
-          <div ref={interactionSurfaceRef} className="relative">
-            <Module
-              key={zoomContext}
-              {...baseProps}
-              chartData={isError ? [] : chartData}
-              error={error}
-              isLoading={isLoading}
-              isFetching={isFetching}
-              isError={isError}
-              selectedRows={selectedRows}
-              onSelectionChange={handleSelectionChange}
-              lasso={lasso}
-            />
+          <ContextMenu>
+            <ContextMenuTrigger
+              render={
+                <div
+                  ref={interactionSurfaceRef}
+                  className="relative"
+                  onContextMenu={(event) => {
+                    contextMenuPositionRef.current = {
+                      x: event.clientX,
+                      y: event.clientY,
+                    };
+                  }}
+                />
+              }>
+              <Module
+                key={zoomContext}
+                {...baseProps}
+                chartData={isError ? [] : chartData}
+                error={error}
+                isLoading={isLoading}
+                isFetching={isFetching}
+                isError={isError}
+                selectedRows={selectedRows}
+                onSelectionChange={handleSelectionChange}
+                lasso={lasso}
+              />
 
-            <LassoInteractionOverlay
-              mode={lassoMode}
-              adapter={lassoAdapter}
-              surfaceRef={interactionSurfaceRef}
-              onSelectionChange={handleSelectionChange}
-              onZoomApplied={() => setZoomedContext(zoomContext)}
-            />
-          </div>
+              <LassoInteractionOverlay
+                mode={lassoMode}
+                adapter={lassoAdapter}
+                surfaceRef={interactionSurfaceRef}
+                onSelectionChange={handleLassoSelection}
+                onInteractionStart={hideTooltip}
+                onZoomApplied={() => setZoomedContext(zoomContext)}
+              />
+            </ContextMenuTrigger>
+
+            <ContextMenuContent className="w-64">
+              <ContextMenuItem
+                disabled={
+                  !baseProps.enhancedTooltip || selectedRows.length === 0
+                }
+                onClick={showSelectedTooltip}>
+                <Eye />
+                Tooltip anzeigen
+              </ContextMenuItem>
+
+              <ContextMenuSub>
+                <ContextMenuSubTrigger
+                  disabled={
+                    outgoingChartIDs.length === 0 ||
+                    selectedRows.length === 0 ||
+                    !selectedConnectionFilters
+                  }>
+                  <ListFilter />
+                  Verlinktes Diagramm filtern
+                </ContextMenuSubTrigger>
+                <ContextMenuSubContent className="w-64">
+                  {outgoingChartIDs.map((targetChartID) => (
+                    <ContextMenuItem
+                      key={targetChartID}
+                      disabled={!selectedConnectionFilters?.[targetChartID]}
+                      onClick={() => applyConnectionToChart(targetChartID)}>
+                      {chartLabels[targetChartID] ?? targetChartID}
+                    </ContextMenuItem>
+                  ))}
+                </ContextMenuSubContent>
+              </ContextMenuSub>
+            </ContextMenuContent>
+          </ContextMenu>
         ) : null}
 
-        <TooltipCard tooltip={tooltip} position={position} />
+        {tooltipChartID === chartID ? (
+          <TooltipCard
+            tooltip={tooltip}
+            position={position}
+            amountOfChartConnections={outgoingConnections.length}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );

@@ -1,17 +1,20 @@
 import { create } from "zustand";
 import { debounce } from "lodash";
-import { apiFetch } from "@/app/api/utils/apiFetch";
 import type {
   TooltipPathRequestBody,
   TooltipPathResponse,
 } from "@/app/api/utils/types";
+import { fetchTooltipData } from "@/components/ChartWrapper/utils";
+import useChartConnectionsStore from "@/stores/chartConnectionsStore";
 
 export type TooltipPosition = {
   x: number;
   y: number;
 };
 
-type ShowTooltipArgs = TooltipPathRequestBody & {
+type ShowTooltipArgs = Pick<TooltipPathRequestBody, "chartID"> & {
+  dataPoint?: Record<string, unknown | null> | null;
+  dataPoints?: TooltipPathRequestBody["dataPoints"];
   position: TooltipPosition;
 };
 
@@ -25,6 +28,7 @@ type TooltipContext = {
   _abortController: AbortController;
   isStaticTooltip: boolean;
 
+  chartID: string | null;
   tooltip: Tooltip | null;
   position: TooltipPosition | null;
 
@@ -38,11 +42,15 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
   const _getTooltipData = async ({
     chartID,
     dataPoint,
+    dataPoints,
     position,
   }: ShowTooltipArgs) => {
     const newAbortController = new AbortController();
 
+    useChartConnectionsStore.getState().clearPendingSourceFilters();
+
     set(() => ({
+      chartID,
       position,
       _abortController: newAbortController,
       tooltip: {
@@ -52,14 +60,11 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
     }));
 
     try {
-      return await apiFetch("/api/data/chart/tooltip", {
-        method: "POST",
-        body: {
-          chartID,
-          dataPoint,
-        },
-        signal: newAbortController.signal,
-      });
+      return await fetchTooltipData(
+        chartID,
+        dataPoints ?? [dataPoint ?? {}],
+        newAbortController.signal,
+      );
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) {
         console.error("Error fetching tooltip data:", error);
@@ -126,6 +131,7 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
   const hideTooltip: TooltipContext["hideTooltip"] = () => {
     // Avoid loading stale tooltip data
     debouncedFetch.cancel();
+    useChartConnectionsStore.getState().clearPendingSourceFilters();
 
     const tooltip = get().tooltip;
 
@@ -138,6 +144,7 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
     }
 
     set({
+      chartID: null,
       tooltip: null,
       position: null,
     });
@@ -145,6 +152,7 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
 
   return {
     _abortController: new AbortController(),
+    chartID: null,
     tooltip: null,
     position: null,
     isStaticTooltip: true,

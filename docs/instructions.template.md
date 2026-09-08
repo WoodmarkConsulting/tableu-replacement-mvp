@@ -296,6 +296,10 @@ import <ModuleName> from "@/modules/<ModuleName>";
 Document the props that are relevant when this module is instantiated.
 
 Do not repeat framework-internal details that developers or agents do not need to configure manually.
+For selection-capable modules, document `selectedRows`, `onSelectionChange`, and
+the registered `lasso` adapter behavior. If `enhancedTooltip` is relevant, state
+that the visible tooltip and connection context menu are owned by `ChartWrapper`,
+not implemented inside the module.
 
 ### `<propName>`
 
@@ -332,6 +336,8 @@ Examples:
 - Fallback behavior.
 - Conditional rendering.
 - Handling of `null` values.
+- Selection highlighting and invalidation.
+- Lasso adapter capabilities and whether selection mode remains active.
 
 Do not describe every implementation detail.
 
@@ -379,6 +385,7 @@ When an AI agent uses this module, it must follow these rules.
 10. Generate complete configuration objects unless the surrounding API explicitly supports partial configuration.
 11. Do not change `index.tsx`, `chartDataSchema.ts`, or `chartType.d.ts` unless the user explicitly requests a change to the module itself.
 12. If the requested visualization cannot be represented by this module's existing configuration, report the limitation instead of silently modifying the module.
+13. Keep enhanced tooltip, context-menu, and chart-connection behavior in `ChartWrapper`; a module contributes only visualization-specific selection and lasso behavior.
 
 ---
 

@@ -26,7 +26,7 @@ export default function LassoToolbarButton({
           <Button
             type="button"
             size="icon-sm"
-            variant={active ? "secondary" : "ghost"}
+            variant={active ? "default" : "ghost"}
             aria-label={label}
             aria-pressed={active}
             onClick={onClick}>

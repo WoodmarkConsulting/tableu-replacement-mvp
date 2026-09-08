@@ -2,8 +2,8 @@ import type { PointerEvent } from "react";
 import { z } from "zod";
 
 import { apiFetch } from "@/app/api/utils/apiFetch";
+import type { TooltipPathResponse } from "@/app/api/utils/types";
 import type { QueryTiming } from "@/stores/queryTimingStore";
-import type { FilterValue } from "@/types/filters";
 
 /**
  * Converts a dashboard filter value into a scalar value accepted by chart APIs.
@@ -46,6 +46,21 @@ export function parseMockData<TData extends object>(
   }
 
   return result.data;
+}
+
+export function fetchTooltipData(
+  chartID: string,
+  dataPoints: Record<string, unknown>[],
+  signal?: AbortSignal,
+): Promise<TooltipPathResponse> {
+  return apiFetch("/api/data/chart/tooltip", {
+    method: "POST",
+    signal,
+    body: {
+      chartID,
+      dataPoints,
+    },
+  });
 }
 
 /**

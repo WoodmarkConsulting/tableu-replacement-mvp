@@ -7,7 +7,7 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 1. A dashboard JSON file references a module through the `moduleName` field on a component, for example `"moduleName": "LineChartModule"`. The value must match a key in `modules/modulRegistry.ts`.
 2. `scripts/pages/generateNextPage.ts` embeds the dashboard JSON into the generated page; it does not import modules directly.
 3. At runtime, `TabsWrapper` renders a `ChartWrapper` for each configured component.
-4. `ChartWrapper` resolves the module from `modules/modulRegistry.ts` via `moduleName` (a dynamic import), fetches `/api/data/<chartID>`, validates the result against the module's Zod schema, and injects props including `height`, `chartData`, and loading/error state.
+4. `ChartWrapper` resolves the module from `modules/modulRegistry.ts` via `moduleName` (a dynamic import), fetches `/api/data/chart/<chartID>`, validates the result against the module's Zod schema, and injects props including `height`, `chartData`, selection/lasso controls, and loading/error state.
 
 ## Module contract
 
@@ -22,6 +22,18 @@ This folder contains reusable dashboard modules that can be referenced from `pag
   Registering `select` enables selection; registering `applyZoom` and `resetZoom` enables
   visual zoom. `LineChartModule` currently supports both. This is framework/module behavior,
   not dashboard configuration.
+- Enhanced tooltip and chart-connection UI belongs to `ChartWrapper`, not to modules. With
+  `enhancedTooltip: true`, selected rows can open a static detail tooltip and reopen it from
+  the wrapper-owned right-click menu. The menu disables unavailable actions automatically.
+- Tooltip and connection requests batch all selected rows. Every data-point property reaches
+  tooltip SQL as a JSON array parameter; SQL must parse scalar and nested-array shapes with the
+  correct Databricks type.
+- Outgoing chart connections are resolved from source tooltip SQL. Each `expectedColumns` name
+  must be an exact result alias, contain atomic values, exist in the target table schema, and be
+  parsed by the target chart SQL under the same named parameter.
+- `TabsWrapper` maps every configured `chartID` to its `chartTitle` across tabs so the context
+  menu shows user-facing target names. Connected charts should always have useful titles;
+  untitled targets display `Unbenanntes Diagramm` rather than an internal ID.
 
 ## Modules currently available
 

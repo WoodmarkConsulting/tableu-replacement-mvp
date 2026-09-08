@@ -360,7 +360,8 @@ Required:
 
 Description:
 
-Controls whether the shared chart tooltip is rendered and whether the hover cursor is shown.
+Controls whether the inline Recharts tooltip is rendered and whether its hover cursor is shown.
+This is separate from the wrapper-owned enhanced tooltip backed by tooltip SQL.
 
 Example:
 
@@ -382,6 +383,7 @@ Behavior:
 
 - If `show` is `false`, no tooltip component is rendered.
 - `cursor` is passed through to `ChartTooltip`.
+- While a wrapper-owned enhanced tooltip is present, the inline tooltip is suppressed.
 
 ### `legend`
 
@@ -796,6 +798,24 @@ Source:
 
 `application`
 
+### `enhancedTooltip`
+
+Type:
+
+```ts
+boolean | undefined;
+```
+
+Description:
+
+Enables the wrapper-owned selected-row detail tooltip. It does not change the line data
+contract. When rows are selected, `ChartWrapper` can open the tooltip immediately and expose
+**Tooltip anzeigen** in the right-click menu. The action remains disabled without a selection.
+
+Source:
+
+`configuration`
+
 ### `lasso`
 
 Type:
@@ -810,7 +830,9 @@ Framework-owned controller used by the module to register its chart-specific las
 The LineChart adapter reports the Recharts plot bounds, selects rows whose visible series
 points fall inside the freehand selection polygon, applies progressive rectangular X-axis
 zoom, and resets zoom. Shape coordinates are normalized to the actual plot area, excluding
-axes and header UI.
+axes and header UI. Selection mode remains active after a completed gesture, so users can draw
+again without toggling the toolbar button. Starting another valid gesture closes the previous
+enhanced tooltip; a successful selection can open a replacement.
 
 Source:
 
@@ -848,7 +870,8 @@ Description:
 
 Present when the framework enables selection. Point clicks and successful lasso selections
 send selected data rows through the same central `ChartWrapper` selection flow. Visual lasso
-zoom does not call this callback.
+zoom does not call this callback. `ChartWrapper` uses the same selected rows for enhanced
+tooltips and outgoing chart connections; the module does not fetch tooltip or target data.
 
 Source:
 
@@ -980,6 +1003,15 @@ Describe important behavior that happens inside the module.
 - `useMemo` is used for derived chart config and transformed chart data.
 - A configured series renders as `Area` when `fill.enabled` is `true`; otherwise it renders as `Line`.
 - Null values can either break the line or be connected depending on `connectNulls`.
+- Click and freehand lasso selection update the wrapper-owned `selectedRows`; the module only
+  renders selected segments in amber.
+- The wrapper renders the right-click context menu whenever chart data is available. Tooltip
+  reopening requires `enhancedTooltip` and selected rows. Linked-chart filtering additionally
+  requires outgoing connections and successfully resolved values from source tooltip SQL.
+- Target entries are displayed by `chartTitle`, not `chartID`. Selecting one applies filters to
+  that target immediately; the tooltip footer can apply the staged values to all linked targets.
+- A data refetch or relevant chart configuration change invalidates selection and connection
+  values. Lasso zoom does not dispatch selection.
 
 ---
 

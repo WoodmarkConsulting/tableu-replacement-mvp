@@ -21,12 +21,12 @@ const pathToSqlDir = path.join(
 );
 
 export async function POST(_req: NextRequest) {
-  let dataPoint: RequestBody["dataPoint"];
+  let dataPoints: RequestBody["dataPoints"];
   let chartID: RequestBody["chartID"];
 
   try {
     const body = (await _req.json()) as RequestBody;
-    dataPoint = body.dataPoint;
+    dataPoints = body.dataPoints;
     chartID = body.chartID;
   } catch (error) {
     console.error("Error parsing request body:", error);
@@ -36,9 +36,9 @@ export async function POST(_req: NextRequest) {
     });
   }
 
-  if (!dataPoint) {
+  if (!Array.isArray(dataPoints) || dataPoints.length === 0) {
     return buildErrorMessage({
-      message: "Missing dataPoint parameter",
+      message: "Missing dataPoints parameter",
       httpStatus: 400,
     });
   }
@@ -66,31 +66,20 @@ export async function POST(_req: NextRequest) {
     });
   }
 
-  let data: { [key: string]: unknown };
+  let data: Record<string, unknown>[];
 
+  const parameterNames = new Set(
+    dataPoints.flatMap((dataPoint) => Object.keys(dataPoint)),
+  );
   const queryParameters: QueryParameters = Object.fromEntries(
-    Object.entries(dataPoint).map(([key, value]) => {
-      if (
-        typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean" ||
-        value === null
-      ) {
-        return [key, value];
-      }
-
-      return [key, JSON.stringify(value)];
-    }),
+    Array.from(parameterNames, (key) => [
+      key,
+      JSON.stringify(dataPoints.map((dataPoint) => dataPoint[key] ?? null)),
+    ]),
   );
 
-  console.log("sqlQuery", sqlQuery);
-  console.log("queryParameters", queryParameters);
-
   try {
-    data = await runQuery<{ [key: string]: unknown }>(
-      sqlQuery,
-      queryParameters,
-    );
+    data = await runQuery<Record<string, unknown>[]>(sqlQuery, queryParameters);
   } catch (error) {
     console.error(
       `Failed to execute SQL query for chartID "${chartID}":`,

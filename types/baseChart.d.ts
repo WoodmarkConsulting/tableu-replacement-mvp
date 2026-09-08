@@ -14,7 +14,7 @@ type FilterConfig = {
 type BaseChartProps<C extends ChartConfigs = ChartConfigs> = {
   chartTitle?: string;
   chartDescription: string;
-  chartID: string;
+  chartID: TableSchemaKey;
   enhancedTooltip?: boolean;
   // TODO: Remove or update the filterConfig for the Chartspecifiy Filtersection
   // filterConfig: FilterConfig[];

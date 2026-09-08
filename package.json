@@ -8,7 +8,7 @@
   },
   "packageManager": "pnpm@12.3.4",
   "scripts": {
-    "postinstall": "npm run databricks:install",
+    "postinstall": "npm run databricks:install && npx tsx scripts/configs/sync-npm-lock.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -21,6 +21,8 @@
     "databricks:disconnect": "npx tsx scripts/databricks/disconnectFromDatabricks.ts",
     "databricks:ensureApps": "npx tsx scripts/databricks/ensureDatabricksApp.ts",
     "databricks:tableSchemas": "npx tsx scripts/databricks/writeTableSchemas.ts",
+    "databricks:generateTableTypesOnce": "npx tsx scripts/databricks/generateTableTabelSchema.ts --once",
+    "databricks:generateTableTypesWatch": "npx tsx scripts/databricks/generateTableTabelSchema.ts",
     "module:generateRegistry": "npx tsx scripts/modules/generateModuleRegistry.ts",
     "module:validate": "npx tsx scripts/modules/validateModules.ts"
   },
@@ -68,6 +70,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }

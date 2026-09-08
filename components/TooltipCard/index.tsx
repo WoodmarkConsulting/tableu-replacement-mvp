@@ -2,21 +2,34 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 import type { Tooltip, TooltipPosition } from "@/stores/tooltip";
 import { Spinner } from "../ui/spinner";
+import { Button } from "../ui/button";
 import useTooltipStore from "@/stores/tooltip";
-import { X } from "lucide-react";
+import useChartConnectionsStore from "@/stores/chartConnectionsStore";
+import { ListFilter, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Props = {
   tooltip: Tooltip | null;
   position: TooltipPosition | null;
+  amountOfChartConnections: number;
 };
 
 const GAP = 12;
 const VIEWPORT_PADDING = 8;
 
-const TooltipCard = ({ tooltip, position }: Props) => {
+const TooltipCard = ({
+  tooltip,
+  position,
+  amountOfChartConnections = 0,
+}: Props) => {
   const isStaticTooltip = useTooltipStore((state) => state.isStaticTooltip);
   const hideTooltip = useTooltipStore((state) => state.hideTooltip);
+  const pendingSourceFilters = useChartConnectionsStore(
+    (state) => state.pendingSourceFilters,
+  );
+  const applyPendingSourceFilters = useChartConnectionsStore(
+    (state) => state.applyPendingSourceFilters,
+  );
 
   const ref = useRef<HTMLDivElement>(null);
   const [resolvedPosition, setResolvedPosition] =
@@ -58,32 +71,53 @@ const TooltipCard = ({ tooltip, position }: Props) => {
     <div
       ref={ref}
       className={cn(
-        "fixed z-50 max-h-96 max-w-xl overflow-auto rounded-md border bg-background p-3 shadow-md text-xs",
+        "fixed z-70 flex max-h-[min(16rem,35vh)] w-[min(56rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-md border bg-background shadow-md text-xs",
         isStaticTooltip ? "" : "pointer-events-none",
       )}
       style={{
         left: resolvedPosition?.x ?? position.x + GAP,
         top: resolvedPosition?.y ?? position.y + GAP,
       }}>
-      {tooltip.state === "pending" && <Spinner />}
+      {isStaticTooltip ? (
+        <div className="flex shrink-0 items-center justify-between border-b px-4 py-2">
+          <span className="font-medium">Details</span>
 
-      {tooltip.state === "rejected" && (
-        <div className="text-sm">Tooltip konnte nicht geladen werden.</div>
-      )}
-
-      {tooltip.state === "fulfilled" && (
-        <div className="flex flex-col">
-          {isStaticTooltip ? (
-            <div className="ml-auto">
-              <X
-                className="size-4 hover:border hover:border-gray-300 rounded p-0.5"
-                onClick={hideTooltip}
-              />
-            </div>
-          ) : null}
-          <TooltipValue value={tooltip.tooltipData.dataPoint} />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Tooltip schließen"
+            title="Tooltip schließen"
+            onClick={hideTooltip}>
+            <X />
+          </Button>
         </div>
-      )}
+      ) : null}
+
+      <div className="min-h-0 flex-1 overflow-auto p-4">
+        {tooltip.state === "pending" && <Spinner />}
+
+        {tooltip.state === "rejected" && (
+          <div className="text-sm">Tooltip konnte nicht geladen werden.</div>
+        )}
+
+        {tooltip.state === "fulfilled" && (
+          <TooltipValue value={tooltip.tooltipData.dataPoint} />
+        )}
+      </div>
+
+      {isStaticTooltip && pendingSourceFilters && amountOfChartConnections ? (
+        <div className="flex shrink-0 border-t bg-background p-3">
+          <Button
+            className="ml-auto mt-3 w-fit"
+            onClick={() => {
+              applyPendingSourceFilters();
+              hideTooltip();
+            }}>
+            <ListFilter data-icon="inline-start" />
+            Verknüpfte Diagramme filtern
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -96,7 +130,11 @@ function TooltipValue({ value }: { value: unknown }) {
   }
 
   if (typeof value === "string") {
-    return <span>{value}</span>;
+    return (
+      <span className="block max-w-80 truncate" title={value}>
+        {value}
+      </span>
+    );
   }
 
   if (typeof value === "number") {
@@ -155,12 +193,12 @@ function TooltipArray({ value }: { value: unknown[] }) {
     return <TooltipTable value={value as Record<string, unknown>[]} />;
   }
 
+  const displayValue = value.map(String).join(", ");
+
   return (
-    <div className="flex flex-col gap-1">
-      {value.map((entry, index) => (
-        <TooltipValue key={index} value={entry} />
-      ))}
-    </div>
+    <span className="block max-w-80 truncate" title={displayValue}>
+      {displayValue}
+    </span>
   );
 }
 
@@ -168,13 +206,13 @@ function TooltipTable({ value }: { value: Record<string, unknown>[] }) {
   const columns = Array.from(new Set(value.flatMap((row) => Object.keys(row))));
 
   return (
-    <table className="text-sm">
+    <table className="w-full table-fixed text-sm">
       <thead>
         <tr>
           {columns.map((column) => (
             <th
               key={column}
-              className="border-b px-2 py-1 text-left font-medium text-xs">
+              className="border-b px-3 py-2 text-left font-medium text-xs">
               {formatLabel(column)}
             </th>
           ))}
@@ -185,7 +223,7 @@ function TooltipTable({ value }: { value: Record<string, unknown>[] }) {
         {value.map((row, rowIndex) => (
           <tr key={rowIndex}>
             {columns.map((column) => (
-              <td key={column} className="px-2 py-1 align-top text-xs ">
+              <td key={column} className="px-3 py-2 align-top text-xs">
                 <TooltipValue value={row[column]} />
               </td>
             ))}

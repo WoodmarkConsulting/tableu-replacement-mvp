@@ -9,10 +9,12 @@ export type ChartDataPathResponse = unknown[];
 // --------------- Tooltip API types ---------------
 export type TooltipPath = "/api/data/chart/tooltip";
 export type TooltipPathRequestBody = {
-  dataPoint?: Record<string, unknown | null> | null;
+  dataPoints: Record<string, unknown | null>[];
   chartID: string;
 };
-export type TooltipPathResponse = Record<string, unknown>;
+export type TooltipPathResponse = {
+  dataPoint: Record<string, unknown>[];
+};
 
 // --------------- Snapshot API types ---------------
 export type SnapshotPath = `/api/filters/snapshot`;

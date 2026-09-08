@@ -31,6 +31,7 @@ const TestPage = () => {
               chartDescription:
                 "Wie viele unterschiedliche Nutzer erstellen pro Tag Fleets?",
               enhancedTooltip: true,
+
               chartConfig: {
                 xAxis: {
                   show: true,
@@ -293,6 +294,7 @@ const TestPage = () => {
         defaultValue: "",
         tab: "Overview",
       },
+
       // {
       //   id: "exampleFilterDimensionAnalytics",
       //   label: "Example Filter Dimension Analytics",
@@ -305,6 +307,19 @@ const TestPage = () => {
 
     tabs: tabsConfig,
     reportName: "Example Report",
+
+    connections: [
+      {
+        fromChartID: "active-users-over-time",
+        toChartID: "cumulative-fleets",
+        expectedColumns: ["fleet_creation_date"],
+      },
+      {
+        fromChartID: "active-users-over-time",
+        toChartID: "dtc-table",
+        expectedColumns: ["CarName"],
+      },
+    ],
   };
 
   const globalFilters: PagesConfig["globalFilters"] = [

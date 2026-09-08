@@ -27,16 +27,28 @@ Der Agent soll insbesondere:
 - die jeweilige `modules/<ModuleName>/instructions.md` lesen
 - die Modul-Konfiguration gemeinsam mit dem Benutzer festlegen
 - SQL passend zum tatsächlichen Tabellenschema und `chartDataSchema.ts` erzeugen
-- für jede Visualisierung fragen, welche Informationen beim Hover im Tooltip
+- für jede Visualisierung mit Enhanced Tooltip oder ausgehender Verbindung
+  fragen, welche Informationen für ausgewählte Zeilen im Detail-Tooltip
   erscheinen sollen
-- `chartDataSchema.ts`, die erzeugte Chart-SQL und den vom Modul tatsächlich an
-  die Tooltip-Route gesendeten `dataPoint` analysieren
+- `chartDataSchema.ts`, die erzeugte Chart-SQL sowie die vom Modul bei Klick
+  oder Lasso gemeldeten Originalzeilen analysieren
 - beachten, dass Arrays und Objekte des Datenpunkts als JSON-Strings an
   Databricks übergeben werden, und sie in der Tooltip-SQL bei Bedarf mit
   `from_json` und dem zum tatsächlichen Chart-Schema passenden Typ zurückwandeln
 - eine punktbezogene Tooltip-SQL mit passenden Parametern, lesbaren Aliasen und
   anzeigefertigen Werten als
   `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql` erzeugen
+- bei sichtbaren Detail-Tooltips `enhancedTooltip: true` setzen und beachten,
+  dass Auswahl, Tooltip-Karte und Rechtsklick-Menü vom `ChartWrapper` kommen
+- nach Fertigstellung der Visualisierungen fragen, ob eine Auswahl andere Charts
+  filtern soll; dabei nur sichtbare Charttitel nennen und IDs intern auflösen
+- Chart-Verbindungen als `fromChartID`, `toChartID` und `expectedColumns`
+  konfigurieren; jeden Spaltennamen als exakten Source-Tooltip-Alias und
+  passenden Target-SQL-Parameter validieren
+- beachten, dass ein Ziel im Kontextmenü sofort gefiltert wird, während die
+  Tooltip-Aktion alle verlinkten Ziele gemeinsam anwenden kann
+- sicherstellen, dass verlinkte Ziele einen aussagekräftigen `chartTitle` haben,
+  damit niemals interne IDs im UI erscheinen
 - die erzeugten Dateien an den im Repository vorgesehenen Stellen speichern
 - am Ende die Dashboard-Konfiguration und Registrierung gemäß `agentProcess.md` erstellen
 - die vorhandenen Validatoren und Generatoren verwenden, wenn dies im Ablauf vorgesehen ist

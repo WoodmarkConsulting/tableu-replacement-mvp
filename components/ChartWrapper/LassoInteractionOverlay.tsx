@@ -17,7 +17,11 @@ type LassoInteractionOverlayProps<DataType extends object> = {
   mode: LassoMode | null;
   adapter: LassoAdapter<DataType> | null;
   surfaceRef: RefObject<HTMLDivElement | null>;
-  onSelectionChange: (rows: DataType[]) => void;
+  onSelectionChange: (
+    rows: DataType[],
+    position: { x: number; y: number },
+  ) => void;
+  onInteractionStart: () => void;
   onZoomApplied: () => void;
 };
 
@@ -30,6 +34,7 @@ export default function LassoInteractionOverlay<DataType extends object>({
   adapter,
   surfaceRef,
   onSelectionChange,
+  onInteractionStart,
   onZoomApplied,
 }: LassoInteractionOverlayProps<DataType>) {
   const startRef = useRef<LassoPoint | null>(null);
@@ -124,6 +129,7 @@ export default function LassoInteractionOverlay<DataType extends object>({
       return;
     }
 
+    onInteractionStart();
     event.currentTarget.setPointerCapture(event.pointerId);
     startRef.current = point;
     plotBoundsRef.current = plotBounds;
@@ -206,7 +212,10 @@ export default function LassoInteractionOverlay<DataType extends object>({
       const selectedRows = adapter.select?.(shape) ?? [];
 
       if (selectedRows.length > 0) {
-        onSelectionChange(selectedRows);
+        onSelectionChange(selectedRows, {
+          x: event.clientX,
+          y: event.clientY,
+        });
       }
     } else {
       const shape = createNormalizedRectangle(start, end, plotBounds);
@@ -219,7 +228,7 @@ export default function LassoInteractionOverlay<DataType extends object>({
 
   return (
     <div
-      className="absolute inset-0 z-20 touch-none cursor-pointer"
+      className="absolute inset-0 z-[60] touch-none cursor-pointer"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}

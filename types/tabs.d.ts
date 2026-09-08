@@ -25,9 +25,17 @@ type TabsConfig = {
   }[];
 };
 
+type ChartConnection<Tconf extends TabsConfig[] = TabsConfig[]> = {
+  [ToChartID in TableSchemaKey]: {
+    fromChartID: Tconf[number]["rows"][number]["components"][number]["chartID"];
+    toChartID: ToChartID;
+    expectedColumns: TableColumnNames<ToChartID>[];
+  };
+}[TableSchemaKey];
+
 type DashboardConfig<T extends TabsConfig[] = TabsConfig[]> = {
   reportName: string;
-  filterLayout?: "sidebar" | "top";
   filters: FilterDimension<T>[];
   tabs: T;
+  connections?: ChartConnection<T>[];
 };
