@@ -4,11 +4,6 @@ import { XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import useFilterStore, { globalKey, tabKey } from "@/stores/filterProvider";
-import type {
-  DateRangeValue,
-  FilterDimension,
-  FilterValue,
-} from "@/types/filters";
 
 type ActiveFiltersProps = {
   dimensions: FilterDimension[];
@@ -19,6 +14,10 @@ function isEmpty(value: FilterValue | undefined): boolean {
     return true;
   }
 
+  if (Array.isArray(value)) {
+    return value.length === 0;
+  }
+
   if (typeof value === "object") {
     return !value.from && !value.to;
   }
@@ -27,6 +26,18 @@ function isEmpty(value: FilterValue | undefined): boolean {
 }
 
 function formatValue(dimension: FilterDimension, value: FilterValue): string {
+  if (dimension.type === "multiselect" && Array.isArray(value)) {
+    const labels = value.map(
+      (entry) =>
+        dimension.options?.find((option) => option.value === entry)?.label ??
+        entry,
+    );
+
+    return labels.length > 3
+      ? `${labels.length} ausgewählt`
+      : labels.join(", ");
+  }
+
   if (dimension.type === "select" && typeof value === "string") {
     return (
       dimension.options?.find((option) => option.value === value)?.label ??

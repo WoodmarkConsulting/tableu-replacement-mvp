@@ -10,6 +10,6 @@
     "context7/*",
     "playwright/*"
   ],
-
+  "window.title": "Tableau Replacement MVP",
   "chat.useCustomAgentHooks": true
 }

@@ -1,4 +1,3 @@
-import type { FilterDimension, FilterValue } from "@/types/filters";
 import { create } from "zustand";
 
 type CreateFilterStoreArgs = {

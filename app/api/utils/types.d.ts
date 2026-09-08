@@ -1,5 +1,4 @@
 import type { SnapshotRequestBody } from "../filters/snapshot/route";
-import type { FilterSnapshot } from "@/types/filters";
 
 // --------------- Chart data API types ---------------
 export type QueryParameters = Record<string, unknown>;

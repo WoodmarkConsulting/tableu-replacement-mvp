@@ -1,7 +1,6 @@
 "use client";
 
 import { FilterControl } from "@/components/FilterControl";
-import type { FilterDimension, FilterValue } from "@/types/filters";
 import useFilterStore, { tabKey } from "@/stores/filterProvider";
 
 type TabFiltersProps = {

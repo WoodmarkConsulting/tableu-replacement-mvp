@@ -1,4 +1,10 @@
-type FilterType = "string" | "number" | "dateString" | "dateRange" | "select";
+type FilterType =
+  | "string"
+  | "number"
+  | "dateString"
+  | "dateRange"
+  | "select"
+  | "multiselect";
 
 type FilterScope = "global" | "tab";
 
@@ -12,7 +18,7 @@ type DateRangeValue = {
   to: string | null;
 };
 
-type FilterValue = string | number | null | DateRangeValue;
+type FilterValue = string | number | null | DateRangeValue | string[];
 
 type FilterDimension<Tconf extends TabsConfig[] = TabsConfig[]> = {
   id: string;

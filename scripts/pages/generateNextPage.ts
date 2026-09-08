@@ -57,6 +57,8 @@ function generateNextPage() {
 
       // Generate the Next.js page.
       const boilerplateCode = `
+          "use client";
+
           import ChartPageWrapper from "@/components/ChartPageWrapper";
           import { useShallow } from "zustand/shallow";
 

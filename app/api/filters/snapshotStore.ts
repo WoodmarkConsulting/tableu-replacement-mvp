@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 
 import { runQuery } from "../warehouse/connection";
-import type { FilterSnapshot } from "@/types/filters";
 
 const CATALOG =
   process.env.FILTER_SNAPSHOT_CATALOG ??

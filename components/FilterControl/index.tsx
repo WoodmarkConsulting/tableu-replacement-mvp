@@ -1,9 +1,18 @@
 "use client";
 
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -12,12 +21,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-
-import type {
-  DateRangeValue,
-  FilterDimension,
-  FilterValue,
-} from "@/types/filters";
 
 type FilterControlProps = {
   dimension: FilterDimension;
@@ -91,6 +94,115 @@ function DatePicker({
   );
 }
 
+function MultiSelect({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: FilterOption[];
+  value: string[];
+  onChange: (value: string[] | null) => void;
+}) {
+  const selectedSet = new Set(value);
+
+  const toggle = (optionValue: string) => {
+    const next = new Set(selectedSet);
+
+    if (next.has(optionValue)) {
+      next.delete(optionValue);
+    } else {
+      next.add(optionValue);
+    }
+
+    const nextArray = options
+      .map((option) => option.value)
+      .filter((optionValue) => next.has(optionValue));
+
+    onChange(nextArray.length ? nextArray : null);
+  };
+
+  const selectedLabels = options
+    .filter((option) => selectedSet.has(option.value))
+    .map((option) => option.label);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-between font-normal">
+          <span className="flex min-w-0 items-center gap-1">
+            {selectedLabels.length === 0 ? (
+              <span className="text-muted-foreground">{label}</span>
+            ) : selectedLabels.length <= 2 ? (
+              selectedLabels.map((selectedLabel) => (
+                <Badge
+                  key={selectedLabel}
+                  variant="secondary"
+                  className="max-w-32 truncate">
+                  {selectedLabel}
+                </Badge>
+              ))
+            ) : (
+              <Badge variant="secondary">
+                {selectedLabels.length} ausgewählt
+              </Badge>
+            )}
+          </span>
+
+          <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent className="w-64 p-0" align="start">
+        <Command>
+          <CommandInput placeholder={`${label} suchen…`} />
+
+          <CommandList>
+            <CommandEmpty>Keine Einträge gefunden.</CommandEmpty>
+
+            <CommandGroup>
+              {options.map((option) => {
+                const isSelected = selectedSet.has(option.value);
+
+                return (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    onSelect={() => toggle(option.value)}>
+                    <CheckIcon
+                      className={cn(
+                        "size-4",
+                        isSelected ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+
+                    {option.label}
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+
+          {selectedLabels.length > 0 ? (
+            <div className="border-t p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-center text-xs"
+                onClick={() => onChange(null)}>
+                Auswahl löschen
+              </Button>
+            </div>
+          ) : null}
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function FilterControl({
   dimension,
   value,
@@ -131,7 +243,7 @@ export function FilterControl({
 
       case "dateRange": {
         const range: DateRangeValue =
-          value && typeof value === "object"
+          value && typeof value === "object" && !Array.isArray(value)
             ? value
             : { from: null, to: null };
 
@@ -168,6 +280,16 @@ export function FilterControl({
               </option>
             ))}
           </select>
+        );
+
+      case "multiselect":
+        return (
+          <MultiSelect
+            label={dimension.label}
+            options={dimension.options ?? []}
+            value={Array.isArray(value) ? value : []}
+            onChange={onChange}
+          />
         );
 
       default:

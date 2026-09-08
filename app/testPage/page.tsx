@@ -5,7 +5,6 @@ import { useShallow } from "zustand/shallow";
 import { useLayoutEffect } from "react";
 import useFiltersStore from "@/stores/filterProvider";
 import { DashboardShell } from "@/components/DashboardShell";
-import { FilterValue } from "@/types/filters";
 
 const TestPage = () => {
   const { initFilterStore } = useFiltersStore(
@@ -408,13 +407,6 @@ const TestPage = () => {
     initFilterStore({
       dimensions: dashboardConfig.filters,
       initialActiveTab: dashboardConfig.tabs[0]?.trigger ?? "",
-      initialValues: dashboardConfig.filters.reduce(
-        (acc, filter) => {
-          acc[filter.key] = filter.defaultValue;
-          return acc;
-        },
-        {} as Record<string, FilterValue>,
-      ),
     });
 
     //eslint-disable-next-line react-hooks/exhaustive-deps

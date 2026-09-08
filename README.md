@@ -95,6 +95,21 @@ layer only; queries fire when the user presses **Apply**.
 - A shared permalink (`?s=<id>`) auto-applies on hydration so recipients see data
   without pressing Apply.
 
+## Filter types
+
+Each `FilterDimension` has a `type`: `"string" | "number" | "dateString" |
+"dateRange" | "select" | "multiselect"`. All are single-value except
+`multiselect`, which holds a `string[]` and renders a searchable, checkable
+combobox. `select` and `multiselect` read their choices from `options`.
+
+A `multiselect` value binds to SQL as a comma-joined string. Charts must expand
+it with `split` and treat an unset (`NULL`) value as "no filter":
+
+```sql
+(:region IS NULL OR array_contains(split(:region, ','), region_col))
+```
+
+
 ## Selection, tooltips, and chart connections
 
 `ChartWrapper` owns selection state for every selection-capable module. Click and lasso

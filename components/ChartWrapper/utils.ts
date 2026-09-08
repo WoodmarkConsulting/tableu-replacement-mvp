@@ -16,6 +16,10 @@ export function toQueryParam(
     return null;
   }
 
+  if (Array.isArray(value)) {
+    return value.length ? value.join(",") : null;
+  }
+
   if (typeof value === "string" || typeof value === "number") {
     return value;
   }

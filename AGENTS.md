@@ -71,11 +71,22 @@ The runtime flow is:
 Dashboards share a filter framework driven entirely by config:
 
 - **Dimensions** — `DashboardConfig.filters: FilterDimension[]`, each `{ id, label, type, scope, tab?, options?, defaultValue? }`.
-  - `type`: `"string" | "number" | "dateString" | "dateRange" | "select"` (all single-value today).
+  - `type`: `"string" | "number" | "dateString" | "dateRange" | "select" | "multiselect"`. All are single-value except `multiselect`, which holds a `string[]`.
+  - `select` and `multiselect` read their choices from `options`. `multiselect` renders a searchable combobox (Popover + Command) and binds to SQL as a comma-joined string.
   - `scope`: `"global"` (every tab) or `"tab"` (requires `tab` = the tab `trigger`).
-- **Bindings** — each chart maps dimensions to its SQL named parameters via `filterBindings: Record<dimensionId, sqlParamName>`. `ChartWrapper` resolves the active value (`global:<id>` or `tab:<activeTab>:<id>`) and posts it; unset → `null`.
+- **Bindings** — each chart maps dimensions to its SQL named parameters via `filterBindings: Record<dimensionId, sqlParamName>`. `ChartWrapper` resolves the active value (`global:<id>` or `tab:<activeTab>:<id>`) and posts it; unset → `null`. A `multiselect` value is posted as a comma-joined string (empty → `null`).
 - **Layout** — `filterLayout: "sidebar" | "top"` controls where global filters render; `reportName` shows in the header.
 - **Applied filters** — `ActiveFilters` renders removable chips and doubles as the print/export summary (interactive controls are `print:hidden`).
+
+#### SQL for `multiselect`
+
+A `multiselect` dimension binds as a comma-joined string. Charts must expand it
+and treat an unset (`NULL`) value as "no filter":
+
+```sql
+(:region IS NULL OR array_contains(split(:region, ','), region_col))
+```
+
 
 ### Deferred queries (Apply to run)
 
