@@ -140,6 +140,7 @@ const TestPage = () => {
               chartID: "dummy-map-chart",
               chartTitle: "Regional coverage",
               chartDescription: "Dummy map data for the test page.",
+              enhancedTooltip: true,
               mockData: [
                 {
                   kind: "region",
@@ -384,6 +385,75 @@ const TestPage = () => {
             },
           ],
         },
+        {
+          height: 35,
+          components: [
+            {
+              moduleName: "MapModule",
+              space: 12,
+              chartID: "dummy-map-linked",
+              chartTitle: "Linked regions",
+              chartDescription:
+                "Filtered by the regions selected on 'Regional coverage'. Right-click that map and choose 'Verlinktes Diagramm filtern'.",
+              chartConfig: {
+                projection: {
+                  type: "geoMercator",
+                  center: [0, 20],
+                  scale: 130,
+                },
+                zoom: {
+                  enabled: true,
+                  min: 1,
+                  max: 8,
+                  initial: 1,
+                },
+                geography: {
+                  stroke: "#cbd5e1",
+                  strokeWidth: 0.7,
+                  defaultFill: "#e2e8f0",
+                },
+                choropleth: {
+                  enabled: true,
+                  colorScale: {
+                    type: "gradient",
+                    gradient: {
+                      minColor: "#dcfce7",
+                      maxColor: "#16a34a",
+                    },
+                  },
+                  noDataColor: "#f1f5f9",
+                },
+                bubbles: {
+                  enabled: false,
+                  radius: {
+                    min: 6,
+                    max: 18,
+                  },
+                  color: {
+                    mode: "fixed",
+                    fixedColor: "#16a34a",
+                  },
+                  stroke: "white",
+                  strokeWidth: 1,
+                  opacity: 0.8,
+                },
+                tooltip: {
+                  show: true,
+                },
+                regionLabels: {
+                  show: true,
+                  color: "#0f172a",
+                  fontSize: 10,
+                  fontWeight: 600,
+                },
+                legend: {
+                  show: true,
+                  position: "top-right",
+                },
+              },
+            },
+          ],
+        },
       ],
     },
   ] as const satisfies TabsConfig[];
@@ -401,6 +471,14 @@ const TestPage = () => {
 
     tabs: tabsConfig,
     reportName: "Example Report",
+
+    connections: [
+      {
+        fromChartID: "dummy-map-chart",
+        toChartID: "dummy-map-linked",
+        expectedColumns: ["regionCode"],
+      },
+    ],
   };
 
   useLayoutEffect(() => {

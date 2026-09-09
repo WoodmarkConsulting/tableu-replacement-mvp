@@ -12,6 +12,1178 @@ type TableColumnNames<T extends TableSchemaKey> =
   TableSchemas[T][number]["columnName"];
 
 type TableSchemas = {
+  "123456as": [
+    {
+      columnName: "gssn_outlet_gs_id";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_cc";
+      dataType: "string";
+    },
+    {
+      columnName: "vehicle_id";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_num";
+      dataType: "bigint";
+    },
+    {
+      columnName: "aqua_creation_ts";
+      dataType: "timestamp";
+    },
+    {
+      columnName: "aqua_creation_dt";
+      dataType: "date";
+    },
+    {
+      columnName: "logfile_id";
+      dataType: "string";
+    },
+    {
+      columnName: "source_system_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "source_system_nm_helper";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_desc";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_state_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_state_active_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "ecu_fault_state_stored_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "ecu_fault_event_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "ecu_fault_mil_fg";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_txt_english";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_txt_german";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_start_dt";
+      dataType: "date";
+    },
+    {
+      columnName: "diag_start_ts";
+      dataType: "timestamp";
+    },
+    {
+      columnName: "diag_week";
+      dataType: "int";
+    },
+    {
+      columnName: "lang_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "hw_id";
+      dataType: "string";
+    },
+    {
+      columnName: "data_release_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "km_reading_nm";
+      dataType: "int";
+    },
+    {
+      columnName: "ecu_diag_version_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_hw_partnumber_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_supp_hw_version_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_supp_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_sw_version_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_diag_version_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_foot_print_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_is_visible_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "ecu_fault_type_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_known_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "rc_is_visible_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "production_rework";
+      dataType: "boolean";
+    },
+    {
+      columnName: "country_name_germ";
+      dataType: "string";
+    },
+    {
+      columnName: "workshop_diag_seq_num";
+      dataType: "int";
+    },
+    {
+      columnName: "max_load_dt";
+      dataType: "date";
+    },
+    {
+      columnName: "Antriebsart";
+      dataType: "string";
+    },
+    {
+      columnName: "Antriebstyp";
+      dataType: "string";
+    },
+    {
+      columnName: "Batterie";
+      dataType: "string";
+    },
+    {
+      columnName: "brand_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "codelandiso1366_2";
+      dataType: "string";
+    },
+    {
+      columnName: "E_Drive";
+      dataType: "string";
+    },
+    {
+      columnName: "engine_md_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "engine_md_cd_int";
+      dataType: "int";
+    },
+    {
+      columnName: "engine_ms_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "ezl_dt";
+      dataType: "date";
+    },
+    {
+      columnName: "fin";
+      dataType: "string";
+    },
+    {
+      columnName: "Getriebeprojekt";
+      dataType: "string";
+    },
+    {
+      columnName: "Hubraum";
+      dataType: "string";
+    },
+    {
+      columnName: "kw_vm_el";
+      dataType: "string";
+    },
+    {
+      columnName: "md_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "motor_model_name";
+      dataType: "string";
+    },
+    {
+      columnName: "Motorbaureihe";
+      dataType: "string";
+    },
+    {
+      columnName: "ms_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "ms_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "prod_dt";
+      dataType: "date";
+    },
+    {
+      columnName: "prod_plant_city";
+      dataType: "string";
+    },
+    {
+      columnName: "prod_plant_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "prod_plant_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "prod_dt_week";
+      dataType: "int";
+    },
+    {
+      columnName: "produktgruppe";
+      dataType: "string";
+    },
+    {
+      columnName: "sa_codes_array";
+      dataType: "array<string>";
+    },
+    {
+      columnName: "sales_area_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "sales_area_id";
+      dataType: "string";
+    },
+    {
+      columnName: "sa_aerodynamik";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_akustik_komfort";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_ahk";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_blockheizung_kanada_ausfuehrung";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_ckd_fertigung";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_co2_reduzierung";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_erdgas";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_ethanol_e100";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_fahrschule";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_handschalter";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_hochleistungsgesteigert";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_leistungsgesteigert";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_leistungsreduziert";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_mietwagen";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_nicht_kundenfaehig";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_offroad_paket";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_reichweitenpaket_fuer_e_fahrzeug";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_rollstabilisierung_ears";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_rsg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_schichtladung_des";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_standheizung";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_taxi";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_testfahrzeug";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_v48";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_zpd_berechtigt";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_zpd_durchgefuehrt";
+      dataType: "boolean";
+    },
+    {
+      columnName: "driver_type";
+      dataType: "string";
+    },
+    {
+      columnName: "trans_md_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "trans_md_cd_4";
+      dataType: "string";
+    },
+    {
+      columnName: "vehicle_is_amg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "vehicle_sid";
+      dataType: "bigint";
+    },
+    {
+      columnName: "veh_body_description";
+      dataType: "string";
+    },
+    {
+      columnName: "Verbrennungsmotor";
+      dataType: "string";
+    },
+    {
+      columnName: "Verkaufsbezeichnung";
+      dataType: "string";
+    },
+    {
+      columnName: "wmc_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "model_year";
+      dataType: "string";
+    },
+    {
+      columnName: "model_change_year";
+      dataType: "string";
+    },
+    {
+      columnName: "Taxi";
+      dataType: "string";
+    },
+    {
+      columnName: "Anhängerkupplung";
+      dataType: "string";
+    },
+    {
+      columnName: "Startergenerator";
+      dataType: "string";
+    },
+    {
+      columnName: "Offroad-Paket";
+      dataType: "string";
+    },
+    {
+      columnName: "Leistung";
+      dataType: "string";
+    },
+    {
+      columnName: "Fahrzeughersteller";
+      dataType: "string";
+    },
+    {
+      columnName: "vehicle_age";
+      dataType: "bigint";
+    },
+    {
+      columnName: "vehicle_option_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "alter_ezl";
+      dataType: "int";
+    },
+    {
+      columnName: "ecu_fault_grp";
+      dataType: "string";
+    },
+    {
+      columnName: "errorcode_uid";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_year";
+      dataType: "date";
+    },
+    {
+      columnName: "diag_codelandiso1366_2";
+      dataType: "string";
+    },
+    {
+      columnName: "serial_number_cu";
+      dataType: "string";
+    },
+    {
+      columnName: "workshop_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "workshopcity";
+      dataType: "string";
+    },
+    {
+      columnName: "workshopzipcode";
+      dataType: "string";
+    },
+    {
+      columnName: "workshopstreet";
+      dataType: "string";
+    },
+    {
+      columnName: "workshopstreetnumber";
+      dataType: "string";
+    },
+    {
+      columnName: "workshopcode";
+      dataType: "string";
+    },
+    {
+      columnName: "v6_responsible";
+      dataType: "string";
+    },
+    {
+      columnName: "v6_akv_variant";
+      dataType: "string";
+    },
+    {
+      columnName: "env_diag_num";
+      dataType: "bigint";
+    },
+    {
+      columnName: "env_ecu_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "env_ecu_fault_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "Kilometerstand_first";
+      dataType: "string";
+    },
+    {
+      columnName: "Operation_Cycle_Counter_first";
+      dataType: "string";
+    },
+    {
+      columnName: "Frequency_Counter_first";
+      dataType: "string";
+    },
+    {
+      columnName: "Kilometerstand_last";
+      dataType: "string";
+    },
+    {
+      columnName: "Operation_Cycle_Counter_last";
+      dataType: "string";
+    },
+    {
+      columnName: "Frequency_Counter_last";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_group";
+      dataType: "int";
+    },
+    {
+      columnName: "process_ts";
+      dataType: "timestamp";
+    },
+    {
+      columnName: "td_usecase_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "td_trigger_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "coll_system_sw_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ciam_id";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_session_id";
+      dataType: "bigint";
+    },
+    {
+      columnName: "load_dt";
+      dataType: "date";
+    },
+  ];
+  "4f9cb2b5-ef2b-4c19-92fc-a7bbdfaca898": [
+    {
+      columnName: "gssn_outlet_gs_id";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_cc";
+      dataType: "string";
+    },
+    {
+      columnName: "vehicle_id";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_num";
+      dataType: "bigint";
+    },
+    {
+      columnName: "aqua_creation_ts";
+      dataType: "timestamp";
+    },
+    {
+      columnName: "aqua_creation_dt";
+      dataType: "date";
+    },
+    {
+      columnName: "logfile_id";
+      dataType: "string";
+    },
+    {
+      columnName: "source_system_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "source_system_nm_helper";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_desc";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_state_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_state_active_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "ecu_fault_state_stored_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "ecu_fault_event_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "ecu_fault_mil_fg";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_txt_english";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_txt_german";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_start_dt";
+      dataType: "date";
+    },
+    {
+      columnName: "diag_start_ts";
+      dataType: "timestamp";
+    },
+    {
+      columnName: "diag_week";
+      dataType: "int";
+    },
+    {
+      columnName: "lang_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "hw_id";
+      dataType: "string";
+    },
+    {
+      columnName: "data_release_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "km_reading_nm";
+      dataType: "int";
+    },
+    {
+      columnName: "ecu_diag_version_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_hw_partnumber_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_supp_hw_version_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_supp_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_sw_version_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_diag_version_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_foot_print_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_is_visible_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "ecu_fault_type_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ecu_fault_known_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "rc_is_visible_fg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "production_rework";
+      dataType: "boolean";
+    },
+    {
+      columnName: "country_name_germ";
+      dataType: "string";
+    },
+    {
+      columnName: "workshop_diag_seq_num";
+      dataType: "int";
+    },
+    {
+      columnName: "max_load_dt";
+      dataType: "date";
+    },
+    {
+      columnName: "Antriebsart";
+      dataType: "string";
+    },
+    {
+      columnName: "Antriebstyp";
+      dataType: "string";
+    },
+    {
+      columnName: "Batterie";
+      dataType: "string";
+    },
+    {
+      columnName: "brand_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "codelandiso1366_2";
+      dataType: "string";
+    },
+    {
+      columnName: "E_Drive";
+      dataType: "string";
+    },
+    {
+      columnName: "engine_md_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "engine_md_cd_int";
+      dataType: "int";
+    },
+    {
+      columnName: "engine_ms_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "ezl_dt";
+      dataType: "date";
+    },
+    {
+      columnName: "fin";
+      dataType: "string";
+    },
+    {
+      columnName: "Getriebeprojekt";
+      dataType: "string";
+    },
+    {
+      columnName: "Hubraum";
+      dataType: "string";
+    },
+    {
+      columnName: "kw_vm_el";
+      dataType: "string";
+    },
+    {
+      columnName: "md_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "motor_model_name";
+      dataType: "string";
+    },
+    {
+      columnName: "Motorbaureihe";
+      dataType: "string";
+    },
+    {
+      columnName: "ms_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "ms_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "prod_dt";
+      dataType: "date";
+    },
+    {
+      columnName: "prod_plant_city";
+      dataType: "string";
+    },
+    {
+      columnName: "prod_plant_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "prod_plant_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "prod_dt_week";
+      dataType: "int";
+    },
+    {
+      columnName: "produktgruppe";
+      dataType: "string";
+    },
+    {
+      columnName: "sa_codes_array";
+      dataType: "array<string>";
+    },
+    {
+      columnName: "sales_area_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "sales_area_id";
+      dataType: "string";
+    },
+    {
+      columnName: "sa_aerodynamik";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_akustik_komfort";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_ahk";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_blockheizung_kanada_ausfuehrung";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_ckd_fertigung";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_co2_reduzierung";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_erdgas";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_ethanol_e100";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_fahrschule";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_handschalter";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_hochleistungsgesteigert";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_leistungsgesteigert";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_leistungsreduziert";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_mietwagen";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_nicht_kundenfaehig";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_offroad_paket";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_reichweitenpaket_fuer_e_fahrzeug";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_rollstabilisierung_ears";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_rsg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_schichtladung_des";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_standheizung";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_taxi";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_testfahrzeug";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_v48";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_zpd_berechtigt";
+      dataType: "boolean";
+    },
+    {
+      columnName: "sa_zpd_durchgefuehrt";
+      dataType: "boolean";
+    },
+    {
+      columnName: "driver_type";
+      dataType: "string";
+    },
+    {
+      columnName: "trans_md_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "trans_md_cd_4";
+      dataType: "string";
+    },
+    {
+      columnName: "vehicle_is_amg";
+      dataType: "boolean";
+    },
+    {
+      columnName: "vehicle_sid";
+      dataType: "bigint";
+    },
+    {
+      columnName: "veh_body_description";
+      dataType: "string";
+    },
+    {
+      columnName: "Verbrennungsmotor";
+      dataType: "string";
+    },
+    {
+      columnName: "Verkaufsbezeichnung";
+      dataType: "string";
+    },
+    {
+      columnName: "wmc_cd";
+      dataType: "string";
+    },
+    {
+      columnName: "model_year";
+      dataType: "string";
+    },
+    {
+      columnName: "model_change_year";
+      dataType: "string";
+    },
+    {
+      columnName: "Taxi";
+      dataType: "string";
+    },
+    {
+      columnName: "Anhängerkupplung";
+      dataType: "string";
+    },
+    {
+      columnName: "Startergenerator";
+      dataType: "string";
+    },
+    {
+      columnName: "Offroad-Paket";
+      dataType: "string";
+    },
+    {
+      columnName: "Leistung";
+      dataType: "string";
+    },
+    {
+      columnName: "Fahrzeughersteller";
+      dataType: "string";
+    },
+    {
+      columnName: "vehicle_age";
+      dataType: "bigint";
+    },
+    {
+      columnName: "vehicle_option_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "alter_ezl";
+      dataType: "int";
+    },
+    {
+      columnName: "ecu_fault_grp";
+      dataType: "string";
+    },
+    {
+      columnName: "errorcode_uid";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_year";
+      dataType: "date";
+    },
+    {
+      columnName: "diag_codelandiso1366_2";
+      dataType: "string";
+    },
+    {
+      columnName: "serial_number_cu";
+      dataType: "string";
+    },
+    {
+      columnName: "workshop_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "workshopcity";
+      dataType: "string";
+    },
+    {
+      columnName: "workshopzipcode";
+      dataType: "string";
+    },
+    {
+      columnName: "workshopstreet";
+      dataType: "string";
+    },
+    {
+      columnName: "workshopstreetnumber";
+      dataType: "string";
+    },
+    {
+      columnName: "workshopcode";
+      dataType: "string";
+    },
+    {
+      columnName: "v6_responsible";
+      dataType: "string";
+    },
+    {
+      columnName: "v6_akv_variant";
+      dataType: "string";
+    },
+    {
+      columnName: "env_diag_num";
+      dataType: "bigint";
+    },
+    {
+      columnName: "env_ecu_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "env_ecu_fault_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "Kilometerstand_first";
+      dataType: "string";
+    },
+    {
+      columnName: "Operation_Cycle_Counter_first";
+      dataType: "string";
+    },
+    {
+      columnName: "Frequency_Counter_first";
+      dataType: "string";
+    },
+    {
+      columnName: "Kilometerstand_last";
+      dataType: "string";
+    },
+    {
+      columnName: "Operation_Cycle_Counter_last";
+      dataType: "string";
+    },
+    {
+      columnName: "Frequency_Counter_last";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_group";
+      dataType: "int";
+    },
+    {
+      columnName: "process_ts";
+      dataType: "timestamp";
+    },
+    {
+      columnName: "td_usecase_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "td_trigger_nm";
+      dataType: "string";
+    },
+    {
+      columnName: "coll_system_sw_txt";
+      dataType: "string";
+    },
+    {
+      columnName: "ciam_id";
+      dataType: "string";
+    },
+    {
+      columnName: "diag_session_id";
+      dataType: "bigint";
+    },
+    {
+      columnName: "load_dt";
+      dataType: "date";
+    },
+  ];
   "8fa17fc4-60ee-4114-a9dc-6ea6295f7ea7": [
     {
       columnName: "id";
@@ -474,6 +1646,24 @@ type TableSchemas = {
     {
       columnName: "OperatorId";
       dataType: "bigint";
+    },
+  ];
+  "dummy-map-linked": [
+    {
+      columnName: "kind";
+      dataType: "string";
+    },
+    {
+      columnName: "regionCode";
+      dataType: "string";
+    },
+    {
+      columnName: "value";
+      dataType: "double";
+    },
+    {
+      columnName: "label";
+      dataType: "string";
     },
   ];
 };
