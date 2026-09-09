@@ -61,6 +61,9 @@ type MapChartConfig = {
     color: string;
     fontSize: number;
     fontWeight?: number | string;
+    // Exponent (0–1) controlling how much labels grow with zoom. 0 keeps a
+    // constant on-screen size, 1 scales linearly with zoom. Defaults to 0.5.
+    zoomScaleFactor?: number;
   };
   legend: {
     show: boolean;

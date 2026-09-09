@@ -633,7 +633,7 @@ function MapModule(props: Props) {
     });
   };
 
-  const renderMapBody = () => (
+  const renderMapBody = (zoomScale = 1) => (
     <CustomProjection<WorldFeature>
       data={geoFeatures}
       projection={PROJECTION_PRESET[config.projection.type]}
@@ -731,6 +731,15 @@ function MapModule(props: Props) {
                   return null;
                 }
 
+                // Labels live inside the zoomed group, so the transform already
+                // multiplies their size by `zoomScale`. Counter-scale by
+                // `zoomScale^(factor - 1)` so the on-screen size grows only as
+                // `zoomScale^factor` (sub-linear when factor < 1).
+                const zoomFactor = config.regionLabels.zoomScaleFactor ?? 0.5;
+                const labelFontSize =
+                  config.regionLabels.fontSize *
+                  Math.pow(zoomScale, zoomFactor - 1);
+
                 return (
                   <text
                     key={`${geo.id?.toString() ?? ""}-${index}-label`}
@@ -741,7 +750,7 @@ function MapModule(props: Props) {
                     style={{
                       pointerEvents: "none",
                       fill: config.regionLabels.color,
-                      fontSize: config.regionLabels.fontSize,
+                      fontSize: labelFontSize,
                       fontWeight: config.regionLabels.fontWeight,
                     }}
                   >
@@ -851,7 +860,9 @@ function MapModule(props: Props) {
                   touchAction: "none",
                 }}
               >
-                <g transform={zoom.toString()}>{renderMapBody()}</g>
+                <g transform={zoom.toString()}>
+                  {renderMapBody(zoom.transformMatrix.scaleX)}
+                </g>
               </svg>
             )}
           </Zoom>

@@ -20,7 +20,7 @@ export const moduleRegistry = {
     ),
     dataSchema: LineChartModuleDataSchema,
   },
-  MapModule: {
+  "MapModule": {
     component: dynamic(() =>
       import("@/modules/MapModule").then(
         (loadedModule) => loadedModule.default,
