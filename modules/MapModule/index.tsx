@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import countries from "i18n-iso-countries";
 import enLocale from "i18n-iso-countries/langs/en.json";
+import deLocale from "i18n-iso-countries/langs/de.json";
 import { scaleLinear, scaleSqrt, scaleThreshold } from "d3-scale";
-import { geoCentroid } from "d3-geo";
+import { geoArea, geoCentroid } from "d3-geo";
 import { CustomProjection } from "@visx/geo";
 import { Zoom } from "@visx/zoom";
 import { feature } from "topojson-client";
@@ -13,6 +14,7 @@ import type { FeatureCollection, Feature, Geometry } from "geojson";
 import type { MapChartData } from "./chartDataSchema";
 
 countries.registerLocale(enLocale);
+countries.registerLocale(deLocale);
 
 // Fallback map height (in svh) used when the wrapper does not provide one.
 const MAP_HEIGHT_FALLBACK = 15;
@@ -43,6 +45,38 @@ function minMax(values: number[]): [number, number] {
   }
 
   return [min, max];
+}
+
+// Centroid used to position a region's value label. For multi-part countries
+// (e.g. France with its overseas territories) the overall centroid can fall in
+// the ocean between the parts, so we place the label on the largest landmass.
+function labelCentroid(geo: Feature<Geometry>): [number, number] {
+  const geometry = geo.geometry;
+
+  if (geometry?.type === "MultiPolygon") {
+    let largest: number[][][] | null = null;
+    let largestArea = -Infinity;
+
+    for (const coordinates of geometry.coordinates) {
+      const area = geoArea({ type: "Polygon", coordinates });
+      if (area > largestArea) {
+        largestArea = area;
+        largest = coordinates;
+      }
+    }
+
+    if (largest) {
+      return geoCentroid({ type: "Polygon", coordinates: largest }) as [
+        number,
+        number,
+      ];
+    }
+  }
+
+  return geoCentroid(geo as Parameters<typeof geoCentroid>[0]) as [
+    number,
+    number,
+  ];
 }
 
 function rowKey(entry: MapChartData): string {
@@ -167,13 +201,12 @@ function MapLegend({
         <div className="mb-2">
           <div className="mb-1 font-medium">Value</div>
           <div
-            className="h-2 rounded-full"
+            className="h-2 w-full min-w-[120px] rounded-full"
             style={{
-              width: 112,
               background: `linear-gradient(90deg, ${gradientColors[0]}, ${gradientColors[1]})`,
             }}
           />
-          <div className="mt-1 flex w-28 justify-between">
+          <div className="mt-1 flex justify-between gap-3 tabular-nums whitespace-nowrap">
             <span>{formatValue(regionMin)}</span>
             <span>{formatValue(regionMax)}</span>
           </div>
@@ -227,7 +260,7 @@ function MapLegend({
                   backgroundColor: bubbleMaxColor,
                 }}
               />
-              <span className="text-[10px] text-slate-500">
+              <span className="whitespace-nowrap tabular-nums text-[10px] text-slate-500">
                 {formatValue(bubbleMin)} - {formatValue(bubbleMax)}
               </span>
             </div>
@@ -241,7 +274,7 @@ function MapLegend({
                   backgroundColor: bubbleFixedColor,
                 }}
               />
-              <span className="text-[10px] text-slate-500">
+              <span className="whitespace-nowrap tabular-nums text-[10px] text-slate-500">
                 {formatValue(bubbleMin)} - {formatValue(bubbleMax)}
               </span>
             </div>
@@ -530,6 +563,7 @@ function MapModule(props: Props) {
       WorldFeature,
       {
         alpha2: string | null;
+        name?: string;
         value?: number;
         label?: string;
         centroid: [number, number];
@@ -543,15 +577,18 @@ function MapModule(props: Props) {
         ? countries.numericToAlpha2(paddedId) ?? null
         : null;
       const region = alpha2 ? regionValues.get(alpha2) : undefined;
+      // Derive the display name from the feature's own ISO code so the label
+      // always matches the country under the cursor.
+      const name = alpha2
+        ? countries.getName(alpha2, "de") ?? countries.getName(alpha2, "en")
+        : undefined;
 
       map.set(geo, {
         alpha2,
+        name: name ?? (geo.properties?.name as string | undefined),
         value: region?.value,
         label: region?.label,
-        centroid: geoCentroid(geo as Parameters<typeof geoCentroid>[0]) as [
-          number,
-          number,
-        ],
+        centroid: labelCentroid(geo),
       });
     }
 
@@ -623,9 +660,10 @@ function MapModule(props: Props) {
                     : config.geography.defaultFill;
 
               const title =
+                meta?.name ??
+                geo.properties?.name ??
                 meta?.label ??
                 alpha2 ??
-                geo.properties?.name ??
                 "Unknown region";
 
               const selectable = selectionEnabled && regionValue !== undefined;
