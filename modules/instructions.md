@@ -82,3 +82,12 @@ For module-specific details, read `modules/MapModule/instructions.md`.
 - Notes: Columns are config-authored (not data-inferred); hierarchy is transported as a flat `id`/`parentId` list and assembled into a tree client-side. Supports databars (positive and diverging), column hide/show and fold/unfold groups, client-side sorting, global + per-column filtering, top-level pagination, a grand-total footer, sticky header/first column, and row-click selection with enhanced tooltip / connections. `values` is emitted from SQL as `to_json(named_struct(...))`. This differs from the chart modules (exact values + hierarchy vs. visual trend/shape) and from `MapModule` (non-geographic).
 
 For module-specific details, read `modules/TableModule/instructions.md`.
+
+### `CardModule`
+
+- Purpose: Renders a single key figure as a text label and one formatted number.
+- Best use: Highlighting one aggregate figure (total, average, count, ratio) with a short caption.
+- Input: Receives `chartData` (`CardData[]`, uses only the first row `{ label, value }`) and a `CardChartConfig` through `ChartWrapperInjectedProps`.
+- Notes: Supports number/compact/percent/currency formatting, configurable decimals, locale, currency, prefix/suffix, label override, and alignment. Does not support selection, lasso, enhanced tooltips, or connections. Use a chart or `TableModule` when comparing multiple values.
+
+For module-specific details, read `modules/CardModule/instructions.md`.
