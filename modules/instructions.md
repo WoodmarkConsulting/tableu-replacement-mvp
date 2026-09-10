@@ -49,6 +49,22 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 
 For module-specific details, read `modules/LineChartModule/instructions.md`.
 
+### `BarChartModule`
+
+- Purpose: Renders a configurable multi-series categorical bar chart from compact API data.
+- Best use: Comparing one or more numeric measures across discrete categories, with grouped,
+  stacked, 100% stacked, or overlaid series.
+- Input: Receives `chartData` (`BarChartData[]`, one row per category with a per-series
+  `values` array) and a `BarChartConfig` through `ChartWrapperInjectedProps`.
+- Notes: Supports vertical and horizontal orientation, per-category and threshold coloring,
+  value labels, sorting, reference lines, and per-category target markers. Selection is by
+  bar click plus a rectangular/polygon lasso adapter (no zoom); selected bars are highlighted
+  and non-selected bars fade. This differs from `LineChartModule` (continuous numeric/time X
+  axis) and `HistogramModule` (numeric bins of a single variable); use those instead when the
+  X axis is not a set of discrete categories.
+
+For module-specific details, read `modules/BarChartModule/instructions.md`.
+
 ### `MapModule`
 
 - Purpose: Geographic visualization module for choropleth country maps and optional bubble overlays for latitude/longitude points.

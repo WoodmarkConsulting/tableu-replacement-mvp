@@ -327,6 +327,29 @@ function MapModule(props: Props) {
     onSelectionChange?.([entry], { additive: true });
   };
 
+  // Non-additive empty selection replaces the current set, clearing everything.
+  const clearSelection = () => {
+    onSelectionChange?.([]);
+  };
+
+  const hasSelection = selectionEnabled && selectedRows.length > 0;
+
+  useEffect(() => {
+    if (!hasSelection) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        clearSelection();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSelection]);
+
   const regionValues = useMemo(() => getRegionValueMap(chartData), [chartData]);
   const regionValueList = useMemo(
     () => [...regionValues.values()].map((entry) => entry.value),
@@ -877,6 +900,16 @@ function MapModule(props: Props) {
             {renderMapBody()}
           </svg>
         ))}
+
+      {hasSelection && (
+        <button
+          type="button"
+          onClick={clearSelection}
+          className="absolute left-3 bottom-3 z-20 rounded-md border border-slate-200 bg-white/90 px-2 py-1 text-xs font-medium text-slate-700 shadow-sm backdrop-blur-sm transition-colors hover:bg-white"
+        >
+          Auswahl aufheben
+        </button>
+      )}
 
       {displayError && (
         <div className="absolute inset-0 z-30 flex items-center justify-center p-4">
