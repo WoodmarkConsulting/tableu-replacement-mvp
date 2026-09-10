@@ -36,17 +36,25 @@ async function fetchFilterOptions(
   return options;
 }
 
+export type UseFilterOptionsResult = {
+  options: FilterOption[];
+  /** True while the warehouse-backed options query is in flight. */
+  isLoading: boolean;
+};
+
 /**
  * Resolves the options for a filter dimension. When `optionsSource` is set the
  * options are loaded from the warehouse (eagerly, on dashboard open) and the
  * static `options` act as a fallback while loading. Non-dependent: the query
  * runs once with no filter parameters.
  */
-export function useFilterOptions(dimension: FilterDimension): FilterOption[] {
+export function useFilterOptions(
+  dimension: FilterDimension,
+): UseFilterOptionsResult {
   const source = dimension.optionsSource;
   const recordTiming = useQueryTimingStore((state) => state.recordTiming);
 
-  const { data } = useQuery<FilterOption[], Error>({
+  const { data, isLoading } = useQuery<FilterOption[], Error>({
     queryKey: ["filter-options", source],
     queryFn: () =>
       fetchFilterOptions(source as string, dimension.label, recordTiming),
@@ -54,5 +62,9 @@ export function useFilterOptions(dimension: FilterDimension): FilterOption[] {
     staleTime: 5 * 60_000,
   });
 
-  return data ?? dimension.options ?? [];
+  return {
+    options: data ?? dimension.options ?? [],
+    // Only warehouse-backed filters can be in a loading state.
+    isLoading: Boolean(source) && isLoading,
+  };
 }

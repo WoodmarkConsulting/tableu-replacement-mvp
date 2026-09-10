@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
 import { CalendarIcon, CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Spinner } from "@/components/ui/spinner";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +31,10 @@ type FilterControlProps = {
   value: FilterValue | undefined;
   onChange: (value: FilterValue) => void;
 };
+
+// Cap how many multiselect options are mounted at once so large warehouse-backed
+// option sets don't freeze the UI when the popover opens.
+const MAX_VISIBLE_OPTIONS = 100;
 
 function parseDate(value: string | null | undefined): Date | undefined {
   if (typeof value !== "string") {
@@ -99,11 +106,13 @@ function MultiSelect({
   label,
   options,
   value,
+  isLoading,
   onChange,
 }: {
   label: string;
   options: FilterOption[];
   value: string[];
+  isLoading: boolean;
   onChange: (value: string[] | null) => void;
 }) {
   const selectedSet = new Set(value);
@@ -128,14 +137,43 @@ function MultiSelect({
     .filter((option) => selectedSet.has(option.value))
     .map((option) => option.label);
 
+  // Warehouse-backed option sets can be huge; mounting every item into cmdk
+  // freezes the UI. Filter in JS and render only a capped subset.
+  const [search, setSearch] = useState("");
+
+  const visibleOptions = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    const matches = needle
+      ? options.filter((option) =>
+          option.label.toLowerCase().includes(needle),
+        )
+      : options;
+
+    return matches.slice(0, MAX_VISIBLE_OPTIONS);
+  }, [options, search]);
+
+  const hiddenCount = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    const total = needle
+      ? options.filter((option) =>
+          option.label.toLowerCase().includes(needle),
+        ).length
+      : options.length;
+
+    return Math.max(0, total - visibleOptions.length);
+  }, [options, search, visibleOptions.length]);
+
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          disabled={isLoading}
           className="w-full justify-between font-normal">
           <span className="flex min-w-0 items-center gap-1">
-            {selectedLabels.length === 0 ? (
+            {isLoading ? (
+              <span className="text-muted-foreground">Lädt…</span>
+            ) : selectedLabels.length === 0 ? (
               <span className="text-muted-foreground">{label}</span>
             ) : selectedLabels.length <= 2 ? (
               selectedLabels.map((selectedLabel) => (
@@ -153,25 +191,33 @@ function MultiSelect({
             )}
           </span>
 
-          <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
+          {isLoading ? (
+            <Spinner className="size-4 shrink-0 opacity-50" />
+          ) : (
+            <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
+          )}
         </Button>
       </PopoverTrigger>
 
       <PopoverContent className="w-64 p-0" align="start">
-        <Command>
-          <CommandInput placeholder={`${label} suchen…`} />
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder={`${label} suchen…`}
+            value={search}
+            onValueChange={setSearch}
+          />
 
           <CommandList>
             <CommandEmpty>Keine Einträge gefunden.</CommandEmpty>
 
             <CommandGroup>
-              {options.map((option) => {
+              {visibleOptions.map((option) => {
                 const isSelected = selectedSet.has(option.value);
 
                 return (
                   <CommandItem
                     key={option.value}
-                    value={option.label}
+                    value={option.value}
                     onSelect={() => toggle(option.value)}>
                     <CheckIcon
                       className={cn(
@@ -185,6 +231,12 @@ function MultiSelect({
                 );
               })}
             </CommandGroup>
+
+            {hiddenCount > 0 ? (
+              <div className="px-2 py-1.5 text-center text-xs text-muted-foreground">
+                {hiddenCount} weitere … zum Eingrenzen suchen
+              </div>
+            ) : null}
           </CommandList>
 
           {selectedLabels.length > 0 ? (
@@ -209,7 +261,7 @@ export function FilterControl({
   value,
   onChange,
 }: FilterControlProps) {
-  const options = useFilterOptions(dimension);
+  const { options, isLoading } = useFilterOptions(dimension);
 
   const renderControl = () => {
     switch (dimension.type) {
@@ -272,10 +324,12 @@ export function FilterControl({
           <select
             className={cn(
               "h-7 w-full min-w-0 rounded-md border border-input bg-input/20 px-2 py-0.5 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30",
+              isLoading && "cursor-not-allowed opacity-50",
             )}
+            disabled={isLoading}
             value={typeof value === "string" ? value : ""}
             onChange={(event) => onChange(event.target.value || null)}>
-            <option value="">Alle</option>
+            <option value="">{isLoading ? "Lädt…" : "Alle"}</option>
 
             {options.map((option) => (
               <option key={option.value} value={option.value}>
@@ -291,6 +345,7 @@ export function FilterControl({
             label={dimension.label}
             options={options}
             value={Array.isArray(value) ? value : []}
+            isLoading={isLoading}
             onChange={onChange}
           />
         );
