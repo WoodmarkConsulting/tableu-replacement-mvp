@@ -73,3 +73,12 @@ For module-specific details, read `modules/BarChartModule/instructions.md`.
 - Notes: Works without a basemap or API key by using the bundled world atlas countries TopoJSON. This differs from `LineChartModule`, which is designed for numeric time-series comparison rather than geographic grouping.
 
 For module-specific details, read `modules/MapModule/instructions.md`.
+
+### `TableModule`
+
+- Purpose: Tabular display of (optionally hierarchical) data with in-cell databars and hide/fold column controls.
+- Best use: Detailed row-level reporting, expandable rollup tables, and KPI grids where exact values and in-cell databars aid scanning.
+- Input: Receives `chartData` (`TableRowData[]`, a flat `id`/`parentId` adjacency list with a per-row `values` map) and a `TableChartConfig` through `ChartWrapperInjectedProps`.
+- Notes: Columns are config-authored (not data-inferred); hierarchy is transported as a flat `id`/`parentId` list and assembled into a tree client-side. Supports databars (positive and diverging), column hide/show and fold/unfold groups, client-side sorting, global + per-column filtering, top-level pagination, a grand-total footer, sticky header/first column, and row-click selection with enhanced tooltip / connections. `values` is emitted from SQL as `to_json(named_struct(...))`. This differs from the chart modules (exact values + hierarchy vs. visual trend/shape) and from `MapModule` (non-geographic).
+
+For module-specific details, read `modules/TableModule/instructions.md`.

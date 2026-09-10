@@ -7,10 +7,11 @@ import dynamic from "next/dynamic";
 import BarChartModuleDataSchema from "@/modules/BarChartModule/chartDataSchema";
 import LineChartModuleDataSchema from "@/modules/LineChartModule/chartDataSchema";
 import MapModuleDataSchema from "@/modules/MapModule/chartDataSchema";
+import TableModuleDataSchema from "@/modules/TableModule/chartDataSchema";
 
 export type ModuleRegistryKeys = keyof typeof moduleRegistry;
 
-export type ChartConfigs = BarChartConfig | LineChartConfig | MapChartConfig;
+export type ChartConfigs = BarChartConfig | LineChartConfig | MapChartConfig | TableChartConfig;
 
 export const moduleRegistry = {
   "BarChartModule": {
@@ -36,6 +37,14 @@ export const moduleRegistry = {
       ),
     ),
     dataSchema: MapModuleDataSchema,
+  },
+  "TableModule": {
+    component: dynamic(() =>
+      import("@/modules/TableModule").then(
+        (loadedModule) => loadedModule.default,
+      ),
+    ),
+    dataSchema: TableModuleDataSchema,
   },
 } as const;
 

@@ -6,18 +6,7 @@ hooks:
     - type: command
       command: "node scripts/copilot/agentPermissions.mjs grant"
 tools:
-  [
-    read,
-    search,
-    edit,
-    execute,
-    web,
-    todo,
-    agent,
-    shadcn/*,
-    context7/*,
-    playwright/*,
-  ]
+  [vscode, execute, read, agent, browser, vscodeGeneral/rename, vscodeGeneral/usages, vscodeNotebooks/createJupyterNotebook, vscodeNotebooks/editNotebook, edit, search, web, 'context7/*', 'playwright/*', 'shadcn/*', todo]
 user-invocable: true
 ---
 

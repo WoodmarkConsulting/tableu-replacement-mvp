@@ -30,8 +30,15 @@ It also supports the shared framework features every module participates in:
 
 - **Selection**: clicking (or checkbox-selecting) a row calls the injected
   `onSelectionChange(rows, options?)`. Multi-select accumulates via `{ additive: true }`.
+  Selecting a **parent** (group) row emits **only that parent's own row**, not its
+  descendants (decision Q2).
+- **Enhanced tooltip & connections**: `TableModule` fully participates. Because the tooltip
+  endpoint batches every selected data-point property into a JSON array parameter, the module
+  emits **flattened** selection rows (each `values` key becomes a top-level, atomic column)
+  so tooltip/connection SQL `expectedColumns` map to real, scalar aliases (decision Q1).
 - Standard `ChartWrapperInjectedProps` wiring: `chartData`, `height`, loading/error/empty
-  states handled by `ChartWrapper`, config injected as `chartConfig`.
+  states handled by `ChartWrapper`, config injected as `chartConfig`. The required `lasso`
+  controller is rendered inert (the table registers no lasso adapter).
 
 ---
 
@@ -64,8 +71,36 @@ It also supports the shared framework features every module participates in:
   of that column (with an option to include/exclude child rows). Diverging bars anchor at
   zero when the domain spans negative and positive values.
 - **Sorting/pagination: included, config-gated, default sensible.** Client-side sorting per
-  column and optional client-side pagination. Hierarchy and pagination interact (see Open
-  questions); v1 paginates top-level rows and keeps a node's descendants with it.
+  column and optional client-side pagination. When hierarchy is enabled, sorting reorders
+  **siblings within each parent** and preserves the tree (decision Q5); pagination applies to
+  **top-level rows** and keeps a node's descendants with it (decision Q13).
+
+### Resolved decisions (design pass 2)
+
+These forks were confirmed before build; each is reflected in the data contract, config type,
+and implementation plan below.
+
+- **Q1 — Tooltip & connections:** full participation; module flattens selected rows into
+  atomic, aliasable columns for batched tooltip/connection SQL.
+- **Q2 — Selection × hierarchy:** selecting a parent emits only that parent's own row.
+- **Q3 — Filtering:** both a global quick-search box and per-column filters (config-gated,
+  client-side).
+- **Q4 — Footer:** optional config-gated grand-total footer with per-column aggregate.
+- **Q5 — Sorting × hierarchy:** sort within each parent's children; never flatten the tree.
+- **Q6 — Percent scale:** per-column `format.percentScale: "fraction" | "value"`, default
+  `"fraction"` (`0.31` → `31 %`).
+- **Q7 — Boolean type:** add `"boolean"` column type and boolean to the cell union, with
+  configurable icon/text display.
+- **Q8 — Locale:** fixed `de-DE` for all number/currency/date formatting.
+- **Q9 — Cell overflow:** per-column `wrap`, default truncate-with-ellipsis + hover `title`.
+- **Q10 — Sticky first column:** config-gated `appearance.stickyFirstColumn`.
+- **Q11 — Accessibility:** semantic shadcn markup + ARIA attributes (`aria-expanded`,
+  `aria-sort`); no custom keyboard handlers in v1.
+- **Q12 — `values` serialization:** SQL emits `to_json(named_struct(...)) AS values`; the
+  schema uses `z.preprocess` to accept a JSON string or object; the shared data route is
+  untouched.
+- **Q13 — Pagination × hierarchy:** paginate top-level rows; descendants travel with the
+  parent.
 
 ---
 
@@ -94,7 +129,7 @@ Each row is one node in the (optional) hierarchy. Top-level rows use `parentId: 
 {
   id: string; // unique, stable row id
   parentId: string | null; // adjacency-list parent; null at top level
-  values: Record<string, number | string | null>; // cell values keyed by column id
+  values: Record<string, number | string | boolean | null>; // cell values keyed by column id
 }
 ```
 
@@ -108,12 +143,21 @@ Each row is one node in the (optional) hierarchy. Top-level rows use `parentId: 
 ```ts
 import { z } from "zod";
 
+const tableCellSchema = z.union([
+  z.number().finite(),
+  z.string(),
+  z.boolean(),
+  z.null(),
+]);
+
 export const tableRowSchema = z.object({
   id: z.string().min(1),
   parentId: z.string().min(1).nullable(),
-  values: z.record(
-    z.string(),
-    z.union([z.number().finite(), z.string(), z.null()]),
+  // SQL emits `values` via `to_json(named_struct(...))`, so the transport value may
+  // arrive as a JSON string (driver-dependent). Parse strings, pass objects through.
+  values: z.preprocess(
+    (v) => (typeof v === "string" ? JSON.parse(v) : v),
+    z.record(z.string(), tableCellSchema),
   ),
 });
 
@@ -132,6 +176,13 @@ export default tableRowSchema;
   keys render as empty, they are not an error.
 - Databar columns must contain numeric (or `null`) values; string values in a databar column
   render as text without a bar.
+- `boolean`-typed columns expect `true`/`false`/`null`; other types render `null` as the
+  configured empty placeholder.
+- `percent` columns respect the column's `format.percentScale` (`"fraction"` default → the
+  raw value is multiplied by 100; `"value"` → the raw value is already a percentage).
+- All numeric, currency, and date formatting uses the fixed `de-DE` locale.
+- `values` is transported as JSON (`to_json(named_struct(...))`); the schema parses a JSON
+  string or an already-decoded object.
 - Row order within a parent is preserved from the API response unless the user sorts; SQL
   should `ORDER BY` for a stable default.
 
@@ -225,9 +276,9 @@ type TableChartConfig = {
     valueKey?: string;
     header: string;
     /** Controls cell rendering + formatting + default alignment. */
-    type: "string" | "number" | "percent" | "currency" | "date";
+    type: "string" | "number" | "percent" | "currency" | "date" | "boolean";
     align?: "left" | "center" | "right";
-    /** Number/date formatting hints. */
+    /** Number/date formatting hints. All numeric formatting uses the fixed de-DE locale. */
     format?: {
       /** e.g. minimum/maximum fraction digits for numeric types. */
       minFractionDigits?: number;
@@ -238,15 +289,38 @@ type TableChartConfig = {
       notation?: "number" | "compact";
       /** date-fns-style pattern when type === "date"; value is a ms timestamp. */
       datePattern?: string;
+      /**
+       * How a `percent` value is scaled. "fraction" (default) treats 0.31 as 31%;
+       * "value" treats 31 as 31%. Ignored for non-percent types.
+       */
+      percentScale?: "fraction" | "value";
+    };
+    /** Boolean rendering (type === "boolean"). Default renders a check/cross icon. */
+    boolean?: {
+      /** "icon" (check/cross) or "text". Default "icon". */
+      display?: "icon" | "text";
+      /** Text shown for true when display === "text". Default "Ja". */
+      trueLabel?: string;
+      /** Text shown for false when display === "text". Default "Nein". */
+      falseLabel?: string;
     };
     /** Sorting. */
     sortable?: boolean;
+    /**
+     * Per-column filter control in the header/filter row. Only rendered when the
+     * dashboard's `filtering.perColumn` is enabled. Default false.
+     */
+    filterable?: boolean;
+    /** Wrap long cell content to multiple lines. Default false (truncate + hover title). */
+    wrap?: boolean;
     /** Initial visibility. User can toggle later via the column menu unless locked. */
     hidden?: boolean;
     /** Prevent the user from hiding/showing this column. */
     lockVisibility?: boolean;
     /** Fixed/preferred width in px. */
     width?: number;
+    /** Footer aggregate for this column when `footer.show` is enabled. */
+    footerAggregate?: "sum" | "avg" | "min" | "max" | "count" | "none";
     /** Databar rendering for numeric columns. */
     dataBar?: {
       enabled: boolean;
@@ -295,6 +369,27 @@ type TableChartConfig = {
     enabled: boolean;
     /** Initial sort. */
     defaultSort?: { columnId: string; direction: "asc" | "desc" };
+    /**
+     * When hierarchy is enabled, sorting reorders siblings within each parent and
+     * preserves the tree (never flattens). This is fixed behavior, not configurable.
+     */
+  };
+
+  /** Client-side filtering. Both layers are independent and config-gated. */
+  filtering: {
+    /** Global quick-search box across all visible columns. Default false. */
+    globalSearch: boolean;
+    /** Enable per-column filter controls (each column opts in via `filterable`). Default false. */
+    perColumn: boolean;
+    /** Placeholder for the global search box. Default "Suchen…". */
+    searchPlaceholder?: string;
+  };
+
+  /** Grand-total footer row (aggregates across all rows). */
+  footer: {
+    show: boolean;
+    /** Label rendered in the first/label column of the footer. Default "Gesamt". */
+    label?: string;
   };
 
   /** Client-side pagination of top-level rows. */
@@ -307,6 +402,8 @@ type TableChartConfig = {
   appearance: {
     density: "comfortable" | "compact";
     stickyHeader: boolean;
+    /** Freeze the first column while scrolling horizontally. Default false. */
+    stickyFirstColumn: boolean;
     zebraStripes: boolean;
     /** Text shown for null/empty cells. Default "—". */
     emptyPlaceholder?: string;
@@ -364,29 +461,44 @@ The component should:
 5. **Column-visibility menu (hide UI)**: a `columnMenu` popover listing toggleable
    (non-`lockVisibility`) columns with eye icons; writes to the user-visibility state layer.
 6. **Row expansion**: use TanStack `getExpandedRowModel`; initialize expanded state from
-   `hierarchy.defaultExpandedDepth`. Chevron toggles a row's expansion.
+   `hierarchy.defaultExpandedDepth`. Chevron toggles a row's expansion. Render
+   `aria-expanded` on the toggle (decision Q11).
 7. **Sorting**: `getSortedRowModel`, gated by `sorting.enabled`, seeded from `defaultSort`;
-   sortable headers show a direction indicator.
-8. **Pagination**: `getPaginationRowModel` over top-level rows, gated by `pagination.enabled`,
-   with simple prev/next + page indicator. Descendants stay grouped with their ancestor.
-9. **Parent aggregates** (optional): when `hierarchy.showParentAggregates`, compute the
-   configured aggregate of each numeric column over a node's descendants and render it on the
-   collapsed parent (helper `aggregateSubtree`).
-10. **Selection**: when `onSelectionChange` is a function, a row click selects that
-    row. For multi-select, show checkboxes (or click-to-toggle) and call
-    `onSelectionChange(rows, { additive: true })` with the original data rows so the
-    wrapper accumulates the selection.
-    Mirror the guarded, no-op-when-disabled approach from `LineChartModule`.
-11. **Layout**: wrap in a scroll container sized by the injected `height` (reuse the
-    `height`/svh handling used by `LineChartModule`), with an optional `stickyHeader`,
-    `density`, and `zebraStripes` from `appearance`.
+   sortable headers show a direction indicator and set `aria-sort`. With hierarchy enabled,
+   TanStack sorts sub-rows within each parent, preserving the tree (decision Q5).
+8. **Filtering** (decision Q3): gate on `filtering`. Global search uses TanStack
+   `getFilteredRowModel` with a `globalFilter` across visible columns; per-column filters
+   render controls for columns whose `filterable` is true. Both are client-side; when
+   hierarchy is enabled, keep an ancestor visible if any descendant matches.
+9. **Pagination**: `getPaginationRowModel` over top-level rows, gated by `pagination.enabled`,
+   with simple prev/next + page indicator. Descendants stay grouped with their ancestor
+   (decision Q13).
+10. **Parent aggregates** (optional): when `hierarchy.showParentAggregates`, compute the
+    configured aggregate of each numeric column over a node's descendants and render it on the
+    collapsed parent (helper `aggregateSubtree`).
+11. **Footer row** (decision Q4): when `footer.show`, render a `TableFooter` row computing each
+    column's `footerAggregate` over the currently filtered (not paginated) rows; the label
+    column shows `footer.label`. Reuse `aggregateSubtree`/a shared aggregate helper.
+12. **Selection** (decisions Q1, Q2): when `onSelectionChange` is a function, a row click
+    selects that row. For multi-select, show checkboxes (or click-to-toggle) and call
+    `onSelectionChange(rows, { additive: true })`. Selecting a parent emits only that parent's
+    own row. Emit **flattened** rows — spread each `values` key to the top level so batched
+    tooltip/connection SQL sees atomic, aliasable columns. Mirror the guarded,
+    no-op-when-disabled approach from `LineChartModule`.
+13. **Layout**: wrap in a scroll container sized by the injected `height` (reuse the
+    `height`/svh handling used by `LineChartModule`), applying `stickyHeader`,
+    `stickyFirstColumn`, `density`, `zebraStripes`, and per-column `wrap` (default truncate +
+    hover `title`) from `appearance`/columns.
 
 Helper extraction (keeps `index.tsx` readable; not required by the contract):
 
 - `modules/TableModule/tree.ts` — flat→nested build, cycle/orphan handling, subtree walks.
-- `modules/TableModule/format.ts` — value formatting per column `type`/`format`.
+- `modules/TableModule/format.ts` — value formatting per column `type`/`format` (fixed `de-DE`
+  locale, `percentScale`, boolean icon/text).
 - `modules/TableModule/dataBar.ts` — domain resolution + width/anchor math.
 - `modules/TableModule/columns.tsx` — column-def factory and `DataBarCell`.
+- `modules/TableModule/selection.ts` — flatten selected rows to atomic columns for tooltip/
+  connection payloads.
 
 > Contract note: helper files are allowed, but the four required files must each stay valid —
 > `chartType.d.ts` must contain **exactly one** `type` declaration (`TableChartConfig`), so
@@ -398,7 +510,9 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
 1. Create `modules/TableModule/instructions.md` following `docs/instructions.template.md`
    exactly: purpose, module files, full data contract (every field + rules), configuration
    reference (every property, recursively, including `columns[]`, `columnGroups[]`,
-   `hierarchy`, `dataBar`, and selection), an example API response, and usage/limitations.
+   `hierarchy`, `dataBar`, `filtering`, `footer`, `appearance.stickyFirstColumn`, boolean/
+   `percentScale`/`wrap` column options, and selection/tooltip/connection behavior), an
+   example API response, and usage/limitations.
 2. Update root `modules/instructions.md` to add a `TableModule` entry:
    - purpose: tabular display of (optionally hierarchical) data with databars and
      hide/fold column controls.
@@ -417,9 +531,8 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
 ### Phase 4 — Example SQL and smoke test (recommended)
 
 1. Author an example `pagesConfig/sql/<chartID>.sql` producing the row shape. The key work is
-   emitting `id`, `parentId`, and a `values` map. Databricks can build the map with
-   `named_struct` → `to_json`, or the API layer can assemble `values` from selected columns;
-   the plan's SQL sketch uses a struct the module reads as an object:
+   emitting `id`, `parentId`, and a JSON `values` map via `to_json(named_struct(...))`
+   (decision Q12):
 
    ```sql
    -- Two-level region → country rollup as a flat adjacency list.
@@ -434,34 +547,45 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
      GROUP BY region
    )
    SELECT
-     CONCAT('region:', region)               AS id,
+     CONCAT('region:', region)                AS id,
      CAST(NULL AS STRING)                     AS parentId,
-     named_struct('region', region, 'revenue', revenue, 'growth', growth) AS values
+     to_json(named_struct('region', region, 'revenue', revenue, 'growth', growth)) AS values
    FROM region
    UNION ALL
    SELECT
      CONCAT('region:', region, '|country:', country) AS id,
      CONCAT('region:', region)                        AS parentId,
-     named_struct('region', country, 'revenue', revenue, 'growth', growth) AS values
+     to_json(named_struct('region', country, 'revenue', revenue, 'growth', growth)) AS values
    FROM country
    ORDER BY id;
    ```
 
    Adjust to the real source table. Requirements: unique `id`, valid `parentId` chain, and a
    `values` object whose keys match the configured column `valueKey`s (including any databar
-   columns). Confirm the API route serializes `values` as an object matching the schema.
+   columns). The schema's `z.preprocess` accepts the JSON string returned for `values`; the
+   shared data route is not modified.
 
-2. Add a temporary dashboard entry referencing
+2. For enhanced tooltip / outgoing connections, author
+   `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql` against the **flattened** selection
+   payload (decision Q1): every `values` key arrives as its own JSON array parameter (one
+   element per selected row). Alias each `expectedColumns` name to an atomic, scalar column so
+   target chart SQL can bind it under the same named parameter.
+
+3. Add a temporary dashboard entry referencing
    `moduleName: "TableModule"`, regenerate the page with
    `npm run pageConfig:generatePage`, and visually confirm:
-   - rows render with correct formatting and alignment per column type
+   - rows render with correct formatting and alignment per column type (incl. `boolean`,
+     `percentScale`, fixed `de-DE` locale)
    - databars scale correctly (including diverging negatives) and honor the domain
    - the column menu hides/shows columns; locked columns cannot be toggled
    - column groups fold/unfold, swapping member columns for the summary column
    - hierarchy expands/collapses with correct indentation and default depth
-   - sorting and pagination behave and keep descendants with their ancestors
-
-- selecting a row emits the selected data rows
+   - global search and per-column filters narrow rows and keep matching ancestors
+   - sorting keeps the tree intact; pagination keeps descendants with their ancestors
+   - the totals footer aggregates the filtered rows
+   - the sticky first column stays fixed during horizontal scroll
+   - selecting a row (parent → only its own row) emits the flattened rows, and enhanced
+     tooltip / connections resolve their `expectedColumns`
 
 ---
 
@@ -474,7 +598,11 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
 - `modules/TableModule/chartType.d.ts` — single `TableChartConfig` type.
 - `modules/TableModule/instructions.md` — module documentation.
 - `modules/TableModule/{tree,format,dataBar,columns}.*` — optional helpers.
+- `modules/TableModule/selection.ts` — optional helper flattening selected rows for tooltip/
+  connection payloads.
 - `components/ui/table.tsx` — new shadcn table primitive.
+- `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql` — tooltip/connection SQL over the
+  flattened selection payload.
 - `modules/instructions.md` — module overview registry.
 - `modules/modulRegistry.ts` — generated registry output.
 - `types/baseChart.d.ts` — `ChartWrapperInjectedProps` contract.
@@ -498,33 +626,33 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
 - `npm run module:generateRegistry` succeeds; `ChartConfigs` includes `TableChartConfig`.
 - `npm run lint` and `npm run verify:typescript` pass.
 - Browser smoke test confirms databars, hide/fold columns, hierarchy expansion, sorting,
-  pagination, and selection.
+  filtering (global + per-column), pagination, totals footer, sticky first column, and
+  selection with enhanced tooltip / connections.
 
 ---
 
-## Open questions / decisions to confirm before building
+## Open questions / decisions
 
-1. **New dependency approval.** OK to add `@tanstack/react-table`, or must the table be
-   hand-rolled with no new dependency?
-2. **`values` serialization.** Should SQL emit `values` as a struct the API returns as a JSON
-   object (preferred), or should the API route assemble `values` from flat columns? This
-   affects the example SQL and the `/api/data` handling.
-3. **Pagination vs. hierarchy.** Confirm v1 paginates **top-level** rows only (descendants
-   travel with their ancestor). Alternative: paginate the flattened visible rows.
-4. **Fold/unfold semantics.** Confirm a folded group hides members and optionally shows a
-   single `summaryColumnId` (chosen here), versus collapsing members into one computed
-   aggregate column.
-5. **Column grouping vs. hierarchy naming.** "Unfold columns" is implemented as column
-   **groups** (horizontal fold/unfold), separate from row **hierarchy** (vertical
-   expand/collapse). Confirm this matches intent.
+All previously open forks are resolved (see **Resolved decisions**, Q1–Q13). The remaining
+items below are confirmations, not blockers:
+
+1. **New dependency approval.** Adding `@tanstack/react-table` is assumed approved (decision
+   from the design pass). The hand-rolled fallback remains documented if this is reversed.
+2. **Fold/unfold semantics.** A folded group hides members and optionally shows a single
+   `summaryColumnId` (chosen), versus collapsing members into one computed aggregate column.
+3. **Column grouping vs. hierarchy naming.** "Unfold columns" = column **groups** (horizontal
+   fold/unfold), separate from row **hierarchy** (vertical expand/collapse).
 
 ---
 
 ## Out of scope for v1 (possible follow-ups)
 
-- Server-side sorting/pagination/filtering for very large tables (v1 is client-side).
-- Column resizing/reordering by drag, and pinning/frozen columns.
+- Server-side sorting/pagination/filtering for very large tables (v1 is client-side;
+  global search + per-column filters are in scope, Q3).
+- Column resizing/reordering by drag, and pinning columns other than the sticky first
+  column (the sticky first column is in scope, Q10).
 - CSV/Excel export of the current view (the dashboard print/export summary still applies).
 - Editable cells or inline actions.
 - Virtualized rows for very tall tables (add `@tanstack/react-virtual` later if needed).
 - Cross-column conditional formatting / heatmap cell backgrounds beyond databars.
+- Custom keyboard navigation beyond semantic markup + ARIA attributes (Q11).
