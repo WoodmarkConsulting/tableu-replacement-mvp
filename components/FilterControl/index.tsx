@@ -20,6 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useFilterOptions } from "@/hooks/useFilterOptions";
 import { cn } from "@/lib/utils";
 
 type FilterControlProps = {
@@ -208,6 +209,8 @@ export function FilterControl({
   value,
   onChange,
 }: FilterControlProps) {
+  const options = useFilterOptions(dimension);
+
   const renderControl = () => {
     switch (dimension.type) {
       case "string":
@@ -274,7 +277,7 @@ export function FilterControl({
             onChange={(event) => onChange(event.target.value || null)}>
             <option value="">Alle</option>
 
-            {dimension.options?.map((option) => (
+            {options.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -286,7 +289,7 @@ export function FilterControl({
         return (
           <MultiSelect
             label={dimension.label}
-            options={dimension.options ?? []}
+            options={options}
             value={Array.isArray(value) ? value : []}
             onChange={onChange}
           />

@@ -25,6 +25,9 @@ type FilterDimension<Tconf extends TabsConfig[] = TabsConfig[]> = {
   label: string;
   type: FilterType;
   options?: FilterOption[];
+  // Names a SQL file at pagesConfig/sql/filterOptions/<optionsSource>.sql that
+  // returns rows with `value` (and optional `label`). Overrides static options.
+  optionsSource?: string;
   defaultValue?: FilterValue;
 } & (
   | {
