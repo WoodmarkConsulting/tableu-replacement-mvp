@@ -35,6 +35,7 @@ type ChartConnection<Tconf extends TabsConfig[] = TabsConfig[]> = {
 
 type DashboardConfig<T extends TabsConfig[] = TabsConfig[]> = {
   reportName: string;
+  filterLayout: "sidebar" | "top";
   filters: FilterDimension<T>[];
   tabs: T;
   connections?: ChartConnection<T>[];
