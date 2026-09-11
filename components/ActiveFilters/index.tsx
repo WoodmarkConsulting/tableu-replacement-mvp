@@ -38,7 +38,10 @@ function formatValue(dimension: FilterDimension, value: FilterValue): string {
       : labels.join(", ");
   }
 
-  if (dimension.type === "select" && typeof value === "string") {
+  if (
+    (dimension.type === "select" || dimension.type === "option") &&
+    typeof value === "string"
+  ) {
     return (
       dimension.options?.find((option) => option.value === value)?.label ??
       value

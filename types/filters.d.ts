@@ -4,7 +4,8 @@ type FilterType =
   | "dateString"
   | "dateRange"
   | "select"
-  | "multiselect";
+  | "multiselect"
+  | "option";
 
 type FilterScope = "global" | "tab";
 

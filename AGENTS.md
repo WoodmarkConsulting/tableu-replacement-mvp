@@ -71,8 +71,9 @@ The runtime flow is:
 Dashboards share a filter framework driven entirely by config:
 
 - **Dimensions** — `DashboardConfig.filters: FilterDimension[]`, each `{ id, label, type, scope, tab?, options?, defaultValue? }`.
-  - `type`: `"string" | "number" | "dateString" | "dateRange" | "select" | "multiselect"`. All are single-value except `multiselect`, which holds a `string[]`.
+  - `type`: `"string" | "number" | "dateString" | "dateRange" | "select" | "multiselect" | "option"`. All are single-value except `multiselect`, which holds a `string[]`.
   - `select` and `multiselect` read their choices from `options`. `multiselect` renders a searchable combobox (Popover + Command) and binds to SQL as a comma-joined string.
+  - `option` renders a segmented single-choice control where exactly one value is always selected (mandatory); it reads its choices from `options` and falls back to 2 default options when none are configured. It binds to SQL as a single string.
   - Options for `select` and `multiselect` may instead be loaded from the warehouse: set `optionsSource: "<id>"` on the dimension and add `pagesConfig/sql/filterOptions/<id>.sql` returning rows with a `value` column (and optional `label`; defaults to `value`). Options load eagerly on dashboard open via `GET /api/filters/options/<id>` and are **non-dependent** (the query runs with no filter parameters). Static `options` act as a fallback while loading or when no source is set.
   - `scope`: `"global"` (every tab) or `"tab"` (requires `tab` = the tab `trigger`).
 - **Bindings** — each chart maps dimensions to its SQL named parameters via `filterBindings: Record<dimensionId, sqlParamName>`. `ChartWrapper` resolves the active value (`global:<id>` or `tab:<activeTab>:<id>`) and posts it; unset → `null`. A `multiselect` value is posted as a comma-joined string (empty → `null`).

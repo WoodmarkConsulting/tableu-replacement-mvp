@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CalendarIcon, CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 
@@ -22,6 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,12 @@ type FilterControlProps = {
 // Cap how many multiselect options are mounted at once so large warehouse-backed
 // option sets don't freeze the UI when the popover opens.
 const MAX_VISIBLE_OPTIONS = 100;
+
+// Fallback choices for an `option` filter when the config omits `options`.
+const DEFAULT_OPTION_FILTER_OPTIONS: FilterOption[] = [
+  { label: "Option 1", value: "option-1" },
+  { label: "Option 2", value: "option-2" },
+];
 
 function parseDate(value: string | null | undefined): Date | undefined {
   if (typeof value !== "string") {
@@ -256,6 +263,52 @@ function MultiSelect({
   );
 }
 
+// Mandatory single choice rendered as a radio group. Exactly one option is
+// always selected; the first option is seeded when nothing is chosen yet.
+function OptionFilter({
+  options,
+  value,
+  isLoading,
+  onChange,
+}: {
+  options: FilterOption[];
+  value: string | null;
+  isLoading: boolean;
+  onChange: (value: string) => void;
+}) {
+  const resolvedOptions = options.length
+    ? options
+    : DEFAULT_OPTION_FILTER_OPTIONS;
+
+  const hasValidValue = resolvedOptions.some(
+    (option) => option.value === value,
+  );
+
+  useEffect(() => {
+    if (!isLoading && !hasValidValue && resolvedOptions.length > 0) {
+      onChange(resolvedOptions[0].value);
+    }
+  }, [isLoading, hasValidValue, resolvedOptions, onChange]);
+
+  return (
+    <RadioGroup
+      value={value ?? ""}
+      disabled={isLoading}
+      onValueChange={(next) => onChange(String(next))}
+      className="gap-2">
+      {resolvedOptions.map((option) => (
+        <Label
+          key={option.value}
+          className="flex items-center gap-2 font-normal">
+          <RadioGroupItem value={option.value} />
+
+          {option.label}
+        </Label>
+      ))}
+    </RadioGroup>
+  );
+}
+
 export function FilterControl({
   dimension,
   value,
@@ -345,6 +398,16 @@ export function FilterControl({
             label={dimension.label}
             options={options}
             value={Array.isArray(value) ? value : []}
+            isLoading={isLoading}
+            onChange={onChange}
+          />
+        );
+
+      case "option":
+        return (
+          <OptionFilter
+            options={options}
+            value={typeof value === "string" ? value : null}
             isLoading={isLoading}
             onChange={onChange}
           />
