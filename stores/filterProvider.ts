@@ -11,6 +11,92 @@ export const globalKey = (dimensionId: string) => `global:${dimensionId}`;
 export const tabKey = (tabId: string, dimensionId: string) =>
   `tab:${tabId}:${dimensionId}`;
 
+// Relative date tokens usable as `defaultValue` for `dateString`/`dateRange`
+// filters, e.g. "today", "-3 months", "+1 week". Resolved to a concrete
+// YYYY-MM-DD at store init so downstream code keeps handling ISO date strings.
+const RELATIVE_DATE_PATTERN = /^([+-]?\d+)\s*(day|week|month|year)s?$/i;
+
+const toIsoDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+// Returns the resolved ISO date for a relative token, or null when the string
+// is not a relative token (e.g. an explicit "2026-01-01" date literal).
+export const resolveRelativeDate = (
+  token: string,
+  now: Date = new Date(),
+): string | null => {
+  const trimmed = token.trim().toLowerCase();
+
+  if (trimmed === "today" || trimmed === "now") {
+    return toIsoDate(now);
+  }
+
+  const match = RELATIVE_DATE_PATTERN.exec(trimmed);
+
+  if (!match) {
+    return null;
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  switch (unit) {
+    case "day":
+      date.setDate(date.getDate() + amount);
+      break;
+    case "week":
+      date.setDate(date.getDate() + amount * 7);
+      break;
+    case "month":
+      date.setMonth(date.getMonth() + amount);
+      break;
+    case "year":
+      date.setFullYear(date.getFullYear() + amount);
+      break;
+  }
+
+  return toIsoDate(date);
+};
+
+const resolveDateToken = (value: string): string =>
+  resolveRelativeDate(value) ?? value;
+
+// Resolves relative date tokens in a dimension's default value. Non-date types
+// and explicit date literals pass through unchanged.
+const resolveDefaultValue = (dimension: FilterDimension): FilterValue => {
+  const { type, defaultValue } = dimension;
+
+  if (type === "dateString" && typeof defaultValue === "string") {
+    return resolveDateToken(defaultValue);
+  }
+
+  if (
+    type === "dateRange" &&
+    defaultValue &&
+    typeof defaultValue === "object" &&
+    !Array.isArray(defaultValue)
+  ) {
+    return {
+      from:
+        typeof defaultValue.from === "string"
+          ? resolveDateToken(defaultValue.from)
+          : defaultValue.from,
+      to:
+        typeof defaultValue.to === "string"
+          ? resolveDateToken(defaultValue.to)
+          : defaultValue.to,
+    };
+  }
+
+  return defaultValue as FilterValue;
+};
+
 const buildDefaultValues = (
   dimensions: FilterDimension[],
 ): Record<string, FilterValue> => {
@@ -29,7 +115,7 @@ const buildDefaultValues = (
           : null;
 
     if (key) {
-      values[key] = dimension.defaultValue;
+      values[key] = resolveDefaultValue(dimension);
     }
   }
 
