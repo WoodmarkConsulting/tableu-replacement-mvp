@@ -59,24 +59,75 @@ function getSeriesKey(seriesIndex: number): `series_${number}` {
   return `series_${seriesIndex}`;
 }
 
+type NumberFormatOptions = NonNullable<
+  BarChartConfig["valueAxis"]["numberFormat"]
+>;
+
+function hasNumericOptions(options?: NumberFormatOptions): boolean {
+  return (
+    options !== undefined &&
+    (options.decimals !== undefined ||
+      options.useGrouping !== undefined ||
+      options.currency !== undefined ||
+      options.locale !== undefined)
+  );
+}
+
 function formatValue(
   value: number,
   format: BarChartConfig["valueAxis"]["format"],
+  options?: NumberFormatOptions,
 ): string {
+  const locale = options?.locale ?? "en";
+  const useGrouping = options?.useGrouping ?? false;
+  const fractionOptions: Intl.NumberFormatOptions =
+    options?.decimals !== undefined
+      ? {
+          minimumFractionDigits: options.decimals,
+          maximumFractionDigits: options.decimals,
+        }
+      : {};
+
+  let body: string;
+
   switch (format) {
     case "compact":
-      return new Intl.NumberFormat("en", {
+      body = new Intl.NumberFormat(locale, {
         notation: "compact",
-        maximumFractionDigits: 1,
+        useGrouping,
+        maximumFractionDigits: options?.decimals ?? 1,
+        ...(options?.decimals !== undefined
+          ? { minimumFractionDigits: options.decimals }
+          : {}),
       }).format(value);
+      break;
 
-    case "percent":
-      return `${value}%`;
+    case "percent": {
+      const numberPart = hasNumericOptions(options)
+        ? new Intl.NumberFormat(locale, {
+            useGrouping,
+            ...fractionOptions,
+          }).format(value)
+        : String(value);
+      body = `${numberPart}%`;
+      break;
+    }
 
     case "number":
     default:
-      return String(value);
+      body = hasNumericOptions(options)
+        ? new Intl.NumberFormat(locale, {
+            useGrouping,
+            ...(options?.currency
+              ? { style: "currency", currency: options.currency }
+              : {}),
+            ...fractionOptions,
+          }).format(value)
+        : String(value);
+      break;
   }
+
+  return `${options?.prefix ?? ""}${body}${options?.suffix ?? ""}`;
 }
 
 function truncateLabel(label: string, maxLabelChars?: number): string {
@@ -441,7 +492,7 @@ function BarChartModule(props: Props) {
         tickLine={valueAxis.tickLine}
         axisLine={valueAxis.axisLine}
         tickFormatter={(value: number) =>
-          formatValue(value, effectiveValueFormat)
+          formatValue(value, effectiveValueFormat, valueAxis.numberFormat)
         }
       />
     ) : (
@@ -452,7 +503,7 @@ function BarChartModule(props: Props) {
         tickLine={valueAxis.tickLine}
         axisLine={valueAxis.axisLine}
         tickFormatter={(value: number) =>
-          formatValue(value, effectiveValueFormat)
+          formatValue(value, effectiveValueFormat, valueAxis.numberFormat)
         }
       />
     );
@@ -536,7 +587,11 @@ function BarChartModule(props: Props) {
                   )}
                   formatter={(value: unknown) =>
                     typeof value === "number"
-                      ? formatValue(value, valueLabels.format)
+                      ? formatValue(
+                          value,
+                          valueLabels.format,
+                          valueLabels.numberFormat,
+                        )
                       : ""
                   }
                 />

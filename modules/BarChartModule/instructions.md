@@ -174,6 +174,14 @@ type BarChartConfig = {
     tickLine: boolean;
     axisLine: boolean;
     format: "number" | "compact" | "percent";
+    numberFormat?: {
+      decimals?: number;
+      useGrouping?: boolean;
+      currency?: string;
+      prefix?: string;
+      suffix?: string;
+      locale?: string;
+    };
     domain?: [number, number] | "auto";
   };
   grid: {
@@ -203,6 +211,14 @@ type BarChartConfig = {
   valueLabels: {
     show: boolean;
     format: "number" | "compact" | "percent";
+    numberFormat?: {
+      decimals?: number;
+      useGrouping?: boolean;
+      currency?: string;
+      prefix?: string;
+      suffix?: string;
+      locale?: string;
+    };
     position: "inside" | "outside" | "auto";
   };
   colorByCategory?: {
@@ -342,6 +358,14 @@ Type:
   tickLine: boolean;
   axisLine: boolean;
   format: "number" | "compact" | "percent";
+  numberFormat?: {
+    decimals?: number;
+    useGrouping?: boolean;
+    currency?: string;
+    prefix?: string;
+    suffix?: string;
+    locale?: string;
+  };
   domain?: [number, number] | "auto";
 }
 ```
@@ -361,6 +385,9 @@ Behavior:
 - `percent` appends `%` without scaling.
 - `domain` pins the value range; `"auto"` or omission lets recharts scale automatically.
 - The `stacked100` layout overrides `format` to percent and `domain` to `[0, 100]`.
+- `numberFormat` is optional and refines the numeric output on top of `format`
+  (see the shared `numberFormat` reference below). When omitted, the legacy
+  output is preserved exactly.
 
 ### `grid`
 
@@ -478,6 +505,14 @@ Type:
 {
   show: boolean;
   format: "number" | "compact" | "percent";
+  numberFormat?: {
+    decimals?: number;
+    useGrouping?: boolean;
+    currency?: string;
+    prefix?: string;
+    suffix?: string;
+    locale?: string;
+  };
   position: "inside" | "outside" | "auto";
 }
 ```
@@ -494,6 +529,50 @@ Behavior:
 
 - `inside` centers the label inside the bar.
 - `outside` and `auto` place the label at the top (vertical) or right (horizontal) of the bar.
+- `numberFormat` refines the numeric output on top of `format`
+  (see the shared `numberFormat` reference below).
+
+### `numberFormat` (valueAxis / valueLabels)
+
+Type:
+
+```ts
+{
+  decimals?: number;
+  useGrouping?: boolean;
+  currency?: string;
+  prefix?: string;
+  suffix?: string;
+  locale?: string;
+}
+```
+
+Required:
+
+`no`
+
+Description:
+
+Optional fine-grained numeric formatting layered on top of `format`, available on
+both `valueAxis` and `valueLabels`. When the whole object is omitted, the legacy
+output is preserved exactly.
+
+Behavior:
+
+- `decimals` fixes the number of fraction digits (used as both min and max),
+  e.g. `2` renders `12500` as `12500.00`. For `compact` it caps the fraction
+  digits (default `1`).
+- `useGrouping` inserts locale digit-group (thousands) separators,
+  e.g. `12,500` (`en`) or `12.500` (`de-DE`). Defaults to `false`.
+- `currency` is an ISO 4217 code (e.g. `"USD"`, `"EUR"`) that renders the value as
+  currency. Only applied to the `"number"` format.
+- `prefix` and `suffix` wrap the formatted value with literal text,
+  e.g. `suffix: " kg"` renders `12500 kg`.
+- `locale` is a BCP 47 locale controlling separators and currency symbol.
+  Defaults to `"en"`.
+- Providing any of `decimals`, `useGrouping`, `currency`, or `locale` routes the
+  value through `Intl.NumberFormat`; `prefix`/`suffix` alone only wrap the legacy
+  output.
 
 ### `colorByCategory`
 

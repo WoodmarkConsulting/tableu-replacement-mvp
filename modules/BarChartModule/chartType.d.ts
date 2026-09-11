@@ -72,6 +72,48 @@ type BarChartConfig = {
     format: "number" | "compact" | "percent";
 
     /**
+     * Optional fine-grained numeric formatting layered on top of `format`.
+     * Every field is optional; when the whole object is omitted the legacy
+     * output is preserved.
+     */
+    numberFormat?: {
+      /**
+       * Fixed number of fraction digits (used as both min and max).
+       * e.g. 2 renders 12500 as 12500.00.
+       */
+      decimals?: number;
+
+      /**
+       * Insert locale digit-group (thousands) separators.
+       * e.g. true renders 12500 as 12,500 (en) or 12.500 (de-DE).
+       */
+      useGrouping?: boolean;
+
+      /**
+       * ISO 4217 currency code. When set, values render as currency,
+       * e.g. "USD" -> $12,500.00, "EUR" -> €12,500.00.
+       * Only applied to the "number" format.
+       */
+      currency?: string;
+
+      /**
+       * Text prepended to the formatted value.
+       */
+      prefix?: string;
+
+      /**
+       * Text appended to the formatted value.
+       */
+      suffix?: string;
+
+      /**
+       * BCP 47 locale controlling separators and currency symbol.
+       * Defaults to "en".
+       */
+      locale?: string;
+    };
+
+    /**
      * Pin the value range, or "auto" to let recharts scale automatically.
      */
     domain?: [number, number] | "auto";
@@ -142,6 +184,20 @@ type BarChartConfig = {
   valueLabels: {
     show: boolean;
     format: "number" | "compact" | "percent";
+
+    /**
+     * Optional fine-grained numeric formatting layered on top of `format`.
+     * Same semantics as `valueAxis.numberFormat`.
+     */
+    numberFormat?: {
+      decimals?: number;
+      useGrouping?: boolean;
+      currency?: string;
+      prefix?: string;
+      suffix?: string;
+      locale?: string;
+    };
+
     position: "inside" | "outside" | "auto";
   };
 
