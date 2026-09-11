@@ -54,7 +54,7 @@ export function DashboardShell({ config }: DashboardShellProps) {
   const applied = <ActiveFilters dimensions={filters} />;
 
   const main = (
-    <div className="flex min-w-0 flex-1 flex-col gap-4">
+    <div className="flex min-w-0 flex-1 flex-col gap-2">
       <div className="print:hidden">
         <TabFilters dimensions={filters} />
       </div>
@@ -69,7 +69,7 @@ export function DashboardShell({ config }: DashboardShellProps) {
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-2">
       {urlSync}
 
       {header}
