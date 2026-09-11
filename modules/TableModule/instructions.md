@@ -240,6 +240,7 @@ type TableChartConfig = {
       showValue: boolean;
       radius?: number;
       heightRatio?: number;
+      direction?: "ltr" | "rtl";
     };
   }[];
   hierarchy: {
@@ -322,6 +323,7 @@ Ordered array of leaf columns (left to right).
   - `showValue` — overlay the formatted value (default `true`).
   - `radius` — bar corner radius px.
   - `heightRatio` — bar height as a fraction of the cell (0–1).
+  - `direction` — fill direction: `"ltr"` (default, anchored left) or `"rtl"` (anchored right, grows left). Diverging bars still anchor at zero.
 
 ### `hierarchy`
 

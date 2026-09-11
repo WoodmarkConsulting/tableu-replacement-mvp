@@ -89,6 +89,11 @@ type TableChartConfig = {
       radius?: number;
       /** Bar height as a fraction of the cell (0-1). Default fills the cell. */
       heightRatio?: number;
+      /**
+       * Fill direction. "ltr" (default) anchors bars on the left and grows right;
+       * "rtl" anchors on the right and grows left. Diverging bars still anchor at zero.
+       */
+      direction?: "ltr" | "rtl";
     };
   }[];
 

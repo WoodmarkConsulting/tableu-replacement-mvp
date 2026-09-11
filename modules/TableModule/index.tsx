@@ -315,12 +315,17 @@ function TableModule(props: Props) {
           {chartConfig.columnMenu.show && toggleableColumns.length > 0 && (
             <Popover>
               <PopoverTrigger asChild>
-                <Button type="button" variant="outline" size="sm">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="ml-auto size-8"
+                  aria-label={chartConfig.columnMenu.label ?? "Spalten"}
+                >
                   <Eye className="size-4" />
-                  {chartConfig.columnMenu.label ?? "Spalten"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-52">
+              <PopoverContent align="end" className="w-52">
                 <div className="flex flex-col gap-1">
                   {toggleableColumns.map((column) => (
                     <label

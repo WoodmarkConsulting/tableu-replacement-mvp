@@ -53,6 +53,7 @@ export function resolveDomain(
 /**
  * Computes bar placement for a value within a domain. Positive-only domains render a
  * left-anchored bar; diverging domains (spanning zero) anchor at the zero position.
+ * When `direction` is "rtl" the whole layout is mirrored horizontally.
  */
 export function computeBarGeometry(
   value: number,
@@ -68,11 +69,16 @@ export function computeBarGeometry(
   const positiveColor = dataBar.positiveColor;
   const negativeColor = dataBar.negativeColor ?? positiveColor;
 
+  const mirror = (geometry: BarGeometry): BarGeometry =>
+    dataBar.direction === "rtl"
+      ? { ...geometry, leftPct: 100 - geometry.leftPct - geometry.widthPct }
+      : geometry;
+
   if (domain.min >= 0) {
     const denominator = domain.max <= 0 ? 1 : domain.max;
     const widthPct = clamp((value / denominator) * 100, 0, 100);
 
-    return { leftPct: 0, widthPct, color: positiveColor };
+    return mirror({ leftPct: 0, widthPct, color: positiveColor });
   }
 
   const range = domain.max - domain.min || 1;
@@ -80,16 +86,16 @@ export function computeBarGeometry(
   const valueFraction = clamp((value - domain.min) / range, 0, 1);
 
   if (value >= 0) {
-    return {
+    return mirror({
       leftPct: zeroFraction * 100,
       widthPct: Math.max(0, (valueFraction - zeroFraction) * 100),
       color: positiveColor,
-    };
+    });
   }
 
-  return {
+  return mirror({
     leftPct: valueFraction * 100,
     widthPct: Math.max(0, (zeroFraction - valueFraction) * 100),
     color: negativeColor,
-  };
+  });
 }

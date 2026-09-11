@@ -58,6 +58,7 @@ function DataBarCell({
   const geometry = computeBarGeometry(value, domain, column);
   const showValue = dataBar.showValue ?? true;
   const heightRatio = dataBar.heightRatio ?? 1;
+  const isRtl = dataBar.direction === "rtl";
 
   return (
     <div className="relative flex h-5 w-full min-w-[60px] items-center">
@@ -75,7 +76,14 @@ function DataBarCell({
         />
       ) : null}
       {showValue ? (
-        <span className="relative z-10 ml-auto tabular-nums">{formatted}</span>
+        <span
+          className={cn(
+            "relative z-10 tabular-nums",
+            isRtl ? "mr-auto" : "ml-auto",
+          )}
+        >
+          {formatted}
+        </span>
       ) : null}
     </div>
   );
