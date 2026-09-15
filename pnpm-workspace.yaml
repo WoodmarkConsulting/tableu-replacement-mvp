@@ -1,5 +1,9 @@
 nodeLinker: hoisted
 
+#  prevent pnpm from creating a lockfile, hence it conflicts with the npm lockfile
+lockfile: false
+pmOnFail: ignore
+
 allowBuilds:
   esbuild: true
   unrs-resolver: true
