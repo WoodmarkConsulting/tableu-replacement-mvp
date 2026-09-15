@@ -22,6 +22,7 @@ const fillRow = (components: TabsConfig["rows"][number]["components"]) => {
 type Props = {
   tabsConfig: TabsConfig[];
   connections?: ChartConnection[];
+  tabJumps?: TabJumpConfig[];
   value?: string;
   onValueChange?: (value: string) => void;
 };
@@ -29,6 +30,7 @@ type Props = {
 export function TabsWrapper({
   tabsConfig,
   connections,
+  tabJumps,
   value,
   onValueChange,
 }: Props) {
@@ -80,6 +82,7 @@ export function TabsWrapper({
                         <ChartWrapper
                           {...compConfig}
                           connections={connections}
+                          tabJumps={tabJumps}
                           chartLabels={chartLabels}
                           height={row.height || 15}
                         />

@@ -137,6 +137,7 @@ Right-clicking a rendered chart opens a shared context menu:
   are selected, and the connection values have been resolved.
 - A target entry applies filters immediately to that one chart.
 - The tooltip footer button applies the staged values to all linked target charts.
+- **Auf Tab springen** / **Details in "[Tab]" ansehen** appears when `tabJumps` are configured for the chart. Selecting data points and clicking this action drills into the target tab, sets the target tab's filter dimensions, applies them immediately, switches tabs, and displays a return breadcrumb (`TabBreadcrumb`).
 
 Connections are declared in `DashboardConfig.connections` with `fromChartID`, `toChartID`, and
 `expectedColumns`. Every `expectedColumns` value is an end-to-end contract: it must be a real
@@ -144,6 +145,8 @@ target-table column, an exact alias returned by the source tooltip SQL, and a na
 parsed by the target chart SQL. `TabsWrapper` derives target labels from `chartTitle` across all
 tabs, so users see chart names rather than internal IDs; untitled targets display
 `Unbenanntes Diagramm`.
+
+Tab jumps are declared in `DashboardConfig.tabJumps` with `fromChartID`, `targetTab`, `mappings` (`sourceField` and `targetDimensionId`), optional `label`, and optional `restoreOnReturn`.
 
 ## Dashboard config model
 
@@ -158,7 +161,7 @@ At a high level, each JSON file contains:
 - `components` entries
 - one `moduleName` per chart entry
 - chart metadata such as `chartID`, `chartTitle`, `chartDescription`, `chartConfig`, and per-chart `filterBindings` (dimension id → SQL parameter)
-- optional `enhancedTooltip` per chart and dashboard-level `connections` between source and target charts
+- optional `enhancedTooltip` per chart, dashboard-level `connections` between source and target charts, and `tabJumps` for cross-tab drilldowns
 
 The row layout uses a 12-column grid. If a row uses less than 12 columns, `TabsWrapper` assigns the remaining width to the last component in that row.
 

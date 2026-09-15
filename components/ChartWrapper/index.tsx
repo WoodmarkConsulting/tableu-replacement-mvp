@@ -21,7 +21,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Eye, ListFilter } from "lucide-react";
+import { ArrowRightCircle, ExternalLink, Eye, ListFilter } from "lucide-react";
 
 import {
   Card,
@@ -64,6 +64,7 @@ type ModuleSchema<M extends ModuleRegistryKeys> =
   (typeof moduleRegistry)[M]["dataSchema"];
 
 const EMPTY_CONNECTIONS: ChartConnection[] = [];
+const EMPTY_TAB_JUMPS: TabJumpConfig[] = [];
 
 function isConnectionFilterValue(
   value: unknown,
@@ -86,6 +87,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     moduleName: M;
     height: number;
     connections?: ChartConnection[];
+    tabJumps?: TabJumpConfig[];
     chartLabels: Partial<Record<TableSchemaKey, string>>;
   },
 ) {
@@ -97,6 +99,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     mockData,
     filterBindings,
     connections = EMPTY_CONNECTIONS,
+    tabJumps = EMPTY_TAB_JUMPS,
     chartLabels,
     ...baseProps
   } = props;
@@ -148,7 +151,13 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const filterValues = useFilterStore((state) => state.appliedValues);
   const activeTab = useFilterStore((state) => state.activeTab);
   const hasApplied = useFilterStore((state) => state.hasApplied);
+  const dimensions = useFilterStore((state) => state.dimensions);
+  const executeTabJump = useFilterStore((state) => state.executeTabJump);
   const recordTiming = useQueryTimingStore((state) => state.recordTiming);
+
+  const matchingJumps = tabJumps.filter(
+    (jump) => jump.fromChartID === chartID,
+  );
 
   const incomingColumns = Array.from(
     new Set(
@@ -400,6 +409,72 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     applyPendingSourceFilters();
   };
 
+  const canExecuteJump = (jump: TabJumpConfig, rows: DataType[]) => {
+    if (rows.length === 0) {
+      return false;
+    }
+
+    for (const mapping of jump.mappings) {
+      const raw = rows.map(
+        (r) => (r as Record<string, unknown>)[mapping.sourceField],
+      );
+      if (raw.every((v) => v === undefined)) {
+        return false;
+      }
+      if (
+        raw.some(
+          (v) =>
+            v != null &&
+            typeof v !== "string" &&
+            typeof v !== "number" &&
+            typeof v !== "boolean",
+        )
+      ) {
+        return false;
+      }
+
+      const uniqueValues = Array.from(new Set(raw.filter((v) => v != null)));
+      if (uniqueValues.length === 0) {
+        return false;
+      }
+
+      const targetDim = dimensions.find(
+        (d) =>
+          d.id === mapping.targetDimensionId &&
+          d.scope === "tab" &&
+          d.tab === jump.targetTab,
+      );
+      if (!targetDim) {
+        return false;
+      }
+
+      const hasGlobalShadow = dimensions.some(
+        (d) => d.id === mapping.targetDimensionId && d.scope === "global",
+      );
+      if (hasGlobalShadow) {
+        return false;
+      }
+
+      if (targetDim.type === "dateString" || targetDim.type === "dateRange") {
+        return false;
+      }
+
+      if (targetDim.type !== "multiselect" && uniqueValues.length > 1) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleTabJump = (jump: TabJumpConfig) => {
+    executeTabJump(
+      jump,
+      selectedRows as Record<string, unknown>[],
+      chartTitle,
+    );
+  };
+
   if (error) {
     console.error("Error fetching chart data:", error);
   }
@@ -564,6 +639,35 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
                   ))}
                 </ContextMenuSubContent>
               </ContextMenuSub>
+
+              {matchingJumps.length === 1 ? (
+                <ContextMenuItem
+                  disabled={!canExecuteJump(matchingJumps[0], selectedRows)}
+                  onClick={() => handleTabJump(matchingJumps[0])}>
+                  <ExternalLink className="size-4 mr-2" />
+                  {matchingJumps[0].label ??
+                    `Details in "${matchingJumps[0].targetTab}" ansehen`}
+                </ContextMenuItem>
+              ) : null}
+
+              {matchingJumps.length > 1 ? (
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger disabled={selectedRows.length === 0}>
+                    <ArrowRightCircle className="size-4 mr-2" />
+                    Auf Tab springen
+                  </ContextMenuSubTrigger>
+                  <ContextMenuSubContent className="w-64">
+                    {matchingJumps.map((jump, index) => (
+                      <ContextMenuItem
+                        key={`${jump.targetTab}:${index}`}
+                        disabled={!canExecuteJump(jump, selectedRows)}
+                        onClick={() => handleTabJump(jump)}>
+                        {jump.label ?? jump.targetTab}
+                      </ContextMenuItem>
+                    ))}
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+              ) : null}
             </ContextMenuContent>
           </ContextMenu>
         ) : null}

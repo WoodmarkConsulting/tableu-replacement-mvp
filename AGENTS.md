@@ -26,7 +26,7 @@ The intended end state is:
 ## Important paths
 
 - `pagesConfig/pages.json`: Registry the generator reads — maps each `dashboardName` to its config JSON. (`pagesConfig/index.ts` is legacy and not used by generation.)
-- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filterLayout, filters, tabs, connections? }` (see Filtering framework). Each component carries `chartID`, `chartConfig`, optional `filterBindings`, and optional `enhancedTooltip`.
+- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filterLayout, filters, tabs, connections?, tabJumps? }` (see Filtering framework). Each component carries `chartID`, `chartConfig`, optional `filterBindings`, and optional `enhancedTooltip`.
 - `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename. Named parameters (`:name`) are bound from resolved filter values.
 - `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail query for selected rows. It also returns exact `expectedColumns` aliases used by outgoing chart connections.
 - `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
@@ -46,7 +46,7 @@ The intended end state is:
 For normal dashboard creation and updates, the agent should modify only:
 
 - `pagesConfig/pages.json` when adding a new dashboard entry
-- `pagesConfig/*.json` for `reportName`, `filterLayout`, `filters` (dimensions), tabs, rows, module selection, chart metadata, `filterBindings`, `enhancedTooltip`, `connections`, and module configuration
+- `pagesConfig/*.json` for `reportName`, `filterLayout`, `filters` (dimensions), tabs, rows, module selection, chart metadata, `filterBindings`, `enhancedTooltip`, `connections`, `tabJumps`, and module configuration
 - `pagesConfig/sql/*.sql` for chart data and target-side connection parameters
 - `pagesConfig/sql/tooltipSql/*.tooltip.sql` for selected-row details and source-side connection aliases
 
@@ -161,6 +161,9 @@ value at runtime, and a named parameter parsed with the same type in the target 
 strings must be normalized before they become connection arrays. `TabsWrapper` supplies target
 labels from `chartTitle` across all tabs; internal chart IDs must not be shown to users, and an
 untitled target falls back to `Unbenanntes Diagramm`.
+
+`DashboardConfig.tabJumps` contains `{ fromChartID, targetTab, label?, mappings: [{ sourceField, targetDimensionId }], restoreOnReturn? }`.
+Charts with configured tab jumps show context menu item(s) to drill down into another tab. When triggered with selected rows, `executeTabJump` extracts primitive values, binds them as tab-level filters (`tab:<targetTab>:<dimId>`), atomically applies both draft and applied layers, switches the active tab, and pushes a breadcrumb. `TabBreadcrumb` renders above `TabsWrapper` with a single-click return that restores previous filter state when `restoreOnReturn !== false`. Single-select target dimensions disable the jump when multiple distinct values are selected; `dateString` and `dateRange` dimensions cannot be targeted by drills.
 
 ### Shareable state
 

@@ -15,6 +15,66 @@ const readPagesConfig = () => {
   return JSON.parse(content) as PagesConfig[];
 };
 
+export function buildPageBoilerplate(
+  dashboardName: string,
+  dashboardConfig: DashboardConfig,
+): string {
+  const tabsConfig = dashboardConfig.tabs;
+  // React component names must be capitalized for the rules-of-hooks lint rule.
+  const componentName =
+    dashboardName.charAt(0).toUpperCase() + dashboardName.slice(1);
+
+  return `
+          "use client";
+
+          import ChartPageWrapper from "@/components/ChartPageWrapper";
+          import { useShallow } from "zustand/shallow";
+
+          import { useLayoutEffect } from "react";
+          import useFiltersStore from "@/stores/filterProvider";
+          import { DashboardShell } from "@/components/DashboardShell";
+
+          export default function ${componentName}() {
+            const { initFilterStore, resetFilterStore } = useFiltersStore(
+              useShallow((s) => ({
+                initFilterStore: s.initFilterStore,
+                resetFilterStore: s.resetFilterStore,
+              })),
+            );
+
+            const tabsConfig = ${JSON.stringify(tabsConfig, null, 2)} as const satisfies TabsConfig[];
+            const dashboardConfig: DashboardConfig<typeof tabsConfig> = {
+              reportName: ${JSON.stringify(dashboardConfig.reportName)},
+              filterLayout: ${JSON.stringify(dashboardConfig.filterLayout)},
+              filters: ${JSON.stringify(dashboardConfig.filters, null, 2)},
+              tabs: tabsConfig,
+              connections: ${JSON.stringify(dashboardConfig.connections, null, 2)},
+              tabJumps: ${JSON.stringify(dashboardConfig.tabJumps, null, 2)},
+            };
+
+
+            useLayoutEffect(() => {
+              initFilterStore({
+                dimensions: dashboardConfig.filters,
+                initialActiveTab: dashboardConfig.tabs[0]?.trigger ?? "",
+              });
+
+              return () => {
+                resetFilterStore();
+              };
+
+              //eslint-disable-next-line react-hooks/exhaustive-deps
+            }, []);
+
+            return (
+              <ChartPageWrapper>
+                <DashboardShell config={dashboardConfig} />
+              </ChartPageWrapper>
+            );
+          }
+        `.trim();
+}
+
 // This script generates new Next.js pages based on the configuration
 // provided in the pagesConfig array.
 function generateNextPage() {
@@ -50,59 +110,9 @@ function generateNextPage() {
       const configContent = fs.readFileSync(dashboardConfigPath, "utf-8");
 
       const dashboardConfig = JSON.parse(configContent) as DashboardConfig;
-      const tabsConfig = dashboardConfig.tabs;
-      // React component names must be capitalized for the rules-of-hooks lint rule.
-      const componentName =
-        dashboardName.charAt(0).toUpperCase() + dashboardName.slice(1);
 
       // Generate the Next.js page.
-      const boilerplateCode = `
-          "use client";
-
-          import ChartPageWrapper from "@/components/ChartPageWrapper";
-          import { useShallow } from "zustand/shallow";
-
-          import { useLayoutEffect } from "react";
-          import useFiltersStore from "@/stores/filterProvider";
-          import { DashboardShell } from "@/components/DashboardShell";
-
-          export default function ${componentName}() {
-            const { initFilterStore, resetFilterStore } = useFiltersStore(
-              useShallow((s) => ({
-                initFilterStore: s.initFilterStore,
-                resetFilterStore: s.resetFilterStore,
-              })),
-            );
-
-            const tabsConfig = ${JSON.stringify(tabsConfig, null, 2)} as const satisfies TabsConfig[];
-            const dashboardConfig: DashboardConfig<typeof tabsConfig> = {
-              reportName: ${JSON.stringify(dashboardConfig.reportName)},
-              filterLayout: ${JSON.stringify(dashboardConfig.filterLayout)},
-              filters: ${JSON.stringify(dashboardConfig.filters, null, 2)},
-              tabs: tabsConfig,
-            };
-
-
-            useLayoutEffect(() => {
-              initFilterStore({
-                dimensions: dashboardConfig.filters,
-                initialActiveTab: dashboardConfig.tabs[0]?.trigger ?? "",
-              });
-
-              return () => {
-                resetFilterStore();
-              };
-
-              //eslint-disable-next-line react-hooks/exhaustive-deps
-            }, []);
-
-            return (
-              <ChartPageWrapper>
-                <DashboardShell config={dashboardConfig} />
-              </ChartPageWrapper>
-            );
-          }
-        `;
+      const boilerplateCode = buildPageBoilerplate(dashboardName, dashboardConfig);
 
       fs.writeFileSync(pageFilePath, boilerplateCode.trim());
 

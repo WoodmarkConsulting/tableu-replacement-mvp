@@ -4,6 +4,7 @@ import { Suspense, useEffect } from "react";
 
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { ShareButton } from "@/components/ShareButton";
+import { TabBreadcrumb } from "@/components/TabBreadcrumb";
 import { TabFilters } from "@/components/TabFilters";
 import { TabsWrapper } from "@/components/TabsWrapper";
 import { useFilterUrlSync } from "@/hooks/useFilterUrlSync";
@@ -21,7 +22,7 @@ function FilterUrlSync() {
 }
 
 export function DashboardShell({ config }: DashboardShellProps) {
-  const { reportName, filters, tabs, connections } = config;
+  const { reportName, filters, tabs, connections, tabJumps } = config;
 
   const activeTab = useFilterStore((state) => state.activeTab);
   const setActiveTab = useFilterStore((state) => state.setActiveTab);
@@ -59,9 +60,12 @@ export function DashboardShell({ config }: DashboardShellProps) {
         <TabFilters dimensions={filters} />
       </div>
 
+      <TabBreadcrumb />
+
       <TabsWrapper
         tabsConfig={tabs}
         connections={connections}
+        tabJumps={tabJumps}
         value={activeTab}
         onValueChange={setActiveTab}
       />

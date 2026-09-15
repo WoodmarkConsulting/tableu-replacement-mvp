@@ -13,6 +13,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . && npm run module:validate",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "verify:typescript": "tsc --noEmit",
     "pageConfig:generatePage": "npx tsx scripts/pages/generateNextPage.ts",
     "pageConfig:generateId": "npx tsx scripts/modules/generateDashboardID.ts",
@@ -66,7 +68,7 @@
     "@types/adm-zip": "^0.5.8",
     "@types/d3-geo": "^3.1.1",
     "@types/lodash": "^4.17.25",
-    "@types/node": "^20",
+    "@types/node": "^22.20.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/topojson-client": "^3.1.5",
@@ -75,6 +77,8 @@
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^5.0.1"
   }
 }
