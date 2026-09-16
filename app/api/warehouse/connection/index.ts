@@ -80,6 +80,7 @@ const resetClient = async () => {
 export const runQuery = async <T extends object = object[]>(
   query: string,
   parameters: QueryParameters = {},
+  resetConnectionOnError = true,
 ): Promise<T> => {
   let session;
   let queryOperation;
@@ -97,7 +98,9 @@ export const runQuery = async <T extends object = object[]>(
     const result = await queryOperation.fetchAll();
     return result as T;
   } catch (error) {
-    await resetClient();
+    if (resetConnectionOnError) {
+      await resetClient();
+    }
 
     const errorMessage =
       error instanceof Error

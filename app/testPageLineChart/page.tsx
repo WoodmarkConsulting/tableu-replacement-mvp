@@ -25,6 +25,7 @@ const TestPage = () => {
           components: [
             {
               moduleName: "LineChartModule",
+              autoApplyConnections: false,
               space: 6,
               chartID: "active-users-over-time",
               chartTitle: "Aktive Nutzer über Zeit",
@@ -98,6 +99,7 @@ const TestPage = () => {
             },
             {
               moduleName: "LineChartModule",
+              autoApplyConnections: false,
               space: 6,
               chartID: "cumulative-fleets",
               chartTitle: "Kumulierte Anzahl Fleets",
@@ -174,6 +176,7 @@ const TestPage = () => {
           components: [
             {
               moduleName: "LineChartModule",
+              autoApplyConnections: true,
               space: 12,
               chartID: "dtc-table",
               chartTitle: "Aktive und gespeicherte DTCs über Zeit",
@@ -273,6 +276,45 @@ const TestPage = () => {
             },
           ],
         },
+        {
+          height: 58,
+          components: [
+            {
+              moduleName: "ScatterPlotModule",
+              autoApplyConnections: false,
+              space: 12,
+              chartID: "dtc-scatter",
+              chartTitle: "DTC-Verteilung – Standard",
+              chartDescription:
+                "Standarddarstellung mit automatischen Ticks, Grid, Hover und Legende.",
+              enhancedTooltip: true,
+              selfFetching: true,
+              chartConfig: {
+                points: {
+                  shape: "circle",
+                },
+                xAxis: {
+                  label: "Kilometerstand",
+                },
+                yAxis: {
+                  label: "Häufigkeit",
+                },
+                colorMapping: {
+                  values: [
+                    {
+                      value: -1,
+                      label: "Aktiv",
+                    },
+                    {
+                      value: 0,
+                      label: "Inaktiv",
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
       ],
     },
   ] as const satisfies TabsConfig[];
@@ -318,6 +360,11 @@ const TestPage = () => {
         fromChartID: "active-users-over-time",
         toChartID: "dtc-table",
         expectedColumns: ["CarName"],
+      },
+      {
+        fromChartID: "dtc-table",
+        toChartID: "dtc-scatter",
+        expectedColumns: ["LastUpdate"],
       },
     ],
   };

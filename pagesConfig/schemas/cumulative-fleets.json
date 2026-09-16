@@ -1,0 +1,82 @@
+{
+  "id": "dummy-line-chart",
+  "tables": [
+    {
+      "tablePath": "westeurope_extollo_platform_rd_eu_rdppe_non_customer_int_adbv.2021024_sofa_gold_dev.fleet_definition_2021024_sofa_gold",
+      "columns": [
+        {
+          "name": "fleet_name",
+          "type": "string"
+        },
+        {
+          "name": "user_id",
+          "type": "string"
+        },
+        {
+          "name": "user_last_name",
+          "type": "string"
+        },
+        {
+          "name": "user_sure_name",
+          "type": "string"
+        },
+        {
+          "name": "car_id_list",
+          "type": "string"
+        },
+        {
+          "name": "engine_type",
+          "type": "string"
+        },
+        {
+          "name": "product_range",
+          "type": "string"
+        },
+        {
+          "name": "gearbox_type",
+          "type": "string"
+        },
+        {
+          "name": "vehicle_type",
+          "type": "string"
+        },
+        {
+          "name": "ecu_name",
+          "type": "string"
+        },
+        {
+          "name": "variant",
+          "type": "string"
+        },
+        {
+          "name": "creation_date_start",
+          "type": "timestamp"
+        },
+        {
+          "name": "creation_date_end",
+          "type": "timestamp"
+        },
+        {
+          "name": "processing_date_start",
+          "type": "timestamp"
+        },
+        {
+          "name": "processing_date_end",
+          "type": "timestamp"
+        },
+        {
+          "name": "fleet_creation_date",
+          "type": "timestamp"
+        },
+        {
+          "name": "uid",
+          "type": "string"
+        },
+        {
+          "name": "SA_codes",
+          "type": "string"
+        }
+      ]
+    }
+  ]
+}

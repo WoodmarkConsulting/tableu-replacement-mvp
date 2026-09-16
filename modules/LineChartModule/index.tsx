@@ -183,6 +183,13 @@ function LineChartModule(props: Props) {
   const selectionEnabled = typeof onSelectionChange === "function";
   const normalInteractionEnabled = lasso.mode === null;
   const [zoomDomain, setZoomDomain] = useState<[number, number] | null>(null);
+  const [hiddenSeriesIndexes, setHiddenSeriesIndexes] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const visibleLines = useMemo(
+    () => lines.filter((line) => !hiddenSeriesIndexes.has(line.seriesIndex)),
+    [hiddenSeriesIndexes, lines],
+  );
 
   // const lastTooltipDataPoint = useRef<LineChartData | null>(null);
   const {
@@ -323,7 +330,9 @@ function LineChartModule(props: Props) {
         data={visibleRechartsData}
         margin={margin}
         onClick={
-          normalInteractionEnabled && (selectionEnabled || enhancedTooltip)
+          normalInteractionEnabled &&
+          visibleLines.length > 0 &&
+          (selectionEnabled || enhancedTooltip)
             ? handleChartClick
             : undefined
         }
@@ -370,10 +379,39 @@ function LineChartModule(props: Props) {
           />
         )}
 
-        {legend.show && <Legend />}
+        {legend.show && (
+          <Legend
+            wrapperStyle={{ cursor: "pointer" }}
+            onClick={(entry, _index, event) => {
+              event.stopPropagation();
+
+              const line = lines.find(
+                (candidate) =>
+                  getSeriesKey(candidate.seriesIndex) === entry.dataKey,
+              );
+
+              if (!line) {
+                return;
+              }
+
+              setHiddenSeriesIndexes((currentIndexes) => {
+                const nextIndexes = new Set(currentIndexes);
+
+                if (nextIndexes.has(line.seriesIndex)) {
+                  nextIndexes.delete(line.seriesIndex);
+                } else {
+                  nextIndexes.add(line.seriesIndex);
+                }
+
+                return nextIndexes;
+              });
+            }}
+          />
+        )}
 
         {lines.map((line) => {
           const dataKey = getSeriesKey(line.seriesIndex);
+          const hidden = hiddenSeriesIndexes.has(line.seriesIndex);
           const selectionAwareShape = (
             <SelectionAwareLineShape
               chartData={visibleChartData}
@@ -394,6 +432,7 @@ function LineChartModule(props: Props) {
             strokeWidth: line.strokeWidth,
             strokeDasharray: line.strokeDasharray,
             connectNulls: line.connectNulls,
+            hide: hidden,
 
             dot: line.dots.show
               ? {
@@ -449,7 +488,7 @@ function LineChartModule(props: Props) {
         <LineChartLassoAdapter
           lasso={lasso}
           chartData={visibleChartData}
-          lines={lines}
+          lines={visibleLines}
           currentXDomain={zoomDomain ?? fullXDomain}
           setZoomDomain={setZoomDomain}
         />

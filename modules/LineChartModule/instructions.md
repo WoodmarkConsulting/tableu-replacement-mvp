@@ -420,6 +420,10 @@ show: true | false
 Behavior:
 
 - When `show` is `true`, Recharts `Legend` is rendered.
+- Clicking a legend item locally hides or shows its line, points, optional area,
+  and inline tooltip values without requesting data.
+- Hidden series do not participate in lasso selection. Legend clicks do not
+  trigger chart selection or open the enhanced tooltip.
 - Legend labels come from `lines[].name`.
 
 ### `margin`

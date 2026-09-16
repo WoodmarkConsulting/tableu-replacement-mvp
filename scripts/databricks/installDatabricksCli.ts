@@ -1,3 +1,4 @@
+// Installs the pinned Databricks CLI locally so development and automation use the same version.
 import AdmZip from "adm-zip";
 import { execFileSync } from "node:child_process";
 import {

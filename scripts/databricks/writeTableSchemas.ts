@@ -1,3 +1,4 @@
+// Exports Databricks table schemas to project JSON so dashboard SQL can be authored against real columns.
 import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";

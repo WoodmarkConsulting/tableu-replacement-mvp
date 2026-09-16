@@ -13,8 +13,11 @@ type TabsComponentConfig = {
   moduleName: ModuleRegistryKeys;
   space: number;
   mockData?: unknown[];
-  // Maps a filter dimension id to the SQL named parameter used by this chart.
+  selfFetching?: boolean;
+  // Maps a filter dimension id to a field in this chart's JSON SQL input.
   filterBindings?: Record<string, string>;
+  // Applies every outgoing chart connection as soon as its tooltip data resolves.
+  autoApplyConnections: boolean;
 } & BaseChartProps;
 
 type TabsConfig = {
@@ -53,7 +56,6 @@ type TabJumpConfig<Tconf extends TabsConfig[] = TabsConfig[]> = {
 
 type DashboardConfig<T extends TabsConfig[] = TabsConfig[]> = {
   reportName: string;
-  filterLayout: "sidebar" | "top";
   filters: FilterDimension<T>[];
   tabs: T;
   connections?: ChartConnection<T>[];

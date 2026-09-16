@@ -1,3 +1,4 @@
+// Creates or updates the configured Databricks app so the dashboard has a consistent deployment target.
 import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";

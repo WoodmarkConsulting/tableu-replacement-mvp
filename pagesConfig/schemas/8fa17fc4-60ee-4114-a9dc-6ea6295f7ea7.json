@@ -1,0 +1,38 @@
+{
+  "id": "8fa17fc4-60ee-4114-a9dc-6ea6295f7ea7",
+  "tables": [
+    {
+      "tablePath": "westeurope_extollo_platform_rd_eu_rdppe_non_customer_int_adbv.2021024_sofa_gold_dev.announcement_2021024_sofa_gold",
+      "columns": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "content",
+          "type": "string"
+        },
+        {
+          "name": "created_at",
+          "type": "bigint"
+        },
+        {
+          "name": "created_by",
+          "type": "string"
+        },
+        {
+          "name": "is_active",
+          "type": "boolean"
+        },
+        {
+          "name": "ttl",
+          "type": "int"
+        }
+      ]
+    }
+  ]
+}

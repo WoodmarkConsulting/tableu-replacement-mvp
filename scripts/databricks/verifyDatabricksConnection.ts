@@ -1,3 +1,4 @@
+// Verifies that the Databricks profile targets the expected workspace before commands are executed.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import config from "./config";

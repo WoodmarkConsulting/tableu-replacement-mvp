@@ -1,3 +1,4 @@
+// Generates TypeScript table-schema types from exported JSON so chart IDs and columns remain type-safe.
 import { watch } from "node:fs";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";

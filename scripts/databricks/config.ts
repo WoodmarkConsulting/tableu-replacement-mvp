@@ -1,3 +1,4 @@
+// Centralizes Databricks CLI paths and profile settings so all warehouse scripts use one configuration.
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 

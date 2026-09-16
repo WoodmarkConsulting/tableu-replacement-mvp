@@ -1,3 +1,4 @@
+// Logs out the project Databricks profile so stored local authentication can be removed safely.
 import { spawn } from "node:child_process";
 import config from "./config";
 

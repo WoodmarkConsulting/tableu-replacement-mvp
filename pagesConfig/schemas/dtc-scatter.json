@@ -1,0 +1,294 @@
+{
+  "id": "dtc-table",
+  "tables": [
+    {
+      "tablePath": "westeurope_extollo_platform_rd_eu_rdppe_non_customer_int_adbv.2021024_sofa_gold_dev.lsb_partitioned_dtcdata_2021024_sofa_gold",
+      "columns": [
+        {
+          "name": "dtc_number",
+          "type": "string"
+        },
+        {
+          "name": "IFileName",
+          "type": "string"
+        },
+        {
+          "name": "CarName",
+          "type": "string"
+        },
+        {
+          "name": "ECUName",
+          "type": "string"
+        },
+        {
+          "name": "SAENumber",
+          "type": "string"
+        },
+        {
+          "name": "SymptomName",
+          "type": "string"
+        },
+        {
+          "name": "HWVersion",
+          "type": "string"
+        },
+        {
+          "name": "HWPartNumber",
+          "type": "string"
+        },
+        {
+          "name": "ErrorText",
+          "type": "string"
+        },
+        {
+          "name": "OdometerRead",
+          "type": "int"
+        },
+        {
+          "name": "MIL",
+          "type": "int"
+        },
+        {
+          "name": "IsStored",
+          "type": "int"
+        },
+        {
+          "name": "IsActive",
+          "type": "int"
+        },
+        {
+          "name": "IsPending",
+          "type": "int"
+        },
+        {
+          "name": "DTCStatus",
+          "type": "string"
+        },
+        {
+          "name": "DTCStatusByte",
+          "type": "string"
+        },
+        {
+          "name": "Status_bit_0",
+          "type": "boolean"
+        },
+        {
+          "name": "Status_bit_1",
+          "type": "boolean"
+        },
+        {
+          "name": "Status_bit_2",
+          "type": "boolean"
+        },
+        {
+          "name": "Status_bit_3",
+          "type": "boolean"
+        },
+        {
+          "name": "Status_bit_4",
+          "type": "boolean"
+        },
+        {
+          "name": "Status_bit_5",
+          "type": "boolean"
+        },
+        {
+          "name": "Status_bit_6",
+          "type": "boolean"
+        },
+        {
+          "name": "Status_bit_7",
+          "type": "boolean"
+        },
+        {
+          "name": "TestCompletion",
+          "type": "boolean"
+        },
+        {
+          "name": "LastUpdate",
+          "type": "timestamp"
+        },
+        {
+          "name": "ProjectName",
+          "type": "string"
+        },
+        {
+          "name": "Service_tool_name",
+          "type": "string"
+        },
+        {
+          "name": "Service_tool_user_ID",
+          "type": "string"
+        },
+        {
+          "name": "Service_tool_version",
+          "type": "string"
+        },
+        {
+          "name": "Service_tool_comment",
+          "type": "string"
+        },
+        {
+          "name": "Odometer_first_occurence",
+          "type": "string"
+        },
+        {
+          "name": "Odometer_last_occurence",
+          "type": "string"
+        },
+        {
+          "name": "Occurrence_Flag",
+          "type": "string"
+        },
+        {
+          "name": "Operation_Cycle_Counter",
+          "type": "string"
+        },
+        {
+          "name": "External_Tester_Present_Flag",
+          "type": "string"
+        },
+        {
+          "name": "FrequencyCount",
+          "type": "int"
+        },
+        {
+          "name": "Failed_Counter",
+          "type": "string"
+        },
+        {
+          "name": "MotorPrjName",
+          "type": "string"
+        },
+        {
+          "name": "MotorTypeName",
+          "type": "string"
+        },
+        {
+          "name": "CarTypeName",
+          "type": "string"
+        },
+        {
+          "name": "GearboxTypeName",
+          "type": "string"
+        },
+        {
+          "name": "MotorModelName",
+          "type": "string"
+        },
+        {
+          "name": "CarSeries",
+          "type": "string"
+        },
+        {
+          "name": "IFileCreated",
+          "type": "timestamp"
+        },
+        {
+          "name": "IFileMileage",
+          "type": "int"
+        },
+        {
+          "name": "DTCCount",
+          "type": "bigint"
+        },
+        {
+          "name": "IEntryDate",
+          "type": "date"
+        },
+        {
+          "name": "DataSetName",
+          "type": "string"
+        },
+        {
+          "name": "IsRedundant",
+          "type": "boolean"
+        },
+        {
+          "name": "OStatusId",
+          "type": "int"
+        },
+        {
+          "name": "DateCreated",
+          "type": "string"
+        },
+        {
+          "name": "Status",
+          "type": "string"
+        },
+        {
+          "name": "Variant",
+          "type": "string"
+        },
+        {
+          "name": "V4",
+          "type": "string"
+        },
+        {
+          "name": "V5",
+          "type": "string"
+        },
+        {
+          "name": "V6",
+          "type": "string"
+        },
+        {
+          "name": "V7",
+          "type": "string"
+        },
+        {
+          "name": "SwVersion",
+          "type": "array<string>"
+        },
+        {
+          "name": "Footprint",
+          "type": "array<string>"
+        },
+        {
+          "name": "is_additional_care_enriched",
+          "type": "boolean"
+        },
+        {
+          "name": "is_care_enriched",
+          "type": "boolean"
+        },
+        {
+          "name": "SA_codes",
+          "type": "string"
+        },
+        {
+          "name": "is_legacy_data",
+          "type": "boolean"
+        },
+        {
+          "name": "fahrzeug_baumuster",
+          "type": "string"
+        },
+        {
+          "name": "getriebe_baumuster",
+          "type": "string"
+        },
+        {
+          "name": "motor_baumuster",
+          "type": "string"
+        },
+        {
+          "name": "DTCDataId",
+          "type": "bigint"
+        },
+        {
+          "name": "FileId",
+          "type": "bigint"
+        },
+        {
+          "name": "CarId",
+          "type": "bigint"
+        },
+        {
+          "name": "OperatorId",
+          "type": "bigint"
+        }
+      ]
+    }
+  ]
+}

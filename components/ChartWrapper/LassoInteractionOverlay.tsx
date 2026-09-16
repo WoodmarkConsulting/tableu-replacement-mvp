@@ -169,7 +169,9 @@ export default function LassoInteractionOverlay<DataType extends object>({
     }
   };
 
-  const handlePointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerEnd = async (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -209,13 +211,14 @@ export default function LassoInteractionOverlay<DataType extends object>({
       }
 
       const shape = createNormalizedPolygon(points, plotBounds);
-      const selectedRows = adapter.select?.(shape) ?? [];
+      const tooltipPosition = {
+        x: event.clientX,
+        y: event.clientY,
+      };
+      const selectedRows = (await adapter.select?.(shape)) ?? [];
 
       if (selectedRows.length > 0) {
-        onSelectionChange(selectedRows, {
-          x: event.clientX,
-          y: event.clientY,
-        });
+        onSelectionChange(selectedRows, tooltipPosition);
       }
     } else {
       const shape = createNormalizedRectangle(start, end, plotBounds);
@@ -228,7 +231,7 @@ export default function LassoInteractionOverlay<DataType extends object>({
 
   return (
     <div
-      className="absolute inset-0 z-[60] touch-none cursor-pointer"
+      className="absolute inset-0 z-60 touch-none cursor-pointer"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}

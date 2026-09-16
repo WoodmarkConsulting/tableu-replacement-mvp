@@ -93,13 +93,9 @@ inequality of `draftValues` vs `appliedValues`.
 
 - `components/FilterControl/index.tsx` — no structural change; still calls the
   injected `onChange`. Callers now pass `draftValues[key]` and `setDraftFilter`.
-- `components/AppSidebar.tsx/index.tsx` — read `draftValues`, pass real
-  `draftValues[key]` (fixes the `value={0}` bug), call `setDraftFilter`. Add
-  `<FilterActions />` in the sidebar footer/header.
 - `components/TabFilters/index.tsx` — use `draftValues` + `setDraftFilter`.
 - `components/DashboardShell/index.tsx` — render `<FilterActions />` in the top
-  bar (below header / above tabs) so both `sidebar` and `top` layouts get an
-  Apply control.
+  bar below the header and above the tabs.
 - `components/ActiveFilters/index.tsx` — read `appliedValues` (chips reflect what
   data actually shows). Chip removal → `clearDimension` (already re-queries).
 - `hooks/useShareFilters.ts` — snapshot `appliedValues` (the committed state).
@@ -127,7 +123,6 @@ inequality of `draftValues` vs `appliedValues`.
 | `stores/filterProvider.ts`            | Draft/applied split, `hasApplied`, `setDraftFilter`, `applyFilters`, `resetDraft`, updated `clearDimension`/`clearAll`/`applySelection`/`init`/`reset`, `isDirty` helper. |
 | `components/FilterActions/index.tsx`  | **New** Apply/Reset buttons + dirty state.                                                                                                                                |
 | `components/ChartWrapper/index.tsx`   | Read `appliedValues` + `hasApplied`; gate `enabled`; idle prompt state.                                                                                                   |
-| `components/AppSidebar.tsx/index.tsx` | Use `draftValues`/`setDraftFilter` (fix `value={0}`); render `<FilterActions />`.                                                                                         |
 | `components/TabFilters/index.tsx`     | Use `draftValues`/`setDraftFilter`.                                                                                                                                       |
 | `components/DashboardShell/index.tsx` | Render `<FilterActions />` in top bar.                                                                                                                                    |
 | `components/ActiveFilters/index.tsx`  | Read `appliedValues`; chip removal → `clearDimension`.                                                                                                                    |

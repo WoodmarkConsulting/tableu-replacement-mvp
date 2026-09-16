@@ -8,6 +8,7 @@ import {
 type LassoToolbarButtonProps = {
   label: string;
   active: boolean;
+  disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 };
@@ -16,6 +17,7 @@ type LassoToolbarButtonProps = {
 export default function LassoToolbarButton({
   label,
   active,
+  disabled,
   onClick,
   children,
 }: LassoToolbarButtonProps) {
@@ -23,15 +25,22 @@ export default function LassoToolbarButton({
     <Tooltip>
       <TooltipTrigger
         render={
-          <Button
-            type="button"
-            size="icon-sm"
-            variant={active ? "default" : "ghost"}
-            aria-label={label}
-            aria-pressed={active}
-            onClick={onClick}>
-            {children}
-          </Button>
+          <span
+            className="inline-flex"
+            aria-label={disabled ? label : undefined}
+            tabIndex={disabled ? 0 : undefined}>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant={active ? "default" : "ghost"}
+              className={disabled ? "pointer-events-none" : undefined}
+              aria-label={label}
+              aria-pressed={active}
+              disabled={disabled}
+              onClick={onClick}>
+              {children}
+            </Button>
+          </span>
         }
       />
       <TooltipContent>{label}</TooltipContent>

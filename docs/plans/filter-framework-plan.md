@@ -11,7 +11,7 @@ Add a shared filtering framework to the config-driven Next.js dashboard: global 
 - **Scopes:** global and tab-level. **Replace** the existing chart-local `filterConfig`/`ChartFilters` model with the dimension-based model.
 - **Selection callbacks:** implement for **both** `MapModule` and `LineChartModule`.
 - **Applied-filter display:** chip bar + print/export summary.
-- **Global filter placement:** configurable via dashboard `filterLayout: "sidebar" | "top"`; `"top"` sits below a new dashboard `reportName`.
+- **Global filter placement:** global filters sit below the dashboard `reportName`.
 
 ## Breaking config shape change
 
@@ -20,9 +20,12 @@ Top-level dashboard config becomes an object (was `TabsConfig[]`):
 ```jsonc
 {
   "reportName": "string",
-  "filterLayout": "sidebar" | "top",
-  "filters": [ /* FilterDimension[] */ ],
-  "tabs": [ /* TabsConfig[] */ ]
+  "filters": [
+    /* FilterDimension[] */
+  ],
+  "tabs": [
+    /* TabsConfig[] */
+  ],
 }
 ```
 
@@ -55,7 +58,7 @@ Top-level dashboard config becomes an object (was `TabsConfig[]`):
 
 ## New components
 
-- `components/DashboardShell` — `reportName` + sidebar|top filter bar + controlled tabs.
+- `components/DashboardShell` — `reportName` + top filter bar + controlled tabs.
 - `components/FilterBar` — global dimension controls.
 - `components/TabFilters` — tab-scoped controls.
 - `components/FilterControl` — per-type input (reuse `ChartFilters` logic; add `select` + `dateRange`).
@@ -74,12 +77,12 @@ Filter selections can be large, so they are never serialized into the URL. Inste
 ## Generation + provider — `scripts/pages/generateNextPage.ts`
 
 - The generator reads its dashboard registry from **`pagesConfig/pages.json`** (not `pagesConfig/index.ts`, which is stale/unused and still references a non-existent `cudo-test`). `pages.json` already maps `cudoTest` → `cudoTest.json`; no registry edit needed.
-- The config is currently cast to `TabsConfig[]` and JSON-stringified into the page. Update the cast + template to the new config-object shape; render `DashboardShell` wrapped in `FilterProvider`, passing `reportName`, `filterLayout`, `filters`, and `tabs`.
+- The config is currently cast to `TabsConfig[]` and JSON-stringified into the page. Update the cast + template to the new config-object shape; render `DashboardShell` wrapped in `FilterProvider`, passing `reportName`, `filters`, and `tabs`.
 - ⚠️ The script skips existing page dirs — delete `app/Dashboards/cudoTest/page.tsx` to regenerate under the new shape.
 
 ## Migration
 
-Rewrite `pagesConfig/cudoTest.json` to the new shape: wrap the current `TabsConfig[]` under `tabs`, add `reportName`, `filterLayout`, and `filters` (dimensions for `ecu_fault_nm`, `fin`). Replace each component's `filterConfig` array with a `filterBindings` map (`ecu_fault_nm` → `ecu_fault_nm`, `fin` → `fin`). Single-select SQL already uses `:ecu_fault_nm` / `:fin` and remains unchanged.
+Rewrite `pagesConfig/cudoTest.json` to the new shape: wrap the current `TabsConfig[]` under `tabs`, add `reportName` and `filters` (dimensions for `ecu_fault_nm`, `fin`). Replace each component's `filterConfig` array with a `filterBindings` map (`ecu_fault_nm` → `ecu_fault_nm`, `fin` → `fin`). Single-select SQL already uses `:ecu_fault_nm` / `:fin` and remains unchanged.
 
 ## Backend / SQL notes
 
@@ -90,7 +93,7 @@ Rewrite `pagesConfig/cudoTest.json` to the new shape: wrap the current `TabsConf
 
 1. `npm install zustand` + types + config shape + store foundation (`FilterProvider`, URL-sync stub).
 2. `ChartWrapper` param resolution (global + tab) + API route body widening + migrate `cudoTest.json` (incl. removing `filterConfig`) + delete & regenerate page from the new template.
-3. Filter UI: `DashboardShell` layout (sidebar/top), `FilterBar`, `TabFilters`, `FilterControl`.
+3. Filter UI: `DashboardShell`, `FilterBar`, `TabFilters`, `FilterControl`.
 4. Shareable links via server-side filter snapshots (permalink `?s=<id>`); `activeTab` synced live in URL.
 5. `ActiveFilters` chip bar + print/export summary.
 6. Selection: module callback contract + `MapModule` + `LineChartModule` wiring; multi-select SQL strategy.

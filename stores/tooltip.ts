@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { debounce } from "lodash";
 import type {
+  TooltipDataPoint,
   TooltipPathRequestBody,
   TooltipPathResponse,
 } from "@/app/api/utils/types";
@@ -13,7 +14,7 @@ export type TooltipPosition = {
 };
 
 type ShowTooltipArgs = Pick<TooltipPathRequestBody, "chartID"> & {
-  dataPoint?: Record<string, unknown | null> | null;
+  dataPoint?: TooltipDataPoint | null;
   dataPoints?: TooltipPathRequestBody["dataPoints"];
   position: TooltipPosition;
 };
@@ -39,12 +40,10 @@ type TooltipContext = {
 };
 
 const useTooltipStore = create<TooltipContext>((set, get) => {
-  const _getTooltipData = async ({
-    chartID,
-    dataPoint,
-    dataPoints,
-    position,
-  }: ShowTooltipArgs) => {
+  const _getTooltipData = async (
+    { chartID, dataPoint, dataPoints, position }: ShowTooltipArgs,
+    isStaticTooltip: boolean,
+  ) => {
     const newAbortController = new AbortController();
 
     useChartConnectionsStore.getState().clearPendingSourceFilters();
@@ -53,8 +52,9 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
       chartID,
       position,
       _abortController: newAbortController,
+      isStaticTooltip,
       tooltip: {
-        tooltipData: {} as TooltipPathResponse,
+        tooltipData: { dataPoint: [], failedBatches: 0 },
         state: "pending",
       },
     }));
@@ -64,15 +64,34 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
         chartID,
         dataPoints ?? [dataPoint ?? {}],
         newAbortController.signal,
+        (tooltipData) => {
+          if (get()._abortController !== newAbortController) {
+            return;
+          }
+
+          set(() => ({
+            tooltip: {
+              tooltipData,
+              state: "pending",
+            },
+          }));
+        },
       );
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) {
         console.error("Error fetching tooltip data:", error);
       }
 
-      set(() => ({
+      if (get()._abortController !== newAbortController) {
+        return null;
+      }
+
+      set((state) => ({
         tooltip: {
-          tooltipData: {} as TooltipPathResponse,
+          tooltipData: state.tooltip?.tooltipData ?? {
+            dataPoint: [],
+            failedBatches: 0,
+          },
           state: "rejected",
         },
       }));
@@ -82,7 +101,7 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
   };
 
   const debouncedFetch = debounce(async (args: ShowTooltipArgs) => {
-    const tooltipData = await _getTooltipData(args);
+    const tooltipData = await _getTooltipData(args, false);
 
     if (!tooltipData) {
       return;
@@ -93,7 +112,6 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
         tooltipData,
         state: "fulfilled",
       },
-      isStaticTooltip: false,
     }));
   }, 300);
 
@@ -113,7 +131,7 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
     get()._abortController.abort();
     debouncedFetch.cancel();
 
-    const tooltipData = await _getTooltipData(args);
+    const tooltipData = await _getTooltipData(args, true);
 
     if (!tooltipData) {
       return;
@@ -124,7 +142,6 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
         tooltipData,
         state: "fulfilled",
       },
-      isStaticTooltip: true,
     }));
   };
 

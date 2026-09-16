@@ -1,0 +1,10 @@
+[
+  {
+    "dashboardName": "DacoDa2",
+    "dashboardConfigName": "dacodaPageConfig.json"
+  },
+  {
+    "dashboardName": "BLK2",
+    "dashboardConfigName": "blkPageConfig.json"
+  }
+]

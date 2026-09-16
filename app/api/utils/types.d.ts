@@ -1,19 +1,47 @@
 import type { SnapshotRequestBody } from "../filters/snapshot/route";
 
 // --------------- Chart data API types ---------------
-export type QueryParameters = Record<string, unknown>;
+export type ChartQueryScalar = string | number | boolean | null;
+export type ChartQueryValue = ChartQueryScalar | ChartQueryScalar[];
+export type QueryParameters = Record<string, ChartQueryValue>;
 export type ChartDataPath = `/api/data/chart/${string}`;
 export type ChartDataPathResponse = unknown[];
 
 // --------------- Tooltip API types ---------------
+export type TooltipValue =
+  | string
+  | number
+  | boolean
+  | null
+  | TooltipValue[]
+  | { [key: string]: TooltipValue };
+export type TooltipDataPoint = Record<string, TooltipValue>;
 export type TooltipPath = "/api/data/chart/tooltip";
 export type TooltipPathRequestBody = {
-  dataPoints: Record<string, unknown | null>[];
+  dataPoints: TooltipDataPoint[];
   chartID: string;
 };
 export type TooltipPathResponse = {
   dataPoint: Record<string, unknown>[];
+  failedBatches?: number;
 };
+export type TooltipStreamEvent =
+  | {
+      type: "batch";
+      batchIndex: number;
+      dataPoint: Record<string, unknown>[];
+    }
+  | {
+      type: "error";
+      batchIndex: number;
+      message: string;
+    }
+  | {
+      type: "done";
+      completedBatches: number;
+      failedBatches: number;
+      totalBatches: number;
+    };
 
 // --------------- Snapshot API types ---------------
 export type SnapshotPath = `/api/filters/snapshot`;
