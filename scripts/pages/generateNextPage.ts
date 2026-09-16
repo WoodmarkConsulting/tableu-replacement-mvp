@@ -75,71 +75,125 @@ export function buildPageBoilerplate(
         `.trim();
 }
 
-function generateNextPage() {
-  const pagesConfig = readPagesConfig();
+// Parses a "-d <config>" flag that forces regeneration of a single dashboard.
+function parseDashboardArg(argv: string[]): string | undefined {
+  const flagIndex = argv.findIndex((arg) => arg === "-d" || arg === "--dashboard");
 
-  pagesConfig.forEach((dashboard) => {
-    const { dashboardName, dashboardConfigName } = dashboard;
+  if (flagIndex === -1) {
+    return undefined;
+  }
 
-    const pageFolderPath = `${generatedDashboardsDir}/${dashboardName}`;
-    const pageFilePath = `${pageFolderPath}/page.tsx`;
-    const dashboardConfigPath = `pagesConfig/${dashboardConfigName}`;
+  const value = argv[flagIndex + 1];
 
-    // Validate the configuration before creating anything.
-    validateRootDirectoryAndPagesConfig(dashboard, dashboardConfigPath);
+  if (!value || value.startsWith("-")) {
+    throw new Error(
+      'The "-d" flag requires a dashboard config file name, e.g. "-d productionNumbers.json".',
+    );
+  }
 
-    // Never modify or delete an already existing page directory.
-    if (fs.existsSync(pageFolderPath)) {
-      console.log(
-        `Folder for page "${dashboardName}" already exists. Skipping creation.`,
-      );
-      return;
-    }
+  return value;
+}
 
-    let pageCreatedSuccessfully = false;
+// Matches a "-d" value against a dashboard by config file name (extension optional).
+function matchesDashboard(dashboard: PagesConfig, target: string): boolean {
+  const normalize = (value: string) => value.replace(/\.[^.]+$/, "");
+  const normalizedTarget = normalize(target);
 
-    try {
-      // Create the page directory.
-      fs.mkdirSync(pageFolderPath, {
-        recursive: true,
-      });
+  return (
+    dashboard.dashboardConfigName === target ||
+    normalize(dashboard.dashboardConfigName) === normalizedTarget ||
+    dashboard.dashboardName === target ||
+    normalize(dashboard.dashboardName) === normalizedTarget
+  );
+}
 
-      // Read and parse the dashboard configuration.
-      const configContent = fs.readFileSync(dashboardConfigPath, "utf-8");
+function generatePageForDashboard(dashboard: PagesConfig, force: boolean) {
+  const { dashboardName, dashboardConfigName } = dashboard;
 
-      const dashboardConfig = JSON.parse(configContent) as DashboardConfig;
+  const pageFolderPath = `${generatedDashboardsDir}/${dashboardName}`;
+  const pageFilePath = `${pageFolderPath}/page.tsx`;
+  const dashboardConfigPath = `pagesConfig/${dashboardConfigName}`;
 
-      // Generate the Next.js page.
-      const boilerplateCode = buildPageBoilerplate(
-        dashboardName,
-        dashboardConfig,
-      );
+  // Validate the configuration before creating anything.
+  validateRootDirectoryAndPagesConfig(dashboard, dashboardConfigPath);
 
-      fs.writeFileSync(pageFilePath, boilerplateCode.trim());
+  const pageAlreadyExists = fs.existsSync(pageFolderPath);
 
-      pageCreatedSuccessfully = true;
+  // Never modify or delete an already existing page directory unless forced.
+  if (pageAlreadyExists && !force) {
+    console.log(
+      `Folder for page "${dashboardName}" already exists. Skipping creation.`,
+    );
+    return;
+  }
 
-      console.log(`Page "${dashboardName}" created successfully.`);
-    } catch (error) {
-      console.error(`Failed to create page "${dashboardName}":`, error);
-    } finally {
-      // Remove the directory if anything failed after it was created.
-      if (!pageCreatedSuccessfully && fs.existsSync(pageFolderPath)) {
-        try {
-          fs.rmSync(pageFolderPath, {
-            recursive: true,
-            force: true,
-          });
+  let pageCreatedSuccessfully = false;
 
-          console.log(`Removed incomplete page directory "${pageFolderPath}".`);
-        } catch (cleanupError) {
-          console.error(
-            `Failed to remove incomplete page directory "${pageFolderPath}":`,
-            cleanupError,
-          );
-        }
+  try {
+    // Create the page directory (idempotent when regenerating).
+    fs.mkdirSync(pageFolderPath, {
+      recursive: true,
+    });
+
+    // Read and parse the dashboard configuration.
+    const configContent = fs.readFileSync(dashboardConfigPath, "utf-8");
+
+    const dashboardConfig = JSON.parse(configContent) as DashboardConfig;
+
+    // Generate the Next.js page.
+    const boilerplateCode = buildPageBoilerplate(dashboardName, dashboardConfig);
+
+    fs.writeFileSync(pageFilePath, boilerplateCode.trim());
+
+    pageCreatedSuccessfully = true;
+
+    console.log(
+      `Page "${dashboardName}" ${pageAlreadyExists ? "regenerated" : "created"} successfully.`,
+    );
+  } catch (error) {
+    console.error(`Failed to create page "${dashboardName}":`, error);
+  } finally {
+    // Remove a freshly created directory if anything failed after it was created.
+    if (!pageCreatedSuccessfully && !pageAlreadyExists && fs.existsSync(pageFolderPath)) {
+      try {
+        fs.rmSync(pageFolderPath, {
+          recursive: true,
+          force: true,
+        });
+
+        console.log(`Removed incomplete page directory "${pageFolderPath}".`);
+      } catch (cleanupError) {
+        console.error(
+          `Failed to remove incomplete page directory "${pageFolderPath}":`,
+          cleanupError,
+        );
       }
     }
+  }
+}
+
+function generateNextPage() {
+  const pagesConfig = readPagesConfig();
+  const dashboardArg = parseDashboardArg(process.argv.slice(2));
+
+  if (dashboardArg) {
+    const target = pagesConfig.find((dashboard) =>
+      matchesDashboard(dashboard, dashboardArg),
+    );
+
+    if (!target) {
+      throw new Error(
+        `No dashboard in pages.json matches "${dashboardArg}".`,
+      );
+    }
+
+    // Force regeneration for the explicitly requested dashboard.
+    generatePageForDashboard(target, true);
+    return;
+  }
+
+  pagesConfig.forEach((dashboard) => {
+    generatePageForDashboard(dashboard, false);
   });
 }
 

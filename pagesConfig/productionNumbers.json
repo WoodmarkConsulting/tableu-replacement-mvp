@@ -328,7 +328,7 @@
       "trigger": "ZentraleFilterseite",
       "rows": [
         {
-          "height": 45,
+          "height": 40,
           "components": [
             {
               "moduleName": "BarChartModule",
@@ -637,7 +637,7 @@
           ]
         },
         {
-          "height": 45,
+          "height": 40,
           "components": [
             {
               "moduleName": "MapModule",
