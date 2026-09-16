@@ -5,12 +5,14 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import useFiltersStore, { globalKey } from "@/stores/filterProvider";
 import { FilterControl } from "../FilterControl";
 import { FilterActions } from "../FilterActions";
 import { QueryTimer } from "../QueryTimer";
+import { TabFilters } from "../TabFilters";
 
 export function AppSidebar() {
   const { dimensions, draftValues, setDraftFilter } = useFiltersStore();
@@ -20,21 +22,26 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader />
       <SidebarContent>
-        <SidebarGroup>
-          {globalFilters.map((dimension) => {
-            const key = globalKey(dimension.id);
+        {globalFilters.length > 0 ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Globale Filter</SidebarGroupLabel>
 
-            return (
-              <FilterControl
-                key={dimension.id}
-                dimension={dimension}
-                value={draftValues[key]}
-                onChange={(value: FilterValue) => setDraftFilter(key, value)}
-              />
-            );
-          })}
-        </SidebarGroup>
-        <SidebarGroup />
+            {globalFilters.map((dimension) => {
+              const key = globalKey(dimension.id);
+
+              return (
+                <FilterControl
+                  key={dimension.id}
+                  dimension={dimension}
+                  value={draftValues[key]}
+                  onChange={(value: FilterValue) => setDraftFilter(key, value)}
+                />
+              );
+            })}
+          </SidebarGroup>
+        ) : null}
+
+        <TabFilters />
       </SidebarContent>
       <SidebarFooter>
         <FilterActions />

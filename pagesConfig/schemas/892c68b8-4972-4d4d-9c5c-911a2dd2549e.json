@@ -1,0 +1,606 @@
+{
+  "id": "892c68b8-4972-4d4d-9c5c-911a2dd2549e",
+  "tables": [
+    {
+      "tablePath": "westeurope_extollo_2026007fielddatadev75cd75.2018001_xd_td_sofa_dev.t_xd_td_diag_ecu_fault",
+      "columns": [
+        {
+          "name": "gssn_outlet_gs_id",
+          "type": "string"
+        },
+        {
+          "name": "diag_cc",
+          "type": "string"
+        },
+        {
+          "name": "diag_num",
+          "type": "bigint"
+        },
+        {
+          "name": "ecu_fault_nm",
+          "type": "string"
+        },
+        {
+          "name": "vehicle_id",
+          "type": "string"
+        },
+        {
+          "name": "aqua_creation_ts",
+          "type": "timestamp"
+        },
+        {
+          "name": "aqua_creation_dt",
+          "type": "date"
+        },
+        {
+          "name": "logfile_id",
+          "type": "string"
+        },
+        {
+          "name": "source_system_nm",
+          "type": "string"
+        },
+        {
+          "name": "source_system_nm_helper",
+          "type": "string"
+        },
+        {
+          "name": "ecu_nm",
+          "type": "string"
+        },
+        {
+          "name": "ecu_fault_desc",
+          "type": "string"
+        },
+        {
+          "name": "ecu_fault_state_txt",
+          "type": "string"
+        },
+        {
+          "name": "ecu_fault_state_active_fg",
+          "type": "boolean"
+        },
+        {
+          "name": "ecu_fault_state_stored_fg",
+          "type": "boolean"
+        },
+        {
+          "name": "ecu_fault_event_fg",
+          "type": "boolean"
+        },
+        {
+          "name": "ecu_fault_mil_fg",
+          "type": "string"
+        },
+        {
+          "name": "ecu_fault_txt",
+          "type": "string"
+        },
+        {
+          "name": "ecu_fault_txt_english",
+          "type": "string"
+        },
+        {
+          "name": "ecu_fault_txt_german",
+          "type": "string"
+        },
+        {
+          "name": "diag_start_dt",
+          "type": "date"
+        },
+        {
+          "name": "diag_start_ts",
+          "type": "timestamp"
+        },
+        {
+          "name": "diag_week",
+          "type": "int"
+        },
+        {
+          "name": "lang_cd",
+          "type": "string"
+        },
+        {
+          "name": "hw_id",
+          "type": "string"
+        },
+        {
+          "name": "data_release_txt",
+          "type": "string"
+        },
+        {
+          "name": "km_reading_nm",
+          "type": "int"
+        },
+        {
+          "name": "ecu_diag_version_cd",
+          "type": "string"
+        },
+        {
+          "name": "ecu_hw_partnumber_cd",
+          "type": "string"
+        },
+        {
+          "name": "ecu_supp_hw_version_txt",
+          "type": "string"
+        },
+        {
+          "name": "ecu_supp_nm",
+          "type": "string"
+        },
+        {
+          "name": "ecu_sw_version_txt",
+          "type": "string"
+        },
+        {
+          "name": "ecu_diag_version_nm",
+          "type": "string"
+        },
+        {
+          "name": "ecu_foot_print_txt",
+          "type": "string"
+        },
+        {
+          "name": "ecu_fault_is_visible_fg",
+          "type": "boolean"
+        },
+        {
+          "name": "ecu_fault_type_txt",
+          "type": "string"
+        },
+        {
+          "name": "ecu_fault_known_fg",
+          "type": "boolean"
+        },
+        {
+          "name": "rc_is_visible_fg",
+          "type": "boolean"
+        },
+        {
+          "name": "production_rework",
+          "type": "boolean"
+        },
+        {
+          "name": "country_name_germ",
+          "type": "string"
+        },
+        {
+          "name": "diag_group",
+          "type": "int"
+        },
+        {
+          "name": "workshop_diag_seq_num",
+          "type": "int"
+        },
+        {
+          "name": "max_load_dt",
+          "type": "date"
+        },
+        {
+          "name": "Antriebsart",
+          "type": "string"
+        },
+        {
+          "name": "Antriebstyp",
+          "type": "string"
+        },
+        {
+          "name": "Batterie",
+          "type": "string"
+        },
+        {
+          "name": "brand_nm",
+          "type": "string"
+        },
+        {
+          "name": "codelandiso1366_2",
+          "type": "string"
+        },
+        {
+          "name": "E_Drive",
+          "type": "string"
+        },
+        {
+          "name": "engine_md_cd",
+          "type": "string"
+        },
+        {
+          "name": "engine_md_cd_int",
+          "type": "int"
+        },
+        {
+          "name": "engine_ms_cd",
+          "type": "string"
+        },
+        {
+          "name": "ezl_dt",
+          "type": "date"
+        },
+        {
+          "name": "fin",
+          "type": "string"
+        },
+        {
+          "name": "Getriebeprojekt",
+          "type": "string"
+        },
+        {
+          "name": "Hubraum",
+          "type": "string"
+        },
+        {
+          "name": "kw_vm_el",
+          "type": "string"
+        },
+        {
+          "name": "md_cd",
+          "type": "string"
+        },
+        {
+          "name": "motor_model_name",
+          "type": "string"
+        },
+        {
+          "name": "Motorbaureihe",
+          "type": "string"
+        },
+        {
+          "name": "ms_nm",
+          "type": "string"
+        },
+        {
+          "name": "ms_cd",
+          "type": "string"
+        },
+        {
+          "name": "prod_dt",
+          "type": "date"
+        },
+        {
+          "name": "prod_plant_city",
+          "type": "string"
+        },
+        {
+          "name": "prod_plant_cd",
+          "type": "string"
+        },
+        {
+          "name": "prod_plant_nm",
+          "type": "string"
+        },
+        {
+          "name": "prod_dt_week",
+          "type": "int"
+        },
+        {
+          "name": "produktgruppe",
+          "type": "string"
+        },
+        {
+          "name": "sa_codes_array",
+          "type": "array<string>"
+        },
+        {
+          "name": "sales_area_nm",
+          "type": "string"
+        },
+        {
+          "name": "sales_area_id",
+          "type": "string"
+        },
+        {
+          "name": "sa_aerodynamik",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_akustik_komfort",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_ahk",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_blockheizung_kanada_ausfuehrung",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_ckd_fertigung",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_co2_reduzierung",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_erdgas",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_ethanol_e100",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_fahrschule",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_handschalter",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_hochleistungsgesteigert",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_leistungsgesteigert",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_leistungsreduziert",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_mietwagen",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_nicht_kundenfaehig",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_offroad_paket",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_reichweitenpaket_fuer_e_fahrzeug",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_rollstabilisierung_ears",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_rsg",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_schichtladung_des",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_standheizung",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_taxi",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_testfahrzeug",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_v48",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_zpd_berechtigt",
+          "type": "boolean"
+        },
+        {
+          "name": "sa_zpd_durchgefuehrt",
+          "type": "boolean"
+        },
+        {
+          "name": "driver_type",
+          "type": "string"
+        },
+        {
+          "name": "trans_md_cd",
+          "type": "string"
+        },
+        {
+          "name": "trans_md_cd_4",
+          "type": "string"
+        },
+        {
+          "name": "vehicle_is_amg",
+          "type": "boolean"
+        },
+        {
+          "name": "vehicle_sid",
+          "type": "bigint"
+        },
+        {
+          "name": "veh_body_description",
+          "type": "string"
+        },
+        {
+          "name": "Verbrennungsmotor",
+          "type": "string"
+        },
+        {
+          "name": "Verkaufsbezeichnung",
+          "type": "string"
+        },
+        {
+          "name": "wmc_cd",
+          "type": "string"
+        },
+        {
+          "name": "model_year",
+          "type": "string"
+        },
+        {
+          "name": "model_change_year",
+          "type": "string"
+        },
+        {
+          "name": "Taxi",
+          "type": "string"
+        },
+        {
+          "name": "Anhängerkupplung",
+          "type": "string"
+        },
+        {
+          "name": "Startergenerator",
+          "type": "string"
+        },
+        {
+          "name": "Offroad-Paket",
+          "type": "string"
+        },
+        {
+          "name": "Leistung",
+          "type": "string"
+        },
+        {
+          "name": "Fahrzeughersteller",
+          "type": "string"
+        },
+        {
+          "name": "vehicle_age",
+          "type": "bigint"
+        },
+        {
+          "name": "vehicle_option_txt",
+          "type": "string"
+        },
+        {
+          "name": "alter_ezl",
+          "type": "int"
+        },
+        {
+          "name": "ecu_fault_grp",
+          "type": "string"
+        },
+        {
+          "name": "errorcode_uid",
+          "type": "string"
+        },
+        {
+          "name": "diag_year",
+          "type": "date"
+        },
+        {
+          "name": "diag_codelandiso1366_2",
+          "type": "string"
+        },
+        {
+          "name": "bootversion",
+          "type": "string"
+        },
+        {
+          "name": "dataversion",
+          "type": "string"
+        },
+        {
+          "name": "codeversion",
+          "type": "string"
+        },
+        {
+          "name": "serial_number_cu",
+          "type": "string"
+        },
+        {
+          "name": "workshop_nm",
+          "type": "string"
+        },
+        {
+          "name": "workshopcity",
+          "type": "string"
+        },
+        {
+          "name": "workshopzipcode",
+          "type": "string"
+        },
+        {
+          "name": "workshopstreet",
+          "type": "string"
+        },
+        {
+          "name": "workshopstreetnumber",
+          "type": "string"
+        },
+        {
+          "name": "workshopcode",
+          "type": "string"
+        },
+        {
+          "name": "v6_responsible",
+          "type": "string"
+        },
+        {
+          "name": "v6_akv_variant",
+          "type": "string"
+        },
+        {
+          "name": "env_diag_num",
+          "type": "bigint"
+        },
+        {
+          "name": "env_ecu_nm",
+          "type": "string"
+        },
+        {
+          "name": "env_ecu_fault_nm",
+          "type": "string"
+        },
+        {
+          "name": "Kilometerstand_first",
+          "type": "string"
+        },
+        {
+          "name": "Operation_Cycle_Counter_first",
+          "type": "string"
+        },
+        {
+          "name": "Frequency_Counter_first",
+          "type": "string"
+        },
+        {
+          "name": "Kilometerstand_last",
+          "type": "string"
+        },
+        {
+          "name": "Operation_Cycle_Counter_last",
+          "type": "string"
+        },
+        {
+          "name": "Frequency_Counter_last",
+          "type": "string"
+        },
+        {
+          "name": "process_ts",
+          "type": "timestamp"
+        },
+        {
+          "name": "td_usecase_nm",
+          "type": "string"
+        },
+        {
+          "name": "td_trigger_nm",
+          "type": "string"
+        },
+        {
+          "name": "coll_system_sw_txt",
+          "type": "string"
+        },
+        {
+          "name": "ciam_id",
+          "type": "string"
+        },
+        {
+          "name": "diag_session_id",
+          "type": "bigint"
+        },
+        {
+          "name": "load_dt",
+          "type": "date"
+        }
+      ]
+    }
+  ]
+}

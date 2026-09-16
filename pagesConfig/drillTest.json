@@ -1,0 +1,187 @@
+{
+  "reportName": "Drill Test",
+  "filterLayout": "top",
+  "filters": [
+    {
+      "id": "ecu_fault_nm",
+      "label": "ECU Fault",
+      "type": "string",
+      "scope": "global"
+    },
+    {
+      "id": "country",
+      "label": "Country",
+      "type": "string",
+      "scope": "tab",
+      "tab": "Details"
+    }
+  ],
+  "tabs": [
+    {
+      "trigger": "Countries",
+      "rows": [
+        {
+          "height": 80,
+          "components": [
+            {
+              "moduleName": "MapModule",
+              "space": 0,
+              "chartTitle": "ECU Faults by Country",
+              "chartDescription": "Click a country to drill into its fault trend",
+              "chartID": "00c869d0-8e18-4b44-a2d3-5d6e73c8800f",
+              "filterBindings": {
+                "ecu_fault_nm": "ecu_fault_nm"
+              },
+              "drill": {
+                "targetTab": "Details",
+                "selectionMode": "single",
+                "selectionBindings": {
+                  "regionCode": "country"
+                }
+              },
+              "chartConfig": {
+                "projection": {
+                  "type": "geoNaturalEarth1",
+                  "center": [0, 20],
+                  "scale": 150
+                },
+                "zoom": {
+                  "enabled": true,
+                  "min": 1,
+                  "max": 8,
+                  "initial": 1
+                },
+                "geography": {
+                  "stroke": "#ffffff",
+                  "strokeWidth": 0.5,
+                  "defaultFill": "#e2e8f0"
+                },
+                "choropleth": {
+                  "enabled": true,
+                  "colorScale": {
+                    "type": "gradient",
+                    "gradient": {
+                      "minColor": "#dbeafe",
+                      "maxColor": "#1d4ed8"
+                    }
+                  },
+                  "noDataColor": "#f1f5f9"
+                },
+                "bubbles": {
+                  "enabled": false,
+                  "radius": {
+                    "min": 2,
+                    "max": 20
+                  },
+                  "color": {
+                    "mode": "fixed",
+                    "fixedColor": "#1d4ed8"
+                  },
+                  "stroke": "#ffffff",
+                  "strokeWidth": 1,
+                  "opacity": 0.8
+                },
+                "tooltip": {
+                  "show": true
+                },
+                "regionLabels": {
+                  "show": false,
+                  "color": "#0f172a",
+                  "fontSize": 10
+                },
+                "legend": {
+                  "show": true,
+                  "position": "bottom-left"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "trigger": "Details",
+      "rows": [
+        {
+          "height": 80,
+          "components": [
+            {
+              "moduleName": "LineChartModule",
+              "space": 0,
+              "chartTitle": "Fault Trend for Selected Country",
+              "chartDescription": "ECU fault count over time, filtered by the drilled country",
+              "chartID": "4bde50ff-0284-4815-8c6f-d7b992c8574a",
+              "filterBindings": {
+                "country": "country",
+                "ecu_fault_nm": "ecu_fault_nm"
+              },
+              "chartConfig": {
+                "xAxis": {
+                  "show": true,
+                  "tickLine": true,
+                  "axisLine": true,
+                  "tickMargin": 5,
+                  "format": "date-day-month"
+                },
+                "yAxis": {
+                  "show": true,
+                  "tickLine": true,
+                  "axisLine": true,
+                  "format": "number"
+                },
+                "grid": {
+                  "show": true,
+                  "horizontal": true,
+                  "vertical": false,
+                  "strokeDasharray": "3 3"
+                },
+                "tooltip": {
+                  "show": true,
+                  "cursor": true
+                },
+                "legend": {
+                  "show": true
+                },
+                "margin": {
+                  "top": 20,
+                  "right": 30,
+                  "bottom": 20,
+                  "left": 60
+                },
+                "lines": [
+                  {
+                    "seriesIndex": 0,
+                    "name": "Faults",
+                    "curve": "monotone",
+                    "stroke": "var(--chart-1)",
+                    "strokeWidth": 2,
+                    "connectNulls": true,
+                    "dots": {
+                      "show": true,
+                      "radius": 4,
+                      "fill": "var(--chart-1)",
+                      "stroke": "#fff",
+                      "strokeWidth": 2
+                    },
+                    "activeDot": {
+                      "show": true,
+                      "radius": 6,
+                      "fill": "var(--chart-1)",
+                      "stroke": "#fff",
+                      "strokeWidth": 2
+                    },
+                    "fill": {
+                      "enabled": true,
+                      "color": "var(--chart-1)",
+                      "opacity": 0.1
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

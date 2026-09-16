@@ -1,13 +1,15 @@
 "use client";
 
 import { FilterControl } from "@/components/FilterControl";
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
 import useFilterStore, { tabKey } from "@/stores/filterProvider";
 
-type TabFiltersProps = {
-  dimensions: FilterDimension[];
-};
-
-export function TabFilters({ dimensions }: TabFiltersProps) {
+export function TabFilters() {
+  const dimensions = useFilterStore((state) => state.dimensions);
   const activeTab = useFilterStore((state) => state.activeTab);
   const values = useFilterStore((state) => state.draftValues);
   const setDraftFilter = useFilterStore((state) => state.setDraftFilter);
@@ -21,19 +23,27 @@ export function TabFilters({ dimensions }: TabFiltersProps) {
   }
 
   return (
-    <div className="flex flex-wrap gap-4">
-      {tabDimensions.map((dimension) => {
-        const key = tabKey(activeTab, dimension.id);
+    <>
+      <SidebarSeparator />
 
-        return (
-          <FilterControl
-            key={dimension.id}
-            dimension={dimension}
-            value={values[key]}
-            onChange={(value: FilterValue) => setDraftFilter(key, value)}
-          />
-        );
-      })}
-    </div>
+      <SidebarGroup>
+        <SidebarGroupLabel>Filter für &quot;{activeTab}&quot;</SidebarGroupLabel>
+
+        {tabDimensions.map((dimension) => {
+          const key = tabKey(activeTab, dimension.id);
+
+          return (
+            <FilterControl
+              key={dimension.id}
+              dimension={dimension}
+              value={values[key]}
+              onChange={(value: FilterValue) => setDraftFilter(key, value)}
+            />
+          );
+        })}
+      </SidebarGroup>
+    </>
   );
 }
+
+export default TabFilters;

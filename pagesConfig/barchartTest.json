@@ -1,0 +1,111 @@
+{
+  "reportName": "Barchart Test with live data",
+  "filterLayout": "sidebar",
+  "filters": [
+    {
+      "id": "from",
+      "label": "Von (Diagnosedatum)",
+      "type": "dateString",
+      "scope": "global"
+    },
+    {
+      "id": "to",
+      "label": "Bis (Diagnosedatum)",
+      "type": "dateString",
+      "scope": "global"
+    },
+    {
+      "id": "country",
+      "label": "Land",
+      "type": "multiselect",
+      "scope": "global",
+      "optionsSource": "ecuCountry"
+    },
+    {
+      "id": "minAge",
+      "label": "Mindestalter Erstzulassung (Jahre)",
+      "type": "number",
+      "scope": "global"
+    }
+  ],
+  "tabs": [
+    {
+      "trigger": "Overview",
+      "rows": [
+        {
+          "height": 60,
+          "components": [
+            {
+              "moduleName": "BarChartModule",
+              "space": 12,
+              "chartID": "e1b9a613-2ad2-4353-a680-ab9e18359bc3",
+              "chartTitle": "Count Errors per ECU",
+              "chartDescription": "Shows the number of errors recorded for each ECU.",
+              "filterBindings": {
+                "from": "from",
+                "to": "to",
+                "country": "country",
+                "minAge": "min_age"
+              },
+              "chartConfig": {
+                "orientation": "horizontal",
+                "layout": "grouped",
+                "categoryAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "tickMargin": 8,
+                  "maxLabelChars": 28
+                },
+                "valueAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "format": "number",
+                  "domain": "auto"
+                },
+                "grid": {
+                  "show": true,
+                  "horizontal": false,
+                  "vertical": true,
+                  "strokeDasharray": "3 3"
+                },
+                "tooltip": {
+                  "show": true,
+                  "cursor": true
+                },
+                "legend": {
+                  "show": false
+                },
+                "margin": {
+                  "top": 8,
+                  "right": 32,
+                  "bottom": 8,
+                  "left": 8
+                },
+                "bars": {
+                  "radius": 4,
+                  "categoryGap": "20%",
+                  "barGap": 4
+                },
+                "valueLabels": {
+                  "show": true,
+                  "format": "number",
+                  "position": "outside"
+                },
+                "series": [
+                  {
+                    "seriesIndex": 0,
+                    "name": "Errors",
+                    "fill": "var(--chart-1)",
+                    "fillOpacity": 1
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

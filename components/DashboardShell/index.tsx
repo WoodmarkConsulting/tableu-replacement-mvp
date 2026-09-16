@@ -5,7 +5,6 @@ import { Suspense, useEffect } from "react";
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { ShareButton } from "@/components/ShareButton";
 import { TabBreadcrumb } from "@/components/TabBreadcrumb";
-import { TabFilters } from "@/components/TabFilters";
 import { TabsWrapper } from "@/components/TabsWrapper";
 import { useFilterUrlSync } from "@/hooks/useFilterUrlSync";
 import useChartConnectionsStore from "@/stores/chartConnectionsStore";
@@ -56,10 +55,6 @@ export function DashboardShell({ config }: DashboardShellProps) {
 
   const main = (
     <div className="flex min-w-0 flex-1 flex-col gap-2">
-      <div className="print:hidden">
-        <TabFilters dimensions={filters} />
-      </div>
-
       <TabBreadcrumb />
 
       <TabsWrapper

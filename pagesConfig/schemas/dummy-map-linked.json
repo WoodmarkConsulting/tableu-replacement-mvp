@@ -1,0 +1,26 @@
+{
+  "id": "dummy-map-linked",
+  "tables": [
+    {
+      "tablePath": "inline.values.dummy_map_linked",
+      "columns": [
+        {
+          "name": "kind",
+          "type": "string"
+        },
+        {
+          "name": "regionCode",
+          "type": "string"
+        },
+        {
+          "name": "value",
+          "type": "double"
+        },
+        {
+          "name": "label",
+          "type": "string"
+        }
+      ]
+    }
+  ]
+}

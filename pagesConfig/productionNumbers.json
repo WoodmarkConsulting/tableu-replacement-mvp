@@ -1,0 +1,1560 @@
+{
+  "reportName": "Production numbers",
+  "filterLayout": "sidebar",
+  "filters": [
+    {
+      "id": "ms_nm",
+      "label": "Model Series",
+      "type": "multiselect",
+      "scope": "global",
+      "optionsSource": "productionModelSeriesName"
+    },
+    {
+      "id": "ecu_fault_nm",
+      "label": "Fault Code",
+      "type": "multiselect",
+      "scope": "global",
+      "optionsSource": "productionFaultCode"
+    },
+    {
+      "id": "engine_md_cd",
+      "label": "Engine Model Code",
+      "type": "multiselect",
+      "scope": "global",
+      "optionsSource": "productionEngineModelCode"
+    },
+    {
+      "id": "trans_md_cd",
+      "label": "Transmission Model Code (6)",
+      "type": "multiselect",
+      "scope": "global",
+      "optionsSource": "productionTransModelCode"
+    },
+    {
+      "id": "ms_cd",
+      "label": "Vehicle Series",
+      "type": "multiselect",
+      "scope": "global",
+      "optionsSource": "productionVehicleSeries"
+    },
+    {
+      "id": "md_cd",
+      "label": "Vehicle Model Code",
+      "type": "multiselect",
+      "scope": "global",
+      "optionsSource": "productionVehicleModelCode"
+    },
+    {
+      "id": "plant_letter_cd",
+      "label": "Plant",
+      "type": "multiselect",
+      "scope": "global",
+      "optionsSource": "productionPlant"
+    },
+    {
+      "id": "ecu_nm",
+      "label": "ECU",
+      "type": "multiselect",
+      "scope": "global",
+      "optionsSource": "productionEcuName"
+    },
+    {
+      "id": "prod_from",
+      "label": "Production Date From",
+      "type": "dateString",
+      "scope": "global"
+    },
+    {
+      "id": "prod_to",
+      "label": "Production Date To",
+      "type": "dateString",
+      "scope": "global"
+    },
+    {
+      "id": "diag_from",
+      "label": "Diagnosis Date From",
+      "type": "dateString",
+      "scope": "global",
+      "defaultValue": "-3 months"
+    },
+    {
+      "id": "diag_to",
+      "label": "Diagnosis Date To",
+      "type": "dateString",
+      "scope": "global"
+    },
+    {
+      "id": "drill_ecu_nm",
+      "label": "ECU (Drilldown)",
+      "type": "multiselect",
+      "scope": "tab",
+      "tab": "Production Numbers 2"
+    },
+    {
+      "id": "drill_engine_series",
+      "label": "Engine Series (Drilldown)",
+      "type": "multiselect",
+      "scope": "tab",
+      "tab": "Production Numbers 2"
+    },
+    {
+      "id": "drill_battery",
+      "label": "Battery (Drilldown)",
+      "type": "multiselect",
+      "scope": "tab",
+      "tab": "Production Numbers 2"
+    },
+    {
+      "id": "drill_trans_md_cd",
+      "label": "Transmission Model Code (Drilldown)",
+      "type": "multiselect",
+      "scope": "tab",
+      "tab": "Production Numbers 2"
+    },
+    {
+      "id": "drill_ms_cd",
+      "label": "Vehicle Series (Drilldown)",
+      "type": "multiselect",
+      "scope": "tab",
+      "tab": "Production Numbers 2"
+    },
+    {
+      "id": "drill_country",
+      "label": "Sales Country (Drilldown)",
+      "type": "multiselect",
+      "scope": "tab",
+      "tab": "Production Numbers 2"
+    }
+  ],
+  "tabs": [
+    {
+      "trigger": "Overview",
+      "rows": [
+        {
+          "height": 80,
+          "components": [
+            {
+              "moduleName": "TableModule",
+              "space": 12,
+              "chartTitle": "Production Overview",
+              "chartDescription": "Production numbers and error quota per production record.",
+              "chartID": "69e28f7b-a25a-4911-ae2c-64b3ab5ca155",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "plant_letter_cd": "plant_letter_cd",
+                "ecu_nm": "ecu_nm"
+              },
+              "chartConfig": {
+                "columns": [
+                  {
+                    "id": "ms_nm",
+                    "header": "Model Series",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "ms_cd",
+                    "header": "Model Series Code",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "Motorbaureihe",
+                    "header": "Engine Series",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "plant_letter_cd",
+                    "header": "Plant",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "sales_area_nm",
+                    "header": "Sales Area",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "trans_md_cd",
+                    "header": "Transmission Model Code",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "ecu_fault_nm",
+                    "header": "Fault Code",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "ecu_foot_print_txt",
+                    "header": "ECU Footprint",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "ecu_hw_partnumber_cd",
+                    "header": "ECU HW Part Number",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "lhd",
+                    "header": "Left-Hand Drive",
+                    "type": "boolean",
+                    "align": "center",
+                    "sortable": true,
+                    "boolean": {
+                      "display": "text",
+                      "trueLabel": "Yes",
+                      "falseLabel": "No"
+                    }
+                  },
+                  {
+                    "id": "vehicle_w_error",
+                    "header": "Vehicles with Error",
+                    "type": "number",
+                    "align": "right",
+                    "sortable": true,
+                    "footerAggregate": "sum",
+                    "format": {
+                      "maxFractionDigits": 0,
+                      "notation": "number"
+                    }
+                  },
+                  {
+                    "id": "c_veh_produced",
+                    "header": "Vehicles Produced",
+                    "type": "number",
+                    "align": "right",
+                    "sortable": true,
+                    "footerAggregate": "sum",
+                    "format": {
+                      "maxFractionDigits": 0,
+                      "notation": "number"
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#2563eb",
+                      "showValue": true
+                    }
+                  },
+                  {
+                    "id": "error_quota",
+                    "header": "Error Quota",
+                    "type": "percent",
+                    "align": "right",
+                    "sortable": true,
+                    "format": {
+                      "percentScale": "fraction",
+                      "minFractionDigits": 1,
+                      "maxFractionDigits": 2
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#dc2626",
+                      "showValue": true
+                    }
+                  }
+                ],
+                "hierarchy": {
+                  "enabled": false,
+                  "defaultExpandedDepth": 0,
+                  "indentSize": 16
+                },
+                "columnMenu": {
+                  "show": true,
+                  "label": "Columns"
+                },
+                "sorting": {
+                  "enabled": true,
+                  "defaultSort": {
+                    "columnId": "error_quota",
+                    "direction": "desc"
+                  }
+                },
+                "filtering": {
+                  "globalSearch": true,
+                  "perColumn": true,
+                  "searchPlaceholder": "Search..."
+                },
+                "footer": {
+                  "show": true,
+                  "label": "Total"
+                },
+                "pagination": {
+                  "enabled": true,
+                  "pageSize": 25
+                },
+                "appearance": {
+                  "density": "comfortable",
+                  "stickyHeader": true,
+                  "stickyFirstColumn": true,
+                  "zebraStripes": true,
+                  "emptyPlaceholder": "-"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "trigger": "ZentraleFilterseite",
+      "rows": [
+        {
+          "height": 45,
+          "components": [
+            {
+              "moduleName": "BarChartModule",
+              "space": 3,
+              "chartTitle": "ECUs",
+              "chartDescription": "Count of errors per ECU (top 15).",
+              "chartID": "8ea746c9-7d14-4e4a-b5fc-49c805430320",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "ecu_nm": "ecu_nm",
+                "prod_from": "prod_from",
+                "prod_to": "prod_to",
+                "diag_from": "diag_from",
+                "diag_to": "diag_to"
+              },
+              "chartConfig": {
+                "orientation": "horizontal",
+                "layout": "grouped",
+                "categoryAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "tickMargin": 8,
+                  "maxLabelChars": 22
+                },
+                "valueAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "format": "compact",
+                  "domain": "auto"
+                },
+                "grid": {
+                  "show": true,
+                  "horizontal": false,
+                  "vertical": true,
+                  "strokeDasharray": "3 3"
+                },
+                "tooltip": {
+                  "show": true,
+                  "cursor": true
+                },
+                "legend": {
+                  "show": false
+                },
+                "margin": {
+                  "top": 8,
+                  "right": 32,
+                  "bottom": 8,
+                  "left": 8
+                },
+                "bars": {
+                  "radius": 4,
+                  "categoryGap": "20%",
+                  "barGap": 4
+                },
+                "valueLabels": {
+                  "show": true,
+                  "format": "compact",
+                  "position": "outside"
+                },
+                "series": [
+                  {
+                    "seriesIndex": 0,
+                    "name": "Errors",
+                    "fill": "var(--chart-1)",
+                    "fillOpacity": 1
+                  }
+                ]
+              }
+            },
+            {
+              "moduleName": "BarChartModule",
+              "space": 3,
+              "chartTitle": "Engine Series",
+              "chartDescription": "Count of errors per engine series (top 15).",
+              "chartID": "25513e97-5ec5-46af-a4ec-811371529031",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "ecu_nm": "ecu_nm",
+                "prod_from": "prod_from",
+                "prod_to": "prod_to",
+                "diag_from": "diag_from",
+                "diag_to": "diag_to"
+              },
+              "chartConfig": {
+                "orientation": "horizontal",
+                "layout": "grouped",
+                "categoryAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "tickMargin": 8,
+                  "maxLabelChars": 22
+                },
+                "valueAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "format": "compact",
+                  "domain": "auto"
+                },
+                "grid": {
+                  "show": true,
+                  "horizontal": false,
+                  "vertical": true,
+                  "strokeDasharray": "3 3"
+                },
+                "tooltip": {
+                  "show": true,
+                  "cursor": true
+                },
+                "legend": {
+                  "show": false
+                },
+                "margin": {
+                  "top": 8,
+                  "right": 32,
+                  "bottom": 8,
+                  "left": 8
+                },
+                "bars": {
+                  "radius": 4,
+                  "categoryGap": "20%",
+                  "barGap": 4
+                },
+                "valueLabels": {
+                  "show": true,
+                  "format": "compact",
+                  "position": "outside"
+                },
+                "series": [
+                  {
+                    "seriesIndex": 0,
+                    "name": "Errors",
+                    "fill": "var(--chart-2)",
+                    "fillOpacity": 1
+                  }
+                ]
+              }
+            },
+            {
+              "moduleName": "BarChartModule",
+              "space": 3,
+              "chartTitle": "Batteries",
+              "chartDescription": "Count of errors per battery (top 15).",
+              "chartID": "162a6014-4a1e-44c6-9b9d-e24d9a62dce6",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "ecu_nm": "ecu_nm",
+                "prod_from": "prod_from",
+                "prod_to": "prod_to",
+                "diag_from": "diag_from",
+                "diag_to": "diag_to"
+              },
+              "chartConfig": {
+                "orientation": "horizontal",
+                "layout": "grouped",
+                "categoryAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "tickMargin": 8,
+                  "maxLabelChars": 22
+                },
+                "valueAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "format": "compact",
+                  "domain": "auto"
+                },
+                "grid": {
+                  "show": true,
+                  "horizontal": false,
+                  "vertical": true,
+                  "strokeDasharray": "3 3"
+                },
+                "tooltip": {
+                  "show": true,
+                  "cursor": true
+                },
+                "legend": {
+                  "show": false
+                },
+                "margin": {
+                  "top": 8,
+                  "right": 32,
+                  "bottom": 8,
+                  "left": 8
+                },
+                "bars": {
+                  "radius": 4,
+                  "categoryGap": "20%",
+                  "barGap": 4
+                },
+                "valueLabels": {
+                  "show": true,
+                  "format": "compact",
+                  "position": "outside"
+                },
+                "series": [
+                  {
+                    "seriesIndex": 0,
+                    "name": "Errors",
+                    "fill": "var(--chart-3)",
+                    "fillOpacity": 1
+                  }
+                ]
+              }
+            },
+            {
+              "moduleName": "BarChartModule",
+              "space": 3,
+              "chartTitle": "TMC",
+              "chartDescription": "Count of errors per transmission model code (top 15).",
+              "chartID": "c46a43c9-68f3-4c05-b052-f8e6102f0a7d",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "ecu_nm": "ecu_nm",
+                "prod_from": "prod_from",
+                "prod_to": "prod_to",
+                "diag_from": "diag_from",
+                "diag_to": "diag_to"
+              },
+              "chartConfig": {
+                "orientation": "horizontal",
+                "layout": "grouped",
+                "categoryAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "tickMargin": 8,
+                  "maxLabelChars": 22
+                },
+                "valueAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "format": "compact",
+                  "domain": "auto"
+                },
+                "grid": {
+                  "show": true,
+                  "horizontal": false,
+                  "vertical": true,
+                  "strokeDasharray": "3 3"
+                },
+                "tooltip": {
+                  "show": true,
+                  "cursor": true
+                },
+                "legend": {
+                  "show": false
+                },
+                "margin": {
+                  "top": 8,
+                  "right": 32,
+                  "bottom": 8,
+                  "left": 8
+                },
+                "bars": {
+                  "radius": 4,
+                  "categoryGap": "20%",
+                  "barGap": 4
+                },
+                "valueLabels": {
+                  "show": true,
+                  "format": "compact",
+                  "position": "outside"
+                },
+                "series": [
+                  {
+                    "seriesIndex": 0,
+                    "name": "Errors",
+                    "fill": "var(--chart-4)",
+                    "fillOpacity": 1
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "height": 45,
+          "components": [
+            {
+              "moduleName": "MapModule",
+              "space": 9,
+              "chartTitle": "sales countries",
+              "chartDescription": "Count of errors per sales country.",
+              "chartID": "892c68b8-4972-4d4d-9c5c-911a2dd2549e",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "ecu_nm": "ecu_nm",
+                "prod_from": "prod_from",
+                "prod_to": "prod_to",
+                "diag_from": "diag_from",
+                "diag_to": "diag_to"
+              },
+              "chartConfig": {
+                "projection": {
+                  "type": "geoNaturalEarth1",
+                  "center": [0, 20],
+                  "scale": 150
+                },
+                "zoom": {
+                  "enabled": true,
+                  "min": 1,
+                  "max": 8,
+                  "initial": 1
+                },
+                "geography": {
+                  "stroke": "#ffffff",
+                  "strokeWidth": 0.5,
+                  "defaultFill": "#e2e8f0"
+                },
+                "choropleth": {
+                  "enabled": true,
+                  "colorScale": {
+                    "type": "gradient",
+                    "gradient": {
+                      "minColor": "#dbeafe",
+                      "maxColor": "#1d4ed8"
+                    }
+                  },
+                  "noDataColor": "#f1f5f9"
+                },
+                "bubbles": {
+                  "enabled": false,
+                  "radius": {
+                    "min": 2,
+                    "max": 20
+                  },
+                  "color": {
+                    "mode": "fixed",
+                    "fixedColor": "#1d4ed8"
+                  },
+                  "stroke": "#ffffff",
+                  "strokeWidth": 1,
+                  "opacity": 0.8
+                },
+                "tooltip": {
+                  "show": true
+                },
+                "regionLabels": {
+                  "show": false,
+                  "color": "#0f172a",
+                  "fontSize": 10
+                },
+                "legend": {
+                  "show": true,
+                  "position": "bottom-left"
+                }
+              }
+            },
+            {
+              "moduleName": "BarChartModule",
+              "space": 3,
+              "chartTitle": "vehicle series",
+              "chartDescription": "Count of errors per vehicle series (top 15).",
+              "chartID": "fe6156a0-778e-4e29-9dfd-b63a4df8929f",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "ecu_nm": "ecu_nm",
+                "prod_from": "prod_from",
+                "prod_to": "prod_to",
+                "diag_from": "diag_from",
+                "diag_to": "diag_to"
+              },
+              "chartConfig": {
+                "orientation": "horizontal",
+                "layout": "grouped",
+                "categoryAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "tickMargin": 8,
+                  "maxLabelChars": 22
+                },
+                "valueAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "format": "compact",
+                  "domain": "auto"
+                },
+                "grid": {
+                  "show": true,
+                  "horizontal": false,
+                  "vertical": true,
+                  "strokeDasharray": "3 3"
+                },
+                "tooltip": {
+                  "show": true,
+                  "cursor": true
+                },
+                "legend": {
+                  "show": false
+                },
+                "margin": {
+                  "top": 8,
+                  "right": 32,
+                  "bottom": 8,
+                  "left": 8
+                },
+                "bars": {
+                  "radius": 4,
+                  "categoryGap": "20%",
+                  "barGap": 4
+                },
+                "valueLabels": {
+                  "show": true,
+                  "format": "compact",
+                  "position": "outside"
+                },
+                "series": [
+                  {
+                    "seriesIndex": 0,
+                    "name": "Errors",
+                    "fill": "var(--chart-5)",
+                    "fillOpacity": 1
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "trigger": "Production Numbers 2",
+      "rows": [
+        {
+          "height": 25,
+          "components": [
+            {
+              "moduleName": "BarChartModule",
+              "space": 3,
+              "chartTitle": "Error Share by Drive Side",
+              "chartDescription": "Share of all errors from left-hand-drive vs right-hand-drive vehicles.",
+              "chartID": "775c8f94-c2e3-42fa-b962-6e4cf0ee9041",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "plant_letter_cd": "plant_letter_cd",
+                "ecu_nm": "ecu_nm",
+                "drill_ecu_nm": "drill_ecu_nm",
+                "drill_engine_series": "drill_engine_series",
+                "drill_battery": "drill_battery",
+                "drill_trans_md_cd": "drill_trans_md_cd",
+                "drill_ms_cd": "drill_ms_cd",
+                "drill_country": "drill_country"
+              },
+              "chartConfig": {
+                "orientation": "vertical",
+                "layout": "grouped",
+                "categoryAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "tickMargin": 8,
+                  "maxLabelChars": 22
+                },
+                "valueAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "format": "percent",
+                  "domain": [0, 100]
+                },
+                "grid": {
+                  "show": true,
+                  "horizontal": true,
+                  "vertical": false,
+                  "strokeDasharray": "3 3"
+                },
+                "tooltip": {
+                  "show": true,
+                  "cursor": true
+                },
+                "legend": {
+                  "show": false
+                },
+                "margin": {
+                  "top": 8,
+                  "right": 16,
+                  "bottom": 8,
+                  "left": 8
+                },
+                "bars": {
+                  "radius": 4,
+                  "categoryGap": "20%",
+                  "barGap": 4
+                },
+                "valueLabels": {
+                  "show": true,
+                  "format": "percent",
+                  "position": "outside",
+                  "numberFormat": {
+                    "decimals": 2
+                  }
+                },
+                "colorByCategory": {
+                  "enabled": true,
+                  "colors": {
+                    "Left-Hand Drive": "var(--chart-1)",
+                    "Right-Hand Drive": "var(--chart-2)"
+                  }
+                },
+                "series": [
+                  {
+                    "seriesIndex": 0,
+                    "name": "Error Share",
+                    "fill": "var(--chart-1)",
+                    "fillOpacity": 1
+                  }
+                ]
+              }
+            },
+            {
+              "moduleName": "BarChartModule",
+              "space": 3,
+              "chartTitle": "Error Share by Drive Type",
+              "chartDescription": "Share of all errors per drive type (Antriebstyp).",
+              "chartID": "e33c279e-70db-456c-bfd9-f7a384af7657",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "plant_letter_cd": "plant_letter_cd",
+                "ecu_nm": "ecu_nm",
+                "drill_ecu_nm": "drill_ecu_nm",
+                "drill_engine_series": "drill_engine_series",
+                "drill_battery": "drill_battery",
+                "drill_trans_md_cd": "drill_trans_md_cd",
+                "drill_ms_cd": "drill_ms_cd",
+                "drill_country": "drill_country"
+              },
+              "chartConfig": {
+                "orientation": "vertical",
+                "layout": "grouped",
+                "categoryAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "tickMargin": 8,
+                  "maxLabelChars": 22
+                },
+                "valueAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "format": "percent",
+                  "domain": [0, 100]
+                },
+                "grid": {
+                  "show": true,
+                  "horizontal": true,
+                  "vertical": false,
+                  "strokeDasharray": "3 3"
+                },
+                "tooltip": {
+                  "show": true,
+                  "cursor": true
+                },
+                "legend": {
+                  "show": false
+                },
+                "margin": {
+                  "top": 8,
+                  "right": 16,
+                  "bottom": 8,
+                  "left": 8
+                },
+                "bars": {
+                  "radius": 4,
+                  "categoryGap": "20%",
+                  "barGap": 4
+                },
+                "valueLabels": {
+                  "show": true,
+                  "format": "percent",
+                  "position": "outside",
+                  "numberFormat": {
+                    "decimals": 2
+                  }
+                },
+                "series": [
+                  {
+                    "seriesIndex": 0,
+                    "name": "Error Share",
+                    "fill": "var(--chart-2)",
+                    "fillOpacity": 1
+                  }
+                ]
+              }
+            },
+            {
+              "moduleName": "TableModule",
+              "space": 6,
+              "chartTitle": "ECU Error Codes",
+              "chartDescription": "Produced and error vehicle counts with error quota per ECU fault code.",
+              "chartID": "e13d7ce9-dec2-423e-b183-6d346c7e7660",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "plant_letter_cd": "plant_letter_cd",
+                "ecu_nm": "ecu_nm",
+                "drill_ecu_nm": "drill_ecu_nm",
+                "drill_engine_series": "drill_engine_series",
+                "drill_battery": "drill_battery",
+                "drill_trans_md_cd": "drill_trans_md_cd",
+                "drill_ms_cd": "drill_ms_cd",
+                "drill_country": "drill_country"
+              },
+              "chartConfig": {
+                "columns": [
+                  {
+                    "id": "ecu_fault_nm",
+                    "header": "Fault Code",
+                    "type": "string",
+                    "width": 50,
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "c_veh_produced",
+                    "header": "Vehicles Produced",
+                    "type": "number",
+                    "align": "right",
+                    "sortable": true,
+                    "footerAggregate": "sum",
+                    "format": {
+                      "maxFractionDigits": 0,
+                      "notation": "number"
+                    }
+                  },
+                  {
+                    "id": "veh_w_error",
+                    "header": "Vehicles with Error",
+                    "type": "number",
+                    "align": "right",
+                    "sortable": true,
+                    "footerAggregate": "sum",
+                    "format": {
+                      "maxFractionDigits": 0,
+                      "notation": "number"
+                    }
+                  },
+                  {
+                    "id": "veh_error_quota",
+                    "header": "Veh Error Quota",
+                    "type": "percent",
+                    "align": "right",
+                    "sortable": true,
+                    "format": {
+                      "percentScale": "fraction",
+                      "minFractionDigits": 1,
+                      "maxFractionDigits": 2
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#dc2626",
+                      "showValue": true
+                    }
+                  }
+                ],
+                "hierarchy": {
+                  "enabled": false,
+                  "defaultExpandedDepth": 0,
+                  "indentSize": 16
+                },
+                "columnMenu": {
+                  "show": false,
+                  "label": "Columns"
+                },
+                "sorting": {
+                  "enabled": true,
+                  "defaultSort": {
+                    "columnId": "veh_error_quota",
+                    "direction": "desc"
+                  }
+                },
+                "filtering": {
+                  "globalSearch": false,
+                  "perColumn": true,
+                  "searchPlaceholder": "Search..."
+                },
+                "footer": {
+                  "show": true,
+                  "label": "Total"
+                },
+                "pagination": {
+                  "enabled": true,
+                  "pageSize": 25
+                },
+                "appearance": {
+                  "density": "compact",
+                  "stickyHeader": true,
+                  "stickyFirstColumn": true,
+                  "zebraStripes": true,
+                  "emptyPlaceholder": "-"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "height": 25,
+          "components": [
+            {
+              "moduleName": "TableModule",
+              "space": 4,
+              "chartTitle": "Vehicle Series",
+              "chartDescription": "Error quota and vehicle count per vehicle series.",
+              "chartID": "6ef5b005-89d2-4fc7-8ab1-4dda6a2cdbf0",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "plant_letter_cd": "plant_letter_cd",
+                "ecu_nm": "ecu_nm",
+                "drill_ecu_nm": "drill_ecu_nm",
+                "drill_engine_series": "drill_engine_series",
+                "drill_battery": "drill_battery",
+                "drill_trans_md_cd": "drill_trans_md_cd",
+                "drill_ms_cd": "drill_ms_cd",
+                "drill_country": "drill_country"
+              },
+              "chartConfig": {
+                "columns": [
+                  {
+                    "id": "ms_cd",
+                    "header": "Vehicle Series",
+                    "type": "string",
+                    "width": 50,
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "error_quota",
+                    "header": "Error Quota",
+                    "type": "percent",
+                    "align": "right",
+                    "sortable": true,
+                    "format": {
+                      "percentScale": "fraction",
+                      "minFractionDigits": 1,
+                      "maxFractionDigits": 2
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#dc2626",
+                      "showValue": true,
+                      "direction": "rtl"
+                    }
+                  },
+                  {
+                    "id": "veh_count",
+                    "header": "Vehicles",
+                    "type": "number",
+                    "align": "right",
+                    "sortable": true,
+                    "footerAggregate": "sum",
+                    "format": {
+                      "maxFractionDigits": 0,
+                      "notation": "number"
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#2563eb",
+                      "showValue": true
+                    }
+                  }
+                ],
+                "hierarchy": {
+                  "enabled": false,
+                  "defaultExpandedDepth": 0,
+                  "indentSize": 16
+                },
+                "columnMenu": {
+                  "show": false,
+                  "label": "Columns"
+                },
+                "sorting": {
+                  "enabled": true,
+                  "defaultSort": {
+                    "columnId": "error_quota",
+                    "direction": "desc"
+                  }
+                },
+                "filtering": {
+                  "globalSearch": false,
+                  "perColumn": true,
+                  "searchPlaceholder": "Search..."
+                },
+                "footer": {
+                  "show": true,
+                  "label": "Total"
+                },
+                "pagination": {
+                  "enabled": true,
+                  "pageSize": 25
+                },
+                "appearance": {
+                  "density": "compact",
+                  "stickyHeader": true,
+                  "stickyFirstColumn": true,
+                  "zebraStripes": true,
+                  "emptyPlaceholder": "-"
+                }
+              }
+            },
+            {
+              "moduleName": "TableModule",
+              "space": 4,
+              "chartTitle": "Engine Series",
+              "chartDescription": "Error quota and vehicle count per engine series.",
+              "chartID": "697df611-e61f-4ff0-bf37-eefb55e03cda",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "plant_letter_cd": "plant_letter_cd",
+                "ecu_nm": "ecu_nm",
+                "drill_ecu_nm": "drill_ecu_nm",
+                "drill_engine_series": "drill_engine_series",
+                "drill_battery": "drill_battery",
+                "drill_trans_md_cd": "drill_trans_md_cd",
+                "drill_ms_cd": "drill_ms_cd",
+                "drill_country": "drill_country"
+              },
+              "chartConfig": {
+                "columns": [
+                  {
+                    "id": "Motorbaureihe",
+                    "header": "Engine Series",
+                    "type": "string",
+                    "width": 50,
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "error_quota",
+                    "header": "Error Quota",
+                    "type": "percent",
+                    "align": "right",
+                    "sortable": true,
+                    "format": {
+                      "percentScale": "fraction",
+                      "minFractionDigits": 1,
+                      "maxFractionDigits": 2
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#dc2626",
+                      "showValue": true,
+                      "direction": "rtl"
+                    }
+                  },
+                  {
+                    "id": "veh_count",
+                    "header": "Vehicles",
+                    "type": "number",
+                    "align": "right",
+                    "sortable": true,
+                    "footerAggregate": "sum",
+                    "format": {
+                      "maxFractionDigits": 0,
+                      "notation": "number"
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#2563eb",
+                      "showValue": true
+                    }
+                  }
+                ],
+                "hierarchy": {
+                  "enabled": false,
+                  "defaultExpandedDepth": 0,
+                  "indentSize": 16
+                },
+                "columnMenu": {
+                  "show": false,
+                  "label": "Columns"
+                },
+                "sorting": {
+                  "enabled": true,
+                  "defaultSort": {
+                    "columnId": "error_quota",
+                    "direction": "desc"
+                  }
+                },
+                "filtering": {
+                  "globalSearch": false,
+                  "perColumn": true,
+                  "searchPlaceholder": "Search..."
+                },
+                "footer": {
+                  "show": true,
+                  "label": "Total"
+                },
+                "pagination": {
+                  "enabled": true,
+                  "pageSize": 25
+                },
+                "appearance": {
+                  "density": "compact",
+                  "stickyHeader": true,
+                  "stickyFirstColumn": true,
+                  "zebraStripes": true,
+                  "emptyPlaceholder": "-"
+                }
+              }
+            },
+            {
+              "moduleName": "TableModule",
+              "space": 4,
+              "chartTitle": "Transmission Series",
+              "chartDescription": "Error quota and vehicle count per transmission series.",
+              "chartID": "c284c06f-a3ba-4727-9ff1-a6e0afa64d6f",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "plant_letter_cd": "plant_letter_cd",
+                "ecu_nm": "ecu_nm",
+                "drill_ecu_nm": "drill_ecu_nm",
+                "drill_engine_series": "drill_engine_series",
+                "drill_battery": "drill_battery",
+                "drill_trans_md_cd": "drill_trans_md_cd",
+                "drill_ms_cd": "drill_ms_cd",
+                "drill_country": "drill_country"
+              },
+              "chartConfig": {
+                "columns": [
+                  {
+                    "id": "trans_md_cd",
+                    "header": "Transmission Series",
+                    "type": "string",
+                    "width": 50,
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "error_quota",
+                    "header": "Error Quota",
+                    "type": "percent",
+                    "align": "right",
+                    "sortable": true,
+                    "format": {
+                      "percentScale": "fraction",
+                      "minFractionDigits": 1,
+                      "maxFractionDigits": 2
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#dc2626",
+                      "showValue": true,
+                      "direction": "rtl"
+                    }
+                  },
+                  {
+                    "id": "veh_count",
+                    "header": "Vehicles",
+                    "type": "number",
+                    "align": "right",
+                    "sortable": true,
+                    "footerAggregate": "sum",
+                    "format": {
+                      "maxFractionDigits": 0,
+                      "notation": "number"
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#2563eb",
+                      "showValue": true
+                    }
+                  }
+                ],
+                "hierarchy": {
+                  "enabled": false,
+                  "defaultExpandedDepth": 0,
+                  "indentSize": 16
+                },
+                "columnMenu": {
+                  "show": false,
+                  "label": "Columns"
+                },
+                "sorting": {
+                  "enabled": true,
+                  "defaultSort": {
+                    "columnId": "error_quota",
+                    "direction": "desc"
+                  }
+                },
+                "filtering": {
+                  "globalSearch": false,
+                  "perColumn": true,
+                  "searchPlaceholder": "Search..."
+                },
+                "footer": {
+                  "show": true,
+                  "label": "Total"
+                },
+                "pagination": {
+                  "enabled": true,
+                  "pageSize": 25
+                },
+                "appearance": {
+                  "density": "compact",
+                  "stickyHeader": true,
+                  "stickyFirstColumn": true,
+                  "zebraStripes": true,
+                  "emptyPlaceholder": "-"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "height": 25,
+          "components": [
+            {
+              "moduleName": "TableModule",
+              "space": 12,
+              "chartTitle": "Battery",
+              "chartDescription": "Error quota and vehicle count per battery.",
+              "chartID": "72a22d66-9e60-4d69-8354-a38c070ea2fd",
+              "filterBindings": {
+                "ms_nm": "ms_nm",
+                "ecu_fault_nm": "ecu_fault_nm",
+                "engine_md_cd": "engine_md_cd",
+                "trans_md_cd": "trans_md_cd",
+                "ms_cd": "ms_cd",
+                "md_cd": "md_cd",
+                "plant_letter_cd": "plant_letter_cd",
+                "ecu_nm": "ecu_nm",
+                "drill_ecu_nm": "drill_ecu_nm",
+                "drill_engine_series": "drill_engine_series",
+                "drill_battery": "drill_battery",
+                "drill_trans_md_cd": "drill_trans_md_cd",
+                "drill_ms_cd": "drill_ms_cd",
+                "drill_country": "drill_country"
+              },
+              "chartConfig": {
+                "columns": [
+                  {
+                    "id": "Batterie",
+                    "header": "Battery",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "error_quota",
+                    "header": "Error Quota",
+                    "type": "percent",
+                    "align": "right",
+                    "sortable": true,
+                    "format": {
+                      "percentScale": "fraction",
+                      "minFractionDigits": 1,
+                      "maxFractionDigits": 2
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#dc2626",
+                      "showValue": true,
+                      "direction": "rtl"
+                    }
+                  },
+                  {
+                    "id": "veh_count",
+                    "header": "Vehicles",
+                    "type": "number",
+                    "align": "right",
+                    "sortable": true,
+                    "footerAggregate": "sum",
+                    "format": {
+                      "maxFractionDigits": 0,
+                      "notation": "number"
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#2563eb",
+                      "showValue": true
+                    }
+                  }
+                ],
+                "hierarchy": {
+                  "enabled": false,
+                  "defaultExpandedDepth": 0,
+                  "indentSize": 16
+                },
+                "columnMenu": {
+                  "show": false,
+                  "label": "Columns"
+                },
+                "sorting": {
+                  "enabled": true,
+                  "defaultSort": {
+                    "columnId": "error_quota",
+                    "direction": "desc"
+                  }
+                },
+                "filtering": {
+                  "globalSearch": false,
+                  "perColumn": true,
+                  "searchPlaceholder": "Search..."
+                },
+                "footer": {
+                  "show": true,
+                  "label": "Total"
+                },
+                "pagination": {
+                  "enabled": true,
+                  "pageSize": 25
+                },
+                "appearance": {
+                  "density": "compact",
+                  "stickyHeader": true,
+                  "stickyFirstColumn": true,
+                  "zebraStripes": true,
+                  "emptyPlaceholder": "-"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "tabJumps": [
+    {
+      "fromChartID": "8ea746c9-7d14-4e4a-b5fc-49c805430320",
+      "targetTab": "Production Numbers 2",
+      "label": "Details in \"Production Numbers 2\" ansehen",
+      "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_ecu_nm" }]
+    },
+    {
+      "fromChartID": "25513e97-5ec5-46af-a4ec-811371529031",
+      "targetTab": "Production Numbers 2",
+      "label": "Details in \"Production Numbers 2\" ansehen",
+      "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_engine_series" }]
+    },
+    {
+      "fromChartID": "162a6014-4a1e-44c6-9b9d-e24d9a62dce6",
+      "targetTab": "Production Numbers 2",
+      "label": "Details in \"Production Numbers 2\" ansehen",
+      "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_battery" }]
+    },
+    {
+      "fromChartID": "c46a43c9-68f3-4c05-b052-f8e6102f0a7d",
+      "targetTab": "Production Numbers 2",
+      "label": "Details in \"Production Numbers 2\" ansehen",
+      "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_trans_md_cd" }]
+    },
+    {
+      "fromChartID": "892c68b8-4972-4d4d-9c5c-911a2dd2549e",
+      "targetTab": "Production Numbers 2",
+      "label": "Details in \"Production Numbers 2\" ansehen",
+      "mappings": [{ "sourceField": "regionCode", "targetDimensionId": "drill_country" }]
+    },
+    {
+      "fromChartID": "fe6156a0-778e-4e29-9dfd-b63a4df8929f",
+      "targetTab": "Production Numbers 2",
+      "label": "Details in \"Production Numbers 2\" ansehen",
+      "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_ms_cd" }]
+    }
+  ]
+}
