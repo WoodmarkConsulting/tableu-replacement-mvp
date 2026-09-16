@@ -1,8 +1,15 @@
 -- Linked target for the map test page.
 -- Self-contained region data (no external table) so the demo works standalone.
--- `:regionCode` arrives as a JSON array string of ISO alpha-2 codes selected on
--- the source map, or NULL when nothing is linked (show all regions).
-WITH region_data AS (
+-- The incoming `regionCode` connection value arrives via the framework `:input`
+-- marker as a JSON array of ISO alpha-2 codes, or NULL when nothing is linked
+-- (show all regions).
+WITH chart_input AS (
+  SELECT from_json(
+    CAST(:input AS STRING),
+    'STRUCT<regionCode: ARRAY<STRING>>'
+  ) AS params
+),
+region_data AS (
   SELECT * FROM VALUES
     ('US', 82, 'United States'),
     ('DE', 64, 'Germany'),
@@ -22,11 +29,9 @@ SELECT
   CAST(value AS DOUBLE) AS value,
   label
 FROM region_data
+CROSS JOIN chart_input
 WHERE (
-  :regionCode IS NULL
-  OR array_contains(
-    from_json(CAST(:regionCode AS STRING), 'array<string>'),
-    regionCode
-  )
+  chart_input.params.regionCode IS NULL
+  OR array_contains(chart_input.params.regionCode, regionCode)
 )
 ORDER BY regionCode;

@@ -15,10 +15,27 @@ WITH generated AS (
   FROM (SELECT explode(sequence(0, 36)) AS m) months
   LATERAL VIEW explode(sequence(1, 13514)) points AS n
 )
+WITH chart_input AS (
+  SELECT from_json(
+    CAST(:input AS STRING),
+    'STRUCT<min_value: DOUBLE, max_value: DOUBLE>'
+  ) AS params
+),
+generated AS (
+  SELECT
+    date_format(add_months(DATE'2023-07-01', months.m), 'yyyy-MM') AS bucket,
+    months.m AS month_index,
+    CAST(
+      (8000 + months.m * 5000) * pow(rand(), 2.2) + rand() * 3000 AS DOUBLE
+    ) AS y
+  FROM (SELECT explode(sequence(0, 36)) AS m) months
+  LATERAL VIEW explode(sequence(1, 13514)) points AS n
+)
 SELECT
   bucket,
   y
 FROM generated
-WHERE (:min_value IS NULL OR y >= CAST(:min_value AS DOUBLE))
-  AND (:max_value IS NULL OR y <= CAST(:max_value AS DOUBLE))
+CROSS JOIN chart_input
+WHERE (chart_input.params.min_value IS NULL OR y >= chart_input.params.min_value)
+  AND (chart_input.params.max_value IS NULL OR y <= chart_input.params.max_value)
 ORDER BY month_index
