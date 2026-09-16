@@ -801,7 +801,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
                   onClick={() => handleTabJump(matchingJumps[0])}>
                   <ExternalLink className="size-4 mr-2" />
                   {matchingJumps[0].label ??
-                    `Details in "${matchingJumps[0].targetTab}" ansehen`}
+                    `Selektion in "${matchingJumps[0].targetTab}" ansehen`}
                 </ContextMenuItem>
               ) : null}
 
