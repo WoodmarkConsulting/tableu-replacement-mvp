@@ -15,6 +15,7 @@ type ResponseOf<
 type ApiFetchOptions<Path extends Endpoints, Method extends APIMethod<Path>> = {
   method: Method;
   signal?: AbortSignal;
+  onResponse?: (response: Response) => void;
 } & (APIEndpoint<Path>[Method] extends { body: unknown }
   ? { body: BodyOf<Path, Method> }
   : { body?: never });
@@ -35,6 +36,8 @@ export async function apiFetch<
         : undefined,
     signal: options.signal,
   });
+
+  options.onResponse?.(response);
 
   let responseBody: unknown;
 

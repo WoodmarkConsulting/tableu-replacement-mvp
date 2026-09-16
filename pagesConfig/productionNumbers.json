@@ -332,6 +332,7 @@
           "components": [
             {
               "moduleName": "BarChartModule",
+              "lassoEnabled": false,
               "space": 3,
               "chartTitle": "ECUs",
               "chartDescription": "Count of errors per ECU (top 15).",
@@ -407,6 +408,7 @@
             },
             {
               "moduleName": "BarChartModule",
+              "lassoEnabled": false,
               "space": 3,
               "chartTitle": "Engine Series",
               "chartDescription": "Count of errors per engine series (top 15).",
@@ -482,6 +484,7 @@
             },
             {
               "moduleName": "BarChartModule",
+              "lassoEnabled": false,
               "space": 3,
               "chartTitle": "Batteries",
               "chartDescription": "Count of errors per battery (top 15).",
@@ -557,6 +560,7 @@
             },
             {
               "moduleName": "BarChartModule",
+              "lassoEnabled": false,
               "space": 3,
               "chartTitle": "TMC",
               "chartDescription": "Count of errors per transmission model code (top 15).",
@@ -712,6 +716,7 @@
             },
             {
               "moduleName": "BarChartModule",
+              "lassoEnabled": false,
               "space": 3,
               "chartTitle": "vehicle series",
               "chartDescription": "Count of errors per vehicle series (top 15).",
@@ -797,6 +802,7 @@
           "components": [
             {
               "moduleName": "BarChartModule",
+              "lassoEnabled": false,
               "space": 3,
               "chartTitle": "Error Share by Drive Side",
               "chartDescription": "Share of all errors from left-hand-drive vs right-hand-drive vehicles.",
@@ -885,6 +891,7 @@
             },
             {
               "moduleName": "BarChartModule",
+              "lassoEnabled": false,
               "space": 3,
               "chartTitle": "Error Share by Drive Type",
               "chartDescription": "Share of all errors per drive type (Antriebstyp).",

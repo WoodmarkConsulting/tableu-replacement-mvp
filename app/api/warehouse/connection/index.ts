@@ -79,23 +79,6 @@ const resetClient = async () => {
 
 const isDev = process.env.NODE_ENV === "development";
 
-const logQuery = (query: string, parameters: QueryParameters) => {
-  if (!isDev) return;
-
-  const hasParameters = Object.keys(parameters).length > 0;
-
-  console.log(
-    [
-      "\n[databricks] SQL >>>",
-      query.trim(),
-      hasParameters
-        ? `[databricks] parameters: ${JSON.stringify(parameters, null, 2)}`
-        : "[databricks] parameters: (none)",
-      "[databricks] <<<\n",
-    ].join("\n"),
-  );
-};
-
 export const runQuery = async <T extends object = object[]>(
   query: string,
   parameters: QueryParameters = {},
@@ -104,7 +87,6 @@ export const runQuery = async <T extends object = object[]>(
   let session;
   let queryOperation;
 
-  logQuery(query, parameters);
   const startedAt = Date.now();
 
   try {

@@ -1,6 +1,12 @@
 "use client";
 
 import { SidebarGroupLabel, SidebarSeparator } from "@/components/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import useQueryTimingStore from "@/stores/queryTimingStore";
 
 const formatMs = (ms: number) =>
@@ -31,16 +37,41 @@ export function QueryTimer() {
         Query Timer
       </SidebarGroupLabel>
 
-      <ul className="flex flex-col gap-1">
-        {entries.map((entry) => (
-          <li key={entry.chartID} className="flex items-center justify-between gap-2">
-            <span className="truncate">{entry.label || entry.chartID}</span>
-            <span className="tabular-nums text-foreground">
-              {formatMs(entry.durationMs)}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <TooltipProvider delay={150}>
+        <ul className="flex flex-col gap-1">
+          {entries.map((entry) => (
+            <li
+              key={entry.chartID}
+              className="flex items-center justify-between gap-2"
+            >
+              <span className="truncate">{entry.label || entry.chartID}</span>
+              {entry.query ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <span className="cursor-help tabular-nums text-foreground underline decoration-dotted underline-offset-2">
+                        {formatMs(entry.durationMs)}
+                      </span>
+                    }
+                  />
+                  <TooltipContent
+                    side="right"
+                    className="block w-[36rem] max-w-[90vw] max-h-[70vh] overflow-auto whitespace-pre-wrap text-left"
+                  >
+                    <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-snug">
+                      {entry.query}
+                    </pre>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <span className="tabular-nums text-foreground">
+                  {formatMs(entry.durationMs)}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </TooltipProvider>
 
       {entries.length > 1 ? (
         <div className="mt-1 flex items-center justify-between gap-2 font-medium text-foreground">

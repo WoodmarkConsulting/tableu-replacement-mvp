@@ -112,6 +112,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     selfFetching = false,
     filterBindings,
     autoApplyConnections = false,
+    lassoEnabled = true,
     connections = EMPTY_CONNECTIONS,
     tabJumps = EMPTY_TAB_JUMPS,
     chartLabels,
@@ -162,6 +163,10 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const connectionRequestRef = useRef(0);
   const registerLassoAdapter = useCallback(
     (adapter: LassoAdapter<DataType> | null) => {
+      if (!lassoEnabled) {
+        return;
+      }
+
       setLassoAdapter(adapter);
 
       if (adapter?.selectionDisabled) {
@@ -170,7 +175,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
         );
       }
     },
-    [],
+    [lassoEnabled],
   );
   const effectiveLassoMode =
     lassoMode === "selection" && lassoAdapter?.selectionDisabled

@@ -178,7 +178,7 @@ export async function fetchTimedChartData<TSchema extends z.ZodTypeAny>(
   recordTiming: (timing: QueryTiming) => void,
 ): Promise<z.infer<TSchema>[]> {
   const start = performance.now();
-  const result = await fetchChartData(chartID, filters, dataSchema);
+  const { data, query } = await fetchChartData(chartID, filters, dataSchema);
 
   if (process.env.NODE_ENV === "development") {
     recordTiming({
@@ -186,10 +186,11 @@ export async function fetchTimedChartData<TSchema extends z.ZodTypeAny>(
       label: chartTitle,
       durationMs: performance.now() - start,
       timestamp: Date.now(),
+      query,
     });
   }
 
-  return result;
+  return data;
 }
 
 /** Converts pointer viewport coordinates into interaction-surface coordinates. */
@@ -269,11 +270,16 @@ async function fetchChartData<TSchema extends z.ZodTypeAny>(
   chartID: string,
   filters: Record<string, ChartQueryValue>,
   dataSchema: TSchema,
-): Promise<z.infer<TSchema>[]> {
+): Promise<{ data: z.infer<TSchema>[]; query?: string }> {
+  let query: string | undefined;
+
   const response = await apiFetch(`/api/data/chart/${chartID}`, {
     method: "POST",
     body: {
       filters,
+    },
+    onResponse: (res) => {
+      query = readDebugQueryHeader(res);
     },
   });
 
@@ -285,5 +291,34 @@ async function fetchChartData<TSchema extends z.ZodTypeAny>(
     );
   }
 
-  return validationResult.data;
+  return { data: validationResult.data, query };
+}
+
+/** Decodes the dev-only SQL debug header into a readable query + parameters string. */
+function readDebugQueryHeader(response: Response): string | undefined {
+  const header = response.headers.get("x-debug-query");
+
+  if (!header) {
+    return undefined;
+  }
+
+  try {
+    const decoded = JSON.parse(
+      new TextDecoder().decode(
+        Uint8Array.from(atob(header), (char) => char.charCodeAt(0)),
+      ),
+    ) as { query: string; parameters: Record<string, unknown> };
+
+    const hasParameters = Object.keys(decoded.parameters ?? {}).length > 0;
+
+    return hasParameters
+      ? `${decoded.query.trim()}\n\n-- parameters:\n${JSON.stringify(
+          decoded.parameters,
+          null,
+          2,
+        )}`
+      : decoded.query.trim();
+  } catch {
+    return undefined;
+  }
 }

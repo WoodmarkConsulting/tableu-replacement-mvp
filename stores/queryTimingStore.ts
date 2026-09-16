@@ -5,6 +5,7 @@ export type QueryTiming = {
   label?: string;
   durationMs: number;
   timestamp: number;
+  query?: string;
 };
 
 type QueryTimingState = {

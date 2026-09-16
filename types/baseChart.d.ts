@@ -16,6 +16,8 @@ type BaseChartProps<C extends ChartConfigs = ChartConfigs> = {
   chartDescription: string;
   chartID: TableSchemaKey;
   enhancedTooltip?: boolean;
+  // Enables lasso selection/zoom for this chart. Defaults to true when omitted.
+  lassoEnabled?: boolean;
   // TODO: Remove or update the filterConfig for the Chartspecifiy Filtersection
   // filterConfig: FilterConfig[];
   chartConfig: C;

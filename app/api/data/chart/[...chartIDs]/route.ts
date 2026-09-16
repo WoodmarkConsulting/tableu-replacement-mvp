@@ -52,11 +52,10 @@ export async function POST(
 
   let data;
 
+  const parameters = buildChartInputParameters(filters);
+
   try {
-    data = await runQuery<Response[]>(
-      sqlQuery,
-      buildChartInputParameters(filters),
-    );
+    data = await runQuery<Response[]>(sqlQuery, parameters);
   } catch (error) {
     console.error(
       `Failed to execute SQL query for chartID "${chartID}":`,
@@ -69,5 +68,13 @@ export async function POST(
     });
   }
 
-  return Response.json(data satisfies Response);
+  // Dev-only: expose the executed SQL and parameters for the Query Timer hover.
+  const headers: Record<string, string> = {};
+
+  if (process.env.NODE_ENV === "development") {
+    const debugPayload = JSON.stringify({ query: sqlQuery, parameters });
+    headers["x-debug-query"] = Buffer.from(debugPayload).toString("base64");
+  }
+
+  return Response.json(data satisfies Response, { headers });
 }

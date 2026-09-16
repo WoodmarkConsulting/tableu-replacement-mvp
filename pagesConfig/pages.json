@@ -6,5 +6,9 @@
   {
     "dashboardName": "BLK2",
     "dashboardConfigName": "blkPageConfig.json"
+  },
+  {
+    "dashboardName": "ProductionNumbers",
+    "dashboardConfigName": "productionNumbers.json"
   }
 ]
