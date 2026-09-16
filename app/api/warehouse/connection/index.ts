@@ -77,12 +77,34 @@ const resetClient = async () => {
   }
 };
 
+const isDev = process.env.NODE_ENV === "development";
+
+const logQuery = (query: string, parameters: QueryParameters) => {
+  if (!isDev) return;
+
+  const hasParameters = Object.keys(parameters).length > 0;
+
+  console.log(
+    [
+      "\n[databricks] SQL >>>",
+      query.trim(),
+      hasParameters
+        ? `[databricks] parameters: ${JSON.stringify(parameters, null, 2)}`
+        : "[databricks] parameters: (none)",
+      "[databricks] <<<\n",
+    ].join("\n"),
+  );
+};
+
 export const runQuery = async <T extends object = object[]>(
   query: string,
   parameters: QueryParameters = {},
 ): Promise<T> => {
   let session;
   let queryOperation;
+
+  logQuery(query, parameters);
+  const startedAt = Date.now();
 
   try {
     const client = await connectClient();
@@ -95,6 +117,16 @@ export const runQuery = async <T extends object = object[]>(
     });
 
     const result = await queryOperation.fetchAll();
+
+    if (isDev) {
+      const rowCount = Array.isArray(result) ? result.length : undefined;
+      console.log(
+        `[databricks] OK in ${Date.now() - startedAt}ms${
+          rowCount === undefined ? "" : `, ${rowCount} row(s)`
+        }`,
+      );
+    }
+
     return result as T;
   } catch (error) {
     await resetClient();
@@ -104,6 +136,13 @@ export const runQuery = async <T extends object = object[]>(
         ? error.message
         : // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (error as any)?.errorMessage || "Unknown error occurred";
+
+    if (isDev) {
+      console.error(
+        `[databricks] FAILED in ${Date.now() - startedAt}ms: ${errorMessage}`,
+        error,
+      );
+    }
 
     throw new Error(`Failed to run query: ${errorMessage}`);
   } finally {
