@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { buildErrorMessage } from "../../../router/errorhandler";
 import { runQuery } from "../../../warehouse/connection";
 import type { APIEndpoint, ChartDataPath } from "../../../utils/types";
+import { buildChartInputParameters } from "../chartInput";
 
 type RequestBody = APIEndpoint<ChartDataPath>["POST"]["body"];
 type Response = APIEndpoint<ChartDataPath>["POST"]["response"];
@@ -52,7 +53,10 @@ export async function POST(
   let data;
 
   try {
-    data = await runQuery<Response[]>(sqlQuery, filters);
+    data = await runQuery<Response[]>(
+      sqlQuery,
+      buildChartInputParameters(filters),
+    );
   } catch (error) {
     console.error(
       `Failed to execute SQL query for chartID "${chartID}":`,

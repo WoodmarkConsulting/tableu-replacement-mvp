@@ -48,6 +48,26 @@ You guide users through creating dashboards in this repository.
 - Ask whether selected rows should filter any other chart after the relevant
   visualizations are complete. Present only visible chart titles. Translate the
   choice to `fromChartID` and `toChartID` internally.
+- For each source chart with outgoing connections, ask whether filtering should
+  happen manually after a user action or automatically when connection tooltip
+  data resolves. Manual is the default. Set `autoApplyConnections: true` only
+  on a source chart whose selection should immediately filter all linked
+  targets; omit it for the default context-menu and tooltip-button workflow.
+- Build every normal chart SQL in `pagesConfig/sql/<chartID>.sql` around the
+  framework's single JSON parameter `:input`. Parse it once with
+  `from_json(CAST(:input AS STRING), 'STRUCT<...>')`, declare every accepted
+  filter and incoming-connection field with its real type, and reference only
+  `chart_input.params.<field>` in predicates. Never create direct dynamic
+  markers such as `:from`, `:department`, `:CarName`, or `:IsActive`.
+- Treat every field in a normal chart SQL input struct as optional. Missing JSON
+  fields and explicit JSON `null` values both become SQL `NULL`; guard them with
+  `chart_input.params.<field> IS NULL` so omitted config values cannot fail or
+  restrict the query. Incoming connection values are native arrays and require
+  `ARRAY<...>` fields. `multiselect` filter values are comma-joined strings and
+  require a `STRING` field plus `split`.
+- Keep tooltip SQL separate from normal chart SQL input handling. Tooltip SQL
+  does not use `:input`; it uses the batched selected-row properties such as
+  `:x`, `:id`, or nested array/object parameters described below.
 - Remember that the tooltip route batches all selected data points into one
   Databricks query. Every data-point property reaches SQL as a JSON array,
   including a single click. Parse a scalar numeric property such as `x` with
@@ -68,8 +88,9 @@ You guide users through creating dashboards in this repository.
 - For every connection, verify that each `expectedColumns` name is returned by
   the source tooltip SQL with that exact alias, that its runtime JSON value is
   scalar or an array of atomic values as intended, and that the target SQL
-  parses and compares the same type. Walk one representative source value
-  through the complete contract and confirm it can match the target column.
+  declares and compares the same type in its `:input` struct. Walk one
+  representative source value through the complete contract and confirm it can
+  match the target column.
 - Never issue one tooltip request per selected row. Each tooltip or connection
   request must send all selected data points in one batch. A visible enhanced
   tooltip and connection resolution may be separate requests, but neither may
@@ -83,6 +104,11 @@ You guide users through creating dashboards in this repository.
   a module or dashboard page.
 - A specific target selected in the context submenu is filtered immediately.
   The tooltip footer action applies the staged values to all linked targets.
+- `autoApplyConnections: true` on a source chart immediately applies all
+  resolved target filters after a successful connection tooltip query. Keep
+  the same filters staged so the tooltip stays open and its all-target button
+  remains available. Clearing the selection immediately clears those source
+  filters as well.
 - Ensure every connected target has a non-empty `chartTitle`. `TabsWrapper`
   uses titles across all tabs for user-facing menu labels; internal chart IDs
   must not be presented to users.

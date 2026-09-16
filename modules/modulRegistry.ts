@@ -8,11 +8,12 @@ import BarChartModuleDataSchema from "@/modules/BarChartModule/chartDataSchema";
 import CardModuleDataSchema from "@/modules/CardModule/chartDataSchema";
 import LineChartModuleDataSchema from "@/modules/LineChartModule/chartDataSchema";
 import MapModuleDataSchema from "@/modules/MapModule/chartDataSchema";
+import ScatterPlotModuleDataSchema from "@/modules/ScatterPlotModule/chartDataSchema";
 import TableModuleDataSchema from "@/modules/TableModule/chartDataSchema";
 
 export type ModuleRegistryKeys = keyof typeof moduleRegistry;
 
-export type ChartConfigs = BarChartConfig | CardChartConfig | LineChartConfig | MapChartConfig | TableChartConfig;
+export type ChartConfigs = BarChartConfig | CardChartConfig | LineChartConfig | MapChartConfig | ScatterPlotChartConfig | TableChartConfig;
 
 export const moduleRegistry = {
   "BarChartModule": {
@@ -46,6 +47,14 @@ export const moduleRegistry = {
       ),
     ),
     dataSchema: MapModuleDataSchema,
+  },
+  "ScatterPlotModule": {
+    component: dynamic(() =>
+      import("@/modules/ScatterPlotModule").then(
+        (loadedModule) => loadedModule.default,
+      ),
+    ),
+    dataSchema: ScatterPlotModuleDataSchema,
   },
   "TableModule": {
     component: dynamic(() =>

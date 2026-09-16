@@ -17,6 +17,7 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 - `chartDataSchema.ts` must default-export a Zod schema and also export the module data type.
 - `chartType.d.ts` must contain exactly one `type` declaration.
 - `instructions.md` must follow `docs/instructions.template.md` and describe purpose, data contract, config, and usage.
+- Every implementation change below `modules/<ModuleName>/` must update and stage both `modules/<ModuleName>/instructions.md` and this file in the same commit. The repository pre-commit hook enforces this for staged files.
 - Selection-capable modules call the injected `onSelectionChange(rows)` when the user selects data. `ChartWrapper` owns the resulting state and injects the current rows as read-only `selectedRows`; modules only render the appropriate visualization-specific highlight. `LineChartModule` (point click) and `MapModule` (region/bubble click) support selection.
 - Lasso capabilities are discovered at runtime through the injected `lasso` controller.
   Registering `select` enables selection; registering `applyZoom` and `resetZoom` enables
@@ -45,7 +46,9 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 - Notes: Supports freehand polygon lasso selection across visible series points and
   progressive rectangular X-axis lasso zoom with automatic Y-axis rescaling. Corresponding
   non-null curve segments switch from their configured series color to amber when selected.
-  Not suitable for categorical string X values or per-series heterogeneous data shapes.
+  Legend clicks locally hide or show a series without selecting data, opening enhanced
+  tooltips, or requesting data. Hidden series do not participate in lasso selection. Not
+  suitable for categorical string X values or per-series heterogeneous data shapes.
 
 For module-specific details, read `modules/LineChartModule/instructions.md`.
 
@@ -64,6 +67,15 @@ For module-specific details, read `modules/LineChartModule/instructions.md`.
   X axis is not a set of discrete categories.
 
 For module-specific details, read `modules/BarChartModule/instructions.md`.
+
+### `ScatterPlotModule`
+
+- Purpose: Renders dense numeric X/Y point clouds with deck.gl and an orthographic WebGL view.
+- Best use: Exploring correlations and distributions with hundreds of thousands of individually selectable points.
+- Input: Receives `chartData` (`ScatterPlotData[]`, one row per point with `id`, `x`, `y`, and optional numeric `color`) and a `ScatterPlotChartConfig` through `ChartWrapperInjectedProps`.
+- Notes: Supports filled points (the default) or unfilled category-colored circles through `points.shape`; circle outlines scale proportionally with marker radius while zooming. Also supports click selection, modifier-assisted additive selection, polygon lasso selection in interactive point mode, rectangular lasso zoom in both point and raster modes, `Ctrl`+wheel zoom while normal wheel input scrolls the page, viewport-aware ticks and grids, hover values, toggleable automatic legends, custom domains, and reference lines/areas. Legend toggles are always local and request-free in interactive mode because point responses include every category in the viewport; raster toggles request a filtered image. Mode selection uses the unfiltered viewport count and switches to interactive points at or below the point limit. The lasso-selection action remains visible but disabled in raster mode. Initial rendering and each completed navigation action use at most one data request; marker-aware viewport padding and internal render or resize cycles do not trigger refetching. Markers use one standard color unless `colorMapping` declares groups; group colors come from a contrast-safe palette and may be overridden explicitly. The point-limit input is local to the current page session. Large production datasets should use `selfFetching: true` with the viewport-aware binary/raster API instead of the standard JSON chart endpoint.
+
+For module-specific details, read `modules/ScatterPlotModule/instructions.md`.
 
 ### `MapModule`
 

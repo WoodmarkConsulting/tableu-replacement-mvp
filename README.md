@@ -112,7 +112,6 @@ it with `split` and treat an unset (`NULL`) value as "no filter":
 (:region IS NULL OR array_contains(split(:region, ','), region_col))
 ```
 
-
 ## Selection, tooltips, and chart connections
 
 `ChartWrapper` owns selection state for every selection-capable module. Click and lasso
@@ -138,11 +137,14 @@ Right-clicking a rendered chart opens a shared context menu:
 - A target entry applies filters immediately to that one chart.
 - The tooltip footer button applies the staged values to all linked target charts.
 - **Auf Tab springen** / **Details in "[Tab]" ansehen** appears when `tabJumps` are configured for the chart. Selecting data points and clicking this action drills into the target tab, sets the target tab's filter dimensions, applies them immediately, switches tabs, and displays a return breadcrumb (`TabBreadcrumb`).
+- Source charts may set `autoApplyConnections: true` to apply all resolved
+  outgoing filters immediately; the default remains manual application. The
+  source tooltip stays open and keeps its all-target button after auto-apply.
 
 Connections are declared in `DashboardConfig.connections` with `fromChartID`, `toChartID`, and
 `expectedColumns`. Every `expectedColumns` value is an end-to-end contract: it must be a real
-target-table column, an exact alias returned by the source tooltip SQL, and a named parameter
-parsed by the target chart SQL. `TabsWrapper` derives target labels from `chartTitle` across all
+target-table column, an exact alias returned by the source tooltip SQL, and a field in the
+target chart SQL's typed `:input` struct. `TabsWrapper` derives target labels from `chartTitle` across all
 tabs, so users see chart names rather than internal IDs; untitled targets display
 `Unbenanntes Diagramm`.
 
@@ -154,14 +156,14 @@ The generated dashboard pages consume a `DashboardConfig` object from `types/tab
 
 At a high level, each JSON file contains:
 
-- `reportName` and `filterLayout` (`"sidebar" | "top"`)
+- `reportName`
 - `filters`: dashboard-level filter dimensions (`FilterDimension[]`)
 - `tabs` identified by `trigger`
 - rows with optional `height`
 - `components` entries
 - one `moduleName` per chart entry
 - chart metadata such as `chartID`, `chartTitle`, `chartDescription`, `chartConfig`, and per-chart `filterBindings` (dimension id → SQL parameter)
-- optional `enhancedTooltip` per chart, dashboard-level `connections` between source and target charts, and `tabJumps` for cross-tab drilldowns
+- optional `enhancedTooltip` and `autoApplyConnections` per chart, plus dashboard-level `connections` between source and target charts
 
 The row layout uses a 12-column grid. If a row uses less than 12 columns, `TabsWrapper` assigns the remaining width to the last component in that row.
 
@@ -244,22 +246,26 @@ Change module implementation files only when the task is explicitly about module
 
 After changing module folders:
 
-- run `npm run module:validate`
-- run `npm run module:generateRegistry` if you changed exports, config types, schema files, or module names
+- update and stage both `modules/instructions.md` and the changed module's `instructions.md`; the pre-commit hook rejects commits that omit either file
+- run `pnpm run module:validate`
+- run `pnpm run module:generateRegistry` if you changed exports, config types, schema files, or module names
 
 Keep `modules/instructions.md` up to date whenever the available modules, their intended usage, or their capabilities change.
+
+`pnpm install` activates the versioned hooks from `.githooks/` automatically.
 
 ## Commands
 
 ```bash
-npm install
-npm run dev
-npm run lint
-npm run pageConfig:generatePage
-npm run module:validate
-npm run module:generateRegistry
-npm run databricks:connect
-npm run databricks:tableSchemas
+pnpm install
+pnpm run dev
+pnpm run lint
+pnpm run pageConfig:generatePage
+pnpm run module:validate
+pnpm run module:validateDocs
+pnpm run module:generateRegistry
+pnpm run databricks:connect
+pnpm run databricks:tableSchemas
 ```
 
 ## Current caveats

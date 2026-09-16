@@ -302,7 +302,7 @@ Do not invent configuration properties.
 
 ## 11. Configure Filters
 
-Filters are defined once per dashboard as **dimensions** and then **bound** to each chart's SQL parameters. There is no chart-local filter config.
+Filters are defined once per dashboard as **dimensions** and then **bound** to fields in each chart's JSON SQL input. There is no chart-local filter config.
 
 Ask whether the dashboard requires filters.
 
@@ -344,7 +344,8 @@ Add each filter to the top-level `filters` array as a `FilterDimension`:
 
 ### Step B — Bind dimensions to a chart
 
-On each component, map dimension ids to the SQL named parameters that chart uses:
+On each component, map dimension ids to fields that the chart SQL declares in
+its `:input` struct:
 
 ```json
 {
@@ -354,7 +355,10 @@ On each component, map dimension ids to the SQL named parameters that chart uses
 
 Only add filters that are actually needed.
 
-Filters must also be considered when generating SQL (Step 12): each bound dimension arrives as a named parameter (`:from`, `:department`), and unset filters are passed as `null`.
+Filters must also be considered when generating SQL (Step 12). The framework
+collects every bound value and connection value into one JSON object and always
+binds that object as `:input`. A field can be missing entirely or explicitly
+`null`; both must behave as an unset filter.
 
 ---
 
@@ -374,13 +378,50 @@ Use:
 - the selected module
 - the retrieved table schemas
 - `chartDataSchema.ts`
-- the configured filters (bound via `filterBindings`; referenced in SQL as named parameters like `:from`, and `null` when unset)
+- the configured filters (bound via `filterBindings`; declared as typed fields in the JSON `:input` struct)
 
 Do not modify the module data schema to make the SQL easier.
 
 Adapt the SQL to the existing module contract.
 
-Guard each bound parameter so an unset (`null`) filter does not restrict results, e.g. `(:from IS NULL OR col >= :from)`. For a comma-joined multi-select parameter, use `(:p IS NULL OR array_contains(split(:p, ','), col))`.
+Every normal chart SQL that accepts filters or incoming chart connections must
+use exactly one named parameter, `:input`. Parse it once with `from_json` and a
+typed `STRUCT` containing every accepted field, then `CROSS JOIN` that one-row
+input into the query. Never reference dynamic named markers such as `:from`,
+`:department`, or an `expectedColumns` name directly.
+
+Example:
+
+```sql
+WITH chart_input AS (
+  SELECT from_json(
+    CAST(:input AS STRING),
+    'STRUCT<`from`: STRING, department: STRING, CarName: ARRAY<STRING>>'
+  ) AS params
+)
+SELECT ...
+FROM source
+CROSS JOIN chart_input
+WHERE (
+  chart_input.params.`from` IS NULL
+  OR DATE(source.created_at) >= CAST(chart_input.params.`from` AS DATE)
+)
+AND (
+  chart_input.params.CarName IS NULL
+  OR array_contains(chart_input.params.CarName, source.CarName)
+)
+```
+
+Choose each struct type from the actual client value shape. Filter values are
+normally scalar; `multiselect` currently arrives as a comma-joined `STRING` and
+must be expanded with `split`. Incoming connection values arrive as native JSON
+arrays and must be declared as `ARRAY<...>`. Missing fields and explicit JSON
+`null` both become SQL `NULL`, so guard every optional field with
+`chart_input.params.<field> IS NULL`. A chart without filters or incoming
+connections may ignore the framework's unused `:input` parameter.
+
+This rule applies only to normal chart SQL in `pagesConfig/sql/<chartID>.sql`.
+Tooltip SQL uses the separate batched data-point contract in Step 13.
 
 Save the SQL using the same `chartID`:
 
@@ -509,15 +550,12 @@ The resulting API value must have this shape:
 }
 ```
 
-When the client sends that array as a JSON string parameter, target SQL must
-restore the same element type before comparing it:
+When the client applies that connection, the array becomes a field of the
+target chart's JSON `:input`. Target SQL must declare the same element type:
 
 ```sql
-:CarName IS NULL
-OR array_contains(
-  from_json(CAST(:CarName AS STRING), 'ARRAY<STRING>'),
-  trim(CAST(CarName AS STRING))
-)
+chart_input.params.CarName IS NULL
+OR array_contains(chart_input.params.CarName, trim(CAST(CarName AS STRING)))
 ```
 
 For chart connections, every name in `expectedColumns` must meet all of these
@@ -527,7 +565,7 @@ conditions:
 - The source tooltip SQL returns it with exactly the same alias.
 - Its returned value is a scalar or an array of atomic values, never an array
   whose elements still contain delimited lists.
-- The target chart SQL declares and parses the corresponding named parameter.
+- The target chart SQL declares the corresponding field in its typed `:input` struct.
 - A representative source value, after normalization, equals a representative
   target-column value under the actual comparison expression.
 
@@ -596,14 +634,22 @@ After the relevant visualizations are complete, ask whether selecting data in
 one chart should filter another chart. Present source and target choices using
 their visible titles, not their internal IDs.
 
+For each source chart with outgoing connections, also ask whether resolved
+connection filters should be applied manually or automatically. Manual is the
+default and requires no component property. For automatic application to all
+linked targets, set `autoApplyConnections: true` on the source component. Do
+not put this property on the connection object or target component. Automatic
+application must keep the resolved filters staged: target refetches must not
+close the source tooltip, and its all-target button remains visible.
+
 For every requested link:
 
 1. Confirm that the source module supports selection.
 2. Resolve the selected titles to `fromChartID` and `toChartID` internally.
 3. Choose one or more real target-table columns for `expectedColumns`.
 4. Return those values from the source tooltip SQL using the exact aliases.
-5. Add matching optional named parameters to the target chart SQL. An unset
-   parameter must not restrict the target query.
+5. Add matching optional fields to the target chart SQL's typed `:input`
+   struct. A missing or `null` field must not restrict the target query.
 6. Normalize delimited source strings into atomic values before returning them.
 7. Verify one representative value through source row, tooltip result, API JSON,
    client filter, target SQL parser, and target column comparison.
@@ -619,8 +665,19 @@ Example:
 ```
 
 The source tooltip SQL must return `fleet_creation_date`; the target SQL must
-accept `:fleet_creation_date`, parse its JSON array using the real element type,
-and compare it to the target column. Multiple links from one source are allowed.
+declare `fleet_creation_date: ARRAY<...>` in its `:input` struct using the real
+element type and compare it to the target column. Multiple links from one source
+are allowed.
+
+Source component example with automatic application:
+
+```json
+{
+  "chartID": "active-users-over-time",
+  "autoApplyConnections": true,
+  "chartConfig": {}
+}
+```
 
 ---
 
@@ -722,14 +779,13 @@ Do not mix unfinished visualizations.
 
 After all visualizations are complete, build the full dashboard configuration.
 
-The configuration must conform to the repository's `DashboardConfig` type: a top-level object with `reportName`, `filterLayout`, `filters`, `tabs`, and optional `connections`.
+The configuration must conform to the repository's `DashboardConfig` type: a top-level object with `reportName`, `filters`, `tabs`, and optional `connections`.
 
 Example:
 
 ```json
 {
   "reportName": "Fleet Overview",
-  "filterLayout": "sidebar",
   "filters": [
     { "id": "from", "label": "Von", "type": "dateString", "scope": "global" }
   ],
@@ -838,7 +894,7 @@ Before generating the page, verify:
 - Every tooltip SQL uses parameters provided by the data point that its module
   sends and returns the information requested by the user with readable labels.
 - Every chart connection has matching `expectedColumns`, source tooltip aliases,
-  atomic runtime values, target named parameters, and target SQL types.
+  atomic runtime values, target `:input` struct fields, and target SQL types.
 - Every connected target has a user-facing `chartTitle`; menu labels are never
   derived from internal chart IDs.
 - When browser validation is available, each single-target action refetches only

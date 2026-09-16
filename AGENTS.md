@@ -26,8 +26,8 @@ The intended end state is:
 ## Important paths
 
 - `pagesConfig/pages.json`: Registry the generator reads — maps each `dashboardName` to its config JSON. (`pagesConfig/index.ts` is legacy and not used by generation.)
-- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filterLayout, filters, tabs, connections?, tabJumps? }` (see Filtering framework). Each component carries `chartID`, `chartConfig`, optional `filterBindings`, and optional `enhancedTooltip`.
-- `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename. Named parameters (`:name`) are bound from resolved filter values.
+- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filters, tabs, connections?, tabJumps?  }` (see Filtering framework). Each component carries `chartID`, `chartConfig`, optional `filterBindings`, optional `enhancedTooltip`, and optional `autoApplyConnections`.
+- `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename. The framework always binds one JSON object as `:input`; chart SQL declares its accepted filter and connection fields with `from_json` and a typed `STRUCT`.
 - `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail query for selected rows. It also returns exact `expectedColumns` aliases used by outgoing chart connections.
 - `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
 - `scripts/pages/generateNextPage.ts`: Creates `app/Dashboards/<DashboardName>/page.tsx` from `pagesConfig/pages.json` and the referenced JSON.
@@ -46,7 +46,7 @@ The intended end state is:
 For normal dashboard creation and updates, the agent should modify only:
 
 - `pagesConfig/pages.json` when adding a new dashboard entry
-- `pagesConfig/*.json` for `reportName`, `filterLayout`, `filters` (dimensions), tabs, rows, module selection, chart metadata, `filterBindings`, `enhancedTooltip`, `connections`, `tabJumps`, and module configuration
+- `pagesConfig/*.json` for `reportName`, `filters` (dimensions), tabs, rows, module selection, chart metadata, `filterBindings`, `enhancedTooltip`, `connections`, `tabJumps`, and module configuration
 - `pagesConfig/sql/*.sql` for chart data and target-side connection parameters
 - `pagesConfig/sql/tooltipSql/*.tooltip.sql` for selected-row details and source-side connection aliases
 
@@ -76,8 +76,8 @@ Dashboards share a filter framework driven entirely by config:
   - `option` renders a segmented single-choice control where exactly one value is always selected (mandatory); it reads its choices from `options` and falls back to 2 default options when none are configured. It binds to SQL as a single string.
   - Options for `select` and `multiselect` may instead be loaded from the warehouse: set `optionsSource: "<id>"` on the dimension and add `pagesConfig/sql/filterOptions/<id>.sql` returning rows with a `value` column (and optional `label`; defaults to `value`). Options load eagerly on dashboard open via `GET /api/filters/options/<id>` and are **non-dependent** (the query runs with no filter parameters). Static `options` act as a fallback while loading or when no source is set.
   - `scope`: `"global"` (every tab) or `"tab"` (requires `tab` = the tab `trigger`).
-- **Bindings** — each chart maps dimensions to its SQL named parameters via `filterBindings: Record<dimensionId, sqlParamName>`. `ChartWrapper` resolves the active value (`global:<id>` or `tab:<activeTab>:<id>`) and posts it; unset → `null`. A `multiselect` value is posted as a comma-joined string (empty → `null`).
-- **Layout** — `filterLayout: "sidebar" | "top"` controls where global filters render; `reportName` shows in the header.
+- **Bindings** — each chart maps dimensions to fields in its SQL input object via `filterBindings: Record<dimensionId, inputFieldName>`. `ChartWrapper` resolves the active value (`global:<id>` or `tab:<activeTab>:<id>`) and posts it; the chart API serializes all fields together into `:input`. A `multiselect` value is posted as a comma-joined string (empty → `null`).
+- **Layout** — Global filters render above the dashboard; `reportName` shows in the header.
 - **Applied filters** — `ActiveFilters` renders removable chips and doubles as the print/export summary (interactive controls are `print:hidden`).
 
 #### SQL for `multiselect`
@@ -86,9 +86,25 @@ A `multiselect` dimension binds as a comma-joined string. Charts must expand it
 and treat an unset (`NULL`) value as "no filter":
 
 ```sql
-(:region IS NULL OR array_contains(split(:region, ','), region_col))
+WITH chart_input AS (
+  SELECT from_json(CAST(:input AS STRING), 'STRUCT<region: STRING>') AS params
+)
+SELECT ...
+FROM source
+CROSS JOIN chart_input
+WHERE (
+  chart_input.params.region IS NULL
+  OR array_contains(split(chart_input.params.region, ','), region_col)
+)
 ```
 
+Normal chart SQL must never reference dynamic markers such as `:region`,
+`:from`, or connection column names directly. It must use only the fixed
+`:input` marker. Missing JSON fields and explicit JSON `null` values both parse
+as SQL `NULL`, so optional guards belong on `chart_input.params.<field>`. Charts
+without runtime inputs may ignore the extra `:input` binding. Tooltip SQL is a
+separate API contract and continues to use batched data-point markers such as
+`:x` and `:id`.
 
 ### Deferred queries (Apply to run)
 
@@ -102,8 +118,7 @@ only hit the warehouse when **Apply** is pressed.
   draft ≠ applied.
 - `ChartWrapper` reads `appliedValues`, sets `enabled: ... && hasApplied`, and
   renders an idle prompt until the first Apply.
-- `components/FilterActions/index.tsx` renders **Apply**/**Reset**. It sits in the
-  sidebar footer (`filterLayout: "sidebar"`) and the top bar (`filterLayout: "top"`).
+- `components/FilterActions/index.tsx` renders **Apply**/**Reset** in the top filter bar.
 - **Chip removal** (`clearDimension`) and **selection application** (`applySelection`)
   intentionally bypass the Apply gate: both write to draft _and_ applied layers and
   re-query immediately.
@@ -142,11 +157,27 @@ mode remains visible.
 
 When `enhancedTooltip: true`, `ChartWrapper` can open a compact, internally scrollable static
 tooltip for the current selection. All selected rows are sent together to
-`POST /api/data/chart/tooltip`; every data-point property becomes a JSON array parameter, even
-for a single row. SQL must parse the actual shape, for example scalar `x: number` as
-`ARRAY<DOUBLE>` and `y: number[]` as `ARRAY<ARRAY<DOUBLE>>`. Each request batches all selected
-rows; never issue one request per row. Tooltip state records its source `chartID`, and only that
-wrapper renders the card.
+`POST /api/data/chart/tooltip`. The endpoint keeps only named parameters referenced by the
+tooltip SQL, deduplicates identical parameter tuples, and splits them into batches of 12,000
+selected rows. Up to five tooltip SQL statements run concurrently across all tooltip requests
+in one server process. `TOOLTIP_BATCH_SIZE` and `TOOLTIP_MAX_CONCURRENT_QUERIES` can override
+these defaults. Successful results are streamed as NDJSON chunks of 250 rows so the frontend
+can render them progressively; `TOOLTIP_STREAM_CHUNK_SIZE` overrides that delivery size. A failed
+batch adds a partial-results warning but does not discard completed batches.
+
+Tooltip SQL must be batch-union-safe: each selected parameter tuple must produce independent
+result rows that can be appended to results from other batches. Do not use calculations across
+the complete selection or global `LIMIT`/top-N semantics in batched tooltip SQL. Local grouping
+by the selected value is supported. The API does not guarantee global ordering across batches.
+
+Every referenced data-point property becomes a JSON array parameter, even for a single row.
+SQL must parse the actual shape, for example scalar `x: number` as
+`ARRAY<DOUBLE>`, `y: (number | null)[]` as `ARRAY<ARRAY<DOUBLE>>`, and a table
+`values: Record<string, scalar>` object as an array of structs, maps, or variants matching its
+known keys. Missing optional properties become `NULL` array entries; nested arrays and objects
+are never flattened or coerced. Each request batches all selected rows; never issue one request
+per row from a module. Tooltip state records its source `chartID`, and only that wrapper renders
+the card.
 
 Every rendered chart has a wrapper-owned right-click menu. **Tooltip anzeigen** is disabled
 without selected rows or when `enhancedTooltip` is false. **Verlinktes Diagramm filtern** is
@@ -154,10 +185,19 @@ disabled without outgoing connections, selected rows, or successfully resolved c
 values. Its submenu deduplicates target IDs and applies the chosen target immediately. The
 tooltip footer action applies the staged filters to all linked targets.
 
+Outgoing connections use manual application by default. Set
+`autoApplyConnections: true` on a source chart component to apply all resolved
+outgoing connection filters immediately after its tooltip query succeeds. An
+empty selection then clears that source chart's applied connection filters
+immediately. Auto-applied filters remain staged so the source tooltip stays open
+and its all-target action remains available. Keep the property omitted or
+`false` when users should choose a target from the context menu or apply all
+staged targets from the tooltip.
+
 `DashboardConfig.connections` contains `{ fromChartID, toChartID, expectedColumns }`. Connection
 values are resolved from the source tooltip result. Every `expectedColumns` entry must be a real
 column in the target schema, an exact alias in the source tooltip SQL, an atomic scalar or array
-value at runtime, and a named parameter parsed with the same type in the target SQL. Delimited
+value at runtime, and a field declared with the same type in the target SQL's `:input` struct. Delimited
 strings must be normalized before they become connection arrays. `TabsWrapper` supplies target
 labels from `chartTitle` across all tabs; internal chart IDs must not be shown to users, and an
 untitled target falls back to `Unbenanntes Diagramm`.
@@ -222,6 +262,7 @@ For module-development or framework work:
 
 ## Editing rules for agents
 
+- Every file under `scripts/` must begin with an English comment of at most two lines that briefly states what the script does and why it exists.
 - Shared client state and context-like state must be implemented exclusively
   with Zustand. Do not introduce React `createContext` or Context providers for
   application state.
@@ -230,6 +271,7 @@ For module-development or framework work:
 - `scripts/pages/generateNextPage.ts` does not overwrite an existing page directory; if a generated page already exists, the script skips it.
 - Before changing any file inside a folder under `modules/`, verify that the folder already satisfies the required module contract.
 - After changing any file inside a folder under `modules/`, verify again that the folder still satisfies the required module contract.
+- Every commit that changes an implementation file below `modules/<ModuleName>/` must also stage updates to both `modules/<ModuleName>/instructions.md` and `modules/instructions.md`. The pre-commit hook enforces this rule against the staged files.
 - This verification must confirm all of the following:
   - `index.tsx` exists and has a default export.
   - The default-exported component in `index.tsx` uses `ChartWrapperInjectedProps` as its props type.

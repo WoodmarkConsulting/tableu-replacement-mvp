@@ -31,6 +31,11 @@ interface ChartWrapperInjectedProps<
   isFetching: boolean;
   isError: boolean;
   error: Error | null;
+  selfFetching: boolean;
+  filterParams: Record<
+    string,
+    string | number | boolean | null | (string | number | boolean | null)[]
+  >;
   selectedRows: readonly D[];
   onSelectionChange?: (rows: D[], options?: SelectionChangeOptions) => void;
   lasso: LassoController<D>;

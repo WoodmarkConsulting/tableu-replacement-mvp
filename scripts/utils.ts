@@ -1,3 +1,4 @@
+// Provides shared script validation and terminal formatting so generators behave consistently.
 import fs from "fs";
 
 export function validateRootDirectoryAndPagesConfig(

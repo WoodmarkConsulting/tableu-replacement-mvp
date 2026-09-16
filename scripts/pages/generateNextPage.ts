@@ -1,3 +1,4 @@
+// Generates dashboard pages from declarative configs so page implementation stays config-driven.
 import fs from "fs";
 import { validateRootDirectoryAndPagesConfig } from "../utils";
 
@@ -45,7 +46,6 @@ export function buildPageBoilerplate(
             const tabsConfig = ${JSON.stringify(tabsConfig, null, 2)} as const satisfies TabsConfig[];
             const dashboardConfig: DashboardConfig<typeof tabsConfig> = {
               reportName: ${JSON.stringify(dashboardConfig.reportName)},
-              filterLayout: ${JSON.stringify(dashboardConfig.filterLayout)},
               filters: ${JSON.stringify(dashboardConfig.filters, null, 2)},
               tabs: tabsConfig,
               connections: ${JSON.stringify(dashboardConfig.connections, null, 2)},
@@ -75,8 +75,6 @@ export function buildPageBoilerplate(
         `.trim();
 }
 
-// This script generates new Next.js pages based on the configuration
-// provided in the pagesConfig array.
 function generateNextPage() {
   const pagesConfig = readPagesConfig();
 
@@ -112,7 +110,10 @@ function generateNextPage() {
       const dashboardConfig = JSON.parse(configContent) as DashboardConfig;
 
       // Generate the Next.js page.
-      const boilerplateCode = buildPageBoilerplate(dashboardName, dashboardConfig);
+      const boilerplateCode = buildPageBoilerplate(
+        dashboardName,
+        dashboardConfig,
+      );
 
       fs.writeFileSync(pageFilePath, boilerplateCode.trim());
 

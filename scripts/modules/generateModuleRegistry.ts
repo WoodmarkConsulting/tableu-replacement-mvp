@@ -1,3 +1,4 @@
+// Generates the module registry from module contracts so runtime resolution and config types stay synchronized.
 import { watch } from "node:fs";
 import { access, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";

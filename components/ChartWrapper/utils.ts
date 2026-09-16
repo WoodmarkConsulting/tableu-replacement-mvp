@@ -2,8 +2,18 @@ import type { PointerEvent } from "react";
 import { z } from "zod";
 
 import { apiFetch } from "@/app/api/utils/apiFetch";
-import type { TooltipPathResponse } from "@/app/api/utils/types";
+import type {
+  ChartQueryValue,
+  TooltipDataPoint,
+  TooltipPathResponse,
+  TooltipStreamEvent,
+} from "@/app/api/utils/types";
 import type { QueryTiming } from "@/stores/queryTimingStore";
+
+let lastTooltipResponse: {
+  requestKey: string;
+  response: TooltipPathResponse;
+} | null = null;
 
 /**
  * Converts a dashboard filter value into a scalar value accepted by chart APIs.
@@ -54,16 +64,104 @@ export function parseMockData<TData extends object>(
 
 export function fetchTooltipData(
   chartID: string,
-  dataPoints: Record<string, unknown>[],
+  dataPoints: TooltipDataPoint[],
   signal?: AbortSignal,
+  onProgress?: (response: TooltipPathResponse) => void,
 ): Promise<TooltipPathResponse> {
-  return apiFetch("/api/data/chart/tooltip", {
+  const body = { chartID, dataPoints };
+  const requestKey = JSON.stringify(body);
+
+  if (lastTooltipResponse?.requestKey === requestKey) {
+    return Promise.resolve(lastTooltipResponse.response);
+  }
+
+  return fetch("/api/data/chart/tooltip", {
     method: "POST",
-    signal,
-    body: {
-      chartID,
-      dataPoints,
+    headers: {
+      "Content-Type": "application/json",
     },
+    signal,
+    body: requestKey,
+  }).then(async (response) => {
+    if (!response.ok) {
+      let errorMessage = "Unknown error";
+
+      try {
+        const responseBody = (await response.json()) as { error?: unknown };
+
+        if (typeof responseBody.error === "string") {
+          errorMessage = responseBody.error;
+        }
+      } catch {
+        errorMessage = `HTTP ${response.status}`;
+      }
+
+      throw new Error(`API request failed: ${errorMessage}`);
+    }
+
+    if (!response.body) {
+      throw new Error("Tooltip API response has no readable stream.");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const tooltipData: TooltipPathResponse = {
+      dataPoint: [],
+      failedBatches: 0,
+    };
+    let bufferedText = "";
+    let isComplete = false;
+
+    const processLine = (line: string) => {
+      if (!line.trim()) {
+        return;
+      }
+
+      const event = JSON.parse(line) as TooltipStreamEvent;
+
+      if (event.type === "batch") {
+        tooltipData.dataPoint.push(...event.dataPoint);
+        onProgress?.({
+          dataPoint: [...tooltipData.dataPoint],
+          failedBatches: tooltipData.failedBatches,
+        });
+      } else if (event.type === "error") {
+        tooltipData.failedBatches = (tooltipData.failedBatches ?? 0) + 1;
+        onProgress?.({
+          dataPoint: [...tooltipData.dataPoint],
+          failedBatches: tooltipData.failedBatches,
+        });
+      } else if (event.type === "done") {
+        tooltipData.failedBatches = event.failedBatches;
+        isComplete = true;
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        break;
+      }
+
+      bufferedText += decoder.decode(value, { stream: true });
+      const lines = bufferedText.split("\n");
+      bufferedText = lines.pop() ?? "";
+      lines.forEach(processLine);
+    }
+
+    bufferedText += decoder.decode();
+    processLine(bufferedText);
+
+    if (!isComplete) {
+      throw new Error("Tooltip API stream ended before completion.");
+    }
+
+    if (!tooltipData.failedBatches) {
+      lastTooltipResponse = { requestKey, response: tooltipData };
+    }
+
+    return tooltipData;
   });
 }
 
@@ -75,7 +173,7 @@ export function fetchTooltipData(
 export async function fetchTimedChartData<TSchema extends z.ZodTypeAny>(
   chartID: string,
   chartTitle: string | undefined,
-  filters: Record<string, string | number | null>,
+  filters: Record<string, ChartQueryValue>,
   dataSchema: TSchema,
   recordTiming: (timing: QueryTiming) => void,
 ): Promise<z.infer<TSchema>[]> {
@@ -169,7 +267,7 @@ export function createNormalizedPolygon(
 /** Requests chart rows from the API and validates every row against the schema. */
 async function fetchChartData<TSchema extends z.ZodTypeAny>(
   chartID: string,
-  filters: Record<string, string | number | null>,
+  filters: Record<string, ChartQueryValue>,
   dataSchema: TSchema,
 ): Promise<z.infer<TSchema>[]> {
   const response = await apiFetch(`/api/data/chart/${chartID}`, {

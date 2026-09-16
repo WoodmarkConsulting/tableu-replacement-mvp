@@ -1,3 +1,4 @@
+// Validates every module contract so malformed modules are rejected before generation or runtime use.
 import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";

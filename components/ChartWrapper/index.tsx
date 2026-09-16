@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
@@ -16,6 +16,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
@@ -48,8 +49,13 @@ import useChartConnectionsStore from "@/stores/chartConnectionsStore";
 import useQueryTimingStore from "@/stores/queryTimingStore";
 
 import useTooltipStore from "@/stores/tooltip";
+import type { ChartQueryValue, TooltipDataPoint } from "@/app/api/utils/types";
 import TooltipCard from "../TooltipCard";
 import ChartState from "./ChartState";
+import {
+  applyResolvedConnectionFilters,
+  shouldHideTooltipForInteractionLock,
+} from "./connectionApplication";
 import LassoInteractionOverlay from "./LassoInteractionOverlay";
 import LassoToolbar from "./LassoToolbar";
 import {
@@ -97,7 +103,9 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const {
     moduleName,
     mockData,
+    selfFetching = false,
     filterBindings,
+    autoApplyConnections = false,
     connections = EMPTY_CONNECTIONS,
     tabJumps = EMPTY_TAB_JUMPS,
     chartLabels,
@@ -129,9 +137,11 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   );
 
   const interactionSurfaceRef = useRef<HTMLDivElement>(null);
+  const chartIDRef = useRef(chartID);
   const [lassoAdapter, setLassoAdapter] =
     useState<LassoAdapter<DataType> | null>(null);
   const [lassoMode, setLassoMode] = useState<LassoMode | null>(null);
+  const [isInteractionLocked, setIsInteractionLocked] = useState(false);
   const [zoomedContext, setZoomedContext] = useState<string | null>(null);
   const [selection, setSelection] = useState<{
     context: string;
@@ -144,6 +154,26 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const selectionRef = useRef<typeof selection>(null);
   const contextMenuPositionRef = useRef<{ x: number; y: number } | null>(null);
   const connectionRequestRef = useRef(0);
+  const registerLassoAdapter = useCallback(
+    (adapter: LassoAdapter<DataType> | null) => {
+      setLassoAdapter(adapter);
+
+      if (adapter?.selectionDisabled) {
+        setLassoMode((currentMode) =>
+          currentMode === "selection" ? null : currentMode,
+        );
+      }
+    },
+    [],
+  );
+  const effectiveLassoMode =
+    lassoMode === "selection" && lassoAdapter?.selectionDisabled
+      ? null
+      : lassoMode;
+
+  useEffect(() => {
+    chartIDRef.current = chartID;
+  }, [chartID]);
 
   //TODO: remove or replace with proper chart state management
   // const [filters, setFilters] = useChartState(baseProps.filterConfig);
@@ -155,9 +185,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const executeTabJump = useFilterStore((state) => state.executeTabJump);
   const recordTiming = useQueryTimingStore((state) => state.recordTiming);
 
-  const matchingJumps = tabJumps.filter(
-    (jump) => jump.fromChartID === chartID,
-  );
+  const matchingJumps = tabJumps.filter((jump) => jump.fromChartID === chartID);
 
   const incomingColumns = Array.from(
     new Set(
@@ -176,7 +204,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
   const connectionFilters = filtersByChart[chartID];
 
-  const params: Record<string, string | number | null> = {};
+  const params: Record<string, ChartQueryValue> = {};
 
   if (filterBindings) {
     for (const [dimensionId, sqlParam] of Object.entries(filterBindings)) {
@@ -193,16 +221,65 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
     params[column] =
       connectionFilters && Object.hasOwn(connectionFilters, column)
-        ? JSON.stringify(values ?? [])
+        ? (values ?? [])
         : null;
   }
 
+  const handleInteractionLockChange = useCallback(
+    (locked: boolean) => {
+      setIsInteractionLocked(locked);
+
+      if (
+        shouldHideTooltipForInteractionLock(
+          locked,
+          chartIDRef.current,
+          useTooltipStore.getState().chartID,
+        )
+      ) {
+        hideTooltip();
+      }
+    },
+    [hideTooltip],
+  );
+
+  useEffect(() => {
+    const interactionSurface = interactionSurfaceRef.current;
+
+    if (!isInteractionLocked || !interactionSurface) {
+      return;
+    }
+
+    const preventBrowserZoom = (event: WheelEvent) => {
+      if (event.ctrlKey) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    interactionSurface.addEventListener("wheel", preventBrowserZoom, {
+      capture: true,
+      passive: false,
+    });
+
+    return () => {
+      interactionSurface.removeEventListener("wheel", preventBrowserZoom, {
+        capture: true,
+      });
+    };
+  }, [isInteractionLocked]);
+
   const lasso: LassoController<DataType> = {
-    mode: lassoMode,
-    registerAdapter: setLassoAdapter,
+    mode: effectiveLassoMode,
+    registerAdapter: registerLassoAdapter,
+    onInteractionLockChange: handleInteractionLockChange,
+    onZoomChange: (hasZoom) => setZoomedContext(hasZoom ? zoomContext : null),
   };
 
   const toggleLassoMode = (nextMode: LassoMode) => {
+    if (nextMode === "selection" && lassoAdapter?.selectionDisabled) {
+      return;
+    }
+
     hideTooltip();
     setLassoMode((currentMode) => (currentMode === nextMode ? null : nextMode));
   };
@@ -210,6 +287,17 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   const resetZoom = () => {
     lassoAdapter?.resetZoom?.();
     setZoomedContext(null);
+  };
+
+  const undoZoom = () => {
+    const hasPreviousZoom = lassoAdapter?.undoZoom?.() ?? false;
+
+    setZoomedContext(hasPreviousZoom ? zoomContext : null);
+  };
+
+  const handleZoomApplied = () => {
+    setZoomedContext(zoomContext);
+    setLassoMode(null);
   };
 
   const Module = component as unknown as React.ComponentType<
@@ -239,7 +327,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
         dataSchema as unknown as z.ZodType<DataType>,
         recordTiming,
       ),
-    enabled: parsedMockData === undefined && hasApplied,
+    enabled: !selfFetching && parsedMockData === undefined && hasApplied,
     initialData: parsedMockData,
   });
 
@@ -279,7 +367,13 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
     if (rows.length === 0) {
       setResolvedConnectionFilters(null);
-      stageSourceFilters(chartID, {});
+
+      if (autoApplyConnections) {
+        clearPendingSourceFilters();
+        setSourceFilters(chartID, {});
+      } else {
+        stageSourceFilters(chartID, {});
+      }
       return;
     }
 
@@ -289,7 +383,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     try {
       const tooltipResult = await fetchTooltipData(
         chartID,
-        rows as Record<string, unknown>[],
+        rows as TooltipDataPoint[],
       );
 
       if (requestID !== connectionRequestRef.current) {
@@ -314,7 +408,13 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
         context: zoomContext,
         filters: nextFilters,
       });
-      stageSourceFilters(chartID, nextFilters);
+      applyResolvedConnectionFilters({
+        autoApply: autoApplyConnections,
+        sourceChartID: chartID,
+        filters: nextFilters,
+        setSourceFilters,
+        stageSourceFilters,
+      });
     } catch (connectionError) {
       if (requestID !== connectionRequestRef.current) {
         return;
@@ -371,7 +471,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
     showTooltipOnClick({
       chartID,
-      dataPoints: rows as Record<string, unknown>[],
+      dataPoints: rows as TooltipDataPoint[],
       position: tooltipPosition,
     });
   };
@@ -389,7 +489,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
     showTooltipOnClick({
       chartID,
-      dataPoints: selectedRows as Record<string, unknown>[],
+      dataPoints: selectedRows as TooltipDataPoint[],
       position: tooltipPosition,
     });
 
@@ -468,11 +568,16 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   };
 
   const handleTabJump = (jump: TabJumpConfig) => {
-    executeTabJump(
-      jump,
-      selectedRows as Record<string, unknown>[],
-      chartTitle,
-    );
+    executeTabJump(jump, selectedRows as Record<string, unknown>[], chartTitle);
+  };
+
+  const applyConnectionsToAllCharts = () => {
+    if (!selectedConnectionFilters) {
+      return;
+    }
+
+    stageSourceFilters(chartID, selectedConnectionFilters);
+    applyPendingSourceFilters();
   };
 
   if (error) {
@@ -493,15 +598,19 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
         {lassoAdapter ? (
           <LassoToolbar
             adapter={lassoAdapter}
-            mode={lassoMode}
+            mode={effectiveLassoMode}
             hasZoom={hasZoom}
+            disabled={isInteractionLocked}
             onModeChange={toggleLassoMode}
+            onUndoZoom={undoZoom}
             onResetZoom={resetZoom}
           />
         ) : null}
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-4">
+      <CardContent
+        className="flex flex-col gap-4"
+        style={{ minHeight: `${props.height || 15}svh` }}>
         {/* TODO: REMOVE OR ENABLE FILTERS */}
 
         {/* {filterConfig.length > 0 && (
@@ -527,7 +636,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
           </ChartState>
         ) : null}
 
-        {hasApplied && (isLoading || isFetching) ? (
+        {!selfFetching && hasApplied && (isLoading || isFetching) ? (
           <ChartState height={props.height}>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Spinner />
@@ -535,7 +644,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
           </ChartState>
         ) : null}
 
-        {isError ? (
+        {!selfFetching && isError ? (
           <ChartState height={props.height}>
             <Empty>
               <EmptyHeader>
@@ -551,7 +660,8 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
           </ChartState>
         ) : null}
 
-        {hasApplied &&
+        {!selfFetching &&
+        hasApplied &&
         chartData.length === 0 &&
         !isLoading &&
         !isFetching &&
@@ -570,7 +680,10 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
           </ChartState>
         ) : null}
 
-        {!isLoading && !isFetching && !isError && chartData.length > 0 ? (
+        {!isLoading &&
+        !isFetching &&
+        !isError &&
+        ((selfFetching && hasApplied) || chartData.length > 0) ? (
           <ContextMenu>
             <ContextMenuTrigger
               render={
@@ -593,19 +706,32 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
                 isLoading={isLoading}
                 isFetching={isFetching}
                 isError={isError}
+                selfFetching={selfFetching}
+                filterParams={params}
                 selectedRows={selectedRows}
                 onSelectionChange={handleSelectionChange}
                 lasso={lasso}
               />
 
-              <LassoInteractionOverlay
-                mode={lassoMode}
-                adapter={lassoAdapter}
-                surfaceRef={interactionSurfaceRef}
-                onSelectionChange={handleLassoSelection}
-                onInteractionStart={hideTooltip}
-                onZoomApplied={() => setZoomedContext(zoomContext)}
-              />
+              {isInteractionLocked ? (
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 z-70 cursor-wait"
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                />
+              ) : (
+                <LassoInteractionOverlay
+                  mode={effectiveLassoMode}
+                  adapter={lassoAdapter}
+                  surfaceRef={interactionSurfaceRef}
+                  onSelectionChange={handleLassoSelection}
+                  onInteractionStart={hideTooltip}
+                  onZoomApplied={handleZoomApplied}
+                />
+              )}
             </ContextMenuTrigger>
 
             <ContextMenuContent className="w-64">
@@ -629,6 +755,12 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
                   Verlinktes Diagramm filtern
                 </ContextMenuSubTrigger>
                 <ContextMenuSubContent className="w-64">
+                  <ContextMenuItem onClick={applyConnectionsToAllCharts}>
+                    <ListFilter />
+                    Alle filtern
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+
                   {outgoingChartIDs.map((targetChartID) => (
                     <ContextMenuItem
                       key={targetChartID}

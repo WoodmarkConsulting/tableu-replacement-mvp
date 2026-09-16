@@ -1,3 +1,4 @@
+// Authenticates the project-local Databricks CLI and verifies access before warehouse operations run.
 import { execFileSync, spawn } from "node:child_process";
 import config from "./config";
 import { verifyDatabricksConnection } from "./verifyDatabricksConnection";
