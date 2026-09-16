@@ -392,6 +392,7 @@ const TestPage = () => {
               moduleName: "MapModule",
               space: 12,
               chartID: "dummy-map-linked",
+              autoApplyConnections: false,
               chartTitle: "Linked regions",
               chartDescription:
                 "Filtered by the regions selected on 'Regional coverage'. Right-click that map and choose 'Verlinktes Diagramm filtern'.",
@@ -449,6 +450,150 @@ const TestPage = () => {
                 legend: {
                   show: true,
                   position: "top-right",
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      trigger: "Pie Charts",
+      rows: [
+        {
+          height: 52,
+          components: [
+            {
+              moduleName: "PieChartModule",
+              space: 6,
+              chartID: "dtc-scatter",
+              chartTitle: "Revenue share",
+              chartDescription:
+                "Full pie without center KPI, using category color overrides.",
+              autoApplyConnections: false,
+              mockData: [
+                { name: "Enterprise", value: 46 },
+                { name: "Mid-market", value: 29 },
+                { name: "Small business", value: 17 },
+                { name: "Public sector", value: 8 },
+              ],
+              chartConfig: {
+                pie: {
+                  innerRadius: 0,
+                  outerRadius: "78%",
+                  paddingAngle: 2,
+                  cornerRadius: 3,
+                },
+                margin: { top: 16, right: 24, bottom: 16, left: 24 },
+                tooltip: { show: true, cursor: false },
+                legend: {
+                  show: true,
+                  position: "bottom",
+                  content: "name-percent",
+                },
+                colors: {
+                  palette: [
+                    "var(--chart-1)",
+                    "var(--chart-2)",
+                    "var(--chart-3)",
+                    "var(--chart-4)",
+                  ],
+                  byName: {
+                    Enterprise: "#0f766e",
+                    "Public sector": "#dc2626",
+                  },
+                },
+                labels: {
+                  show: true,
+                  position: "outside",
+                  content: "name-percent",
+                  leaderLines: true,
+                  minPercent: 0.05,
+                  maxLabelChars: 18,
+                  numberFormat: {
+                    format: "percent",
+                    decimals: 0,
+                    locale: "en-US",
+                  },
+                },
+                sort: { by: "value", direction: "desc" },
+                maxSlices: 12,
+                selectionStyle: {
+                  fadeOthersOpacity: 0.3,
+                  stroke: "var(--foreground)",
+                  strokeWidth: 2,
+                },
+              },
+            },
+            {
+              moduleName: "PieChartModule",
+              space: 6,
+              chartID: "dtc-scatter-full",
+              chartTitle: "Orders by channel",
+              chartDescription:
+                "Donut with selected-value KPI and grouped long-tail channels.",
+              autoApplyConnections: false,
+              mockData: [
+                { name: "Direct", value: 380 },
+                { name: "Partner", value: 270 },
+                { name: "Marketplace", value: 190 },
+                { name: "Referral", value: 85 },
+                { name: "Events", value: 44 },
+                { name: "Other campaigns", value: 31 },
+              ],
+              chartConfig: {
+                pie: {
+                  innerRadius: "56%",
+                  outerRadius: "80%",
+                  paddingAngle: 2,
+                  cornerRadius: 4,
+                },
+                margin: { top: 16, right: 24, bottom: 16, left: 24 },
+                tooltip: { show: true, cursor: false },
+                legend: {
+                  show: true,
+                  position: "right",
+                  content: "name-value",
+                },
+                colors: {
+                  palette: ["#0891b2", "#eab308", "#16a34a", "#2563eb"],
+                },
+                labels: {
+                  show: false,
+                  position: "inside",
+                  content: "value",
+                  leaderLines: false,
+                  minPercent: 0.08,
+                  numberFormat: {
+                    format: "number",
+                    decimals: 0,
+                    locale: "en-US",
+                    useGrouping: true,
+                  },
+                },
+                centerLabel: {
+                  show: true,
+                  mode: "selected",
+                  label: "Orders",
+                  numberFormat: {
+                    format: "number",
+                    decimals: 0,
+                    locale: "en-US",
+                  },
+                },
+                groupOthers: {
+                  enabled: true,
+                  mode: "topN",
+                  value: 4,
+                  label: "Other",
+                  color: "#94a3b8",
+                },
+                sort: { by: "value", direction: "desc" },
+                maxSlices: 8,
+                selectionStyle: {
+                  fadeOthersOpacity: 0.3,
+                  stroke: "var(--foreground)",
+                  strokeWidth: 2,
                 },
               },
             },

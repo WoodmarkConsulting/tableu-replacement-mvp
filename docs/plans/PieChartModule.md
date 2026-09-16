@@ -1,6 +1,6 @@
 # Plan: `PieChartModule`
 
-Status: proposed, not implemented.
+Status: implemented.
 Scope: new module under `modules/PieChartModule/`. No changes to `ChartWrapper`,
 `TabsWrapper`, API routes, or the filter framework.
 
@@ -21,7 +21,7 @@ Scope: new module under `modules/PieChartModule/`. No changes to `ChartWrapper`,
 | Labels | Full label config (position, content, number formatting, leader lines, min-percent suppression). |
 | Center content | Donut center KPI: total / selected / custom. |
 | Slice count guard | Explicit error state above a configurable `maxSlices`. |
-| Library | `recharts` v3 (`PieChart`, `Pie`, `Cell`, `Legend`, `Tooltip`), version `^3.8.0` per `package.json:55`, consistent with `BarChartModule`. |
+| Library | `recharts` v3 (`PieChart`, `Pie`, `Cell`, `Legend`) plus the repository's `ChartTooltip` wrapper, using the `^3.8.0` dependency declared in `package.json`, consistent with `BarChartModule`. |
 
 ---
 
@@ -100,7 +100,7 @@ self-contained and must stay that way.
 type PieChartConfig = {
   /** Geometry of the ring. Percentages of the available radius, or pixels. */
   pie: {
-    /** 0 or omitted = full pie. > 0 = donut. Example: "60%". */
+    /** 0, "0%", or omitted = full pie. A positive number or percentage = donut. */
     innerRadius?: number | string;
     outerRadius?: number | string;
     /** Gap between slices in degrees. Default 0. */
@@ -144,8 +144,10 @@ type PieChartConfig = {
     /** Truncate long names to this many characters. */
     maxLabelChars?: number;
     numberFormat?: {
+      /** Must be "percent" when labels.content includes a percent. */
       format: "number" | "compact" | "percent" | "currency";
       decimals?: number;
+      /** Required when format is "currency". */
       currency?: string;
       locale?: string;
       prefix?: string;
@@ -154,7 +156,7 @@ type PieChartConfig = {
     };
   };
 
-  /** Donut center KPI. Requires pie.innerRadius > 0 and the default cx/cy. */
+  /** Donut center KPI. Requires a positive pie.innerRadius and default cx/cy. */
   centerLabel?: {
     show: boolean;
     /**
@@ -165,11 +167,12 @@ type PieChartConfig = {
     mode: "total" | "selected" | "custom";
     /** Caption above the number. */
     label?: string;
-    /** Used only when mode is "custom". */
+    /** Required and used verbatim when mode is "custom". */
     value?: string;
     numberFormat?: {
       format: "number" | "compact" | "percent" | "currency";
       decimals?: number;
+      /** Required when format is "currency". */
       currency?: string;
       locale?: string;
       prefix?: string;
@@ -216,16 +219,36 @@ type PieChartConfig = {
 
 ### 5.1 Render pipeline
 
-Derived state in one `useMemo` chain over `chartData`, in this fixed order
-(documented in `instructions.md` §11):
+Derived state uses an internal discriminated representation so rendered slices
+can retain original-row identity without confusing a synthetic rollup with a
+real row that has the same name:
+
+```ts
+type RenderSlice =
+  | { kind: "source"; row: PieChartData }
+  | {
+      kind: "others";
+      row: PieChartData;
+      absorbedRows: readonly PieChartData[];
+    };
+```
+
+For `kind: "source"`, `row` is the exact object from `chartData`. For
+`kind: "others"`, `row` is the synthetic aggregate. Recharts receives
+`RenderSlice[]` and reads the name/value through function `nameKey` and
+`dataKey` accessors.
+
+Build the derived state in one `useMemo` chain over `chartData`, in this fixed
+order (documented in `instructions.md` §11):
 
 1. **Drop zero-valued rows.** `value === 0` slices render nothing and pollute
    legend/labels; filter them out and count them for §12 messaging. Negative
    values never reach the module (schema rejects them). This drop is a visible
    behavior change for SQL authors and is documented in §3.
-2. **`groupOthers`** — `topN` or `threshold`. Produces a synthetic row
-   `{ name: config.groupOthers.label ?? "Sonstige", value: <sum> }` plus the
-   list of original rows it absorbed (see 5.4).
+2. **`groupOthers`** — `topN` or `threshold`. Produces one `kind: "others"`
+  slice containing `{ name: config.groupOthers.label ?? "Sonstige", value:
+  <sum> }` and the original rows it absorbed (see 5.4). Do not create the
+  synthetic slice when no rows were absorbed.
 3. **`sort`** — applied after grouping so "Sonstige" participates in the
    ordering. `by: "none"` short-circuits and preserves SQL order.
 4. **`maxSlices` guard** — if the resulting slice count exceeds
@@ -236,8 +259,8 @@ Derived state in one `useMemo` chain over `chartData`, in this fixed order
 
 ### 5.2 Colors
 
-`resolveSliceFill(row, index)`:
-`colors.byName?.[row.name]` → `colors.palette[index % palette.length]` →
+`resolveSliceFill(slice, index)`:
+`colors.byName?.[slice.row.name]` → `colors.palette[index % palette.length]` →
 `DEFAULT_PALETTE[index % 5]` where the default is
 `["var(--chart-1)", ..., "var(--chart-5)"]`.
 `groupOthers.color` overrides everything for the synthetic slice.
@@ -247,34 +270,55 @@ Derived state in one `useMemo` chain over `chartData`, in this fixed order
 - Number formatting is **module-local** via `Intl.NumberFormat`, matching
   `BarChartModule` (no shared `lib/` helper exists; do not introduce one for
   this module alone).
-- `percent` content is computed as `value / total`, not read from data.
+- `percent` content is computed as `value / total`, not read from data, and is
+  formatted as an `Intl.NumberFormat` percent value (the ratio is not multiplied
+  by 100 before formatting). When `labels.content` is `"percent"` or
+  `"name-percent"`, an explicitly supplied `labels.numberFormat.format` must be
+  `"percent"`. Value-based content uses the configured format and defaults to
+  `"number"`.
+- Legend `name-value` entries use the same value formatter as labels. Legend
+  `name-percent` entries use the same percent formatter. This applies even when
+  `labels.show` is `false`; `labels.numberFormat` is the shared formatting
+  configuration for both surfaces.
 - `minPercent` suppresses the label but keeps the slice.
 - `position: "outside"` uses a custom label renderer with optional leader lines.
   Label collision is **not** solved — listed under §16 Known Limitations, with
   `groupOthers` + `minPercent` as the documented mitigation.
+- Below a 480px module width, left/right legends move below the plot and outside
+  labels are hidden to prevent collisions. Inside labels remain visible.
 - Center label renders as an absolutely-positioned overlay div, not an SVG
-  `<text>`, so it can wrap and reuse Tailwind typography. Ignored when
-  `pie.innerRadius` is falsy.
-  **Positioning is deliberately constrained:** the overlay is centered on the
-  plot rectangle only, i.e. it supports `pie.cx`/`cy` at their default
-  `"50%"`/`"50%"` and honours `margin` via `inset` offsets. Resolving arbitrary
-  pixel or percentage `cx`/`cy` would require measuring the rendered container,
-  which this module does not do. Configuring `centerLabel.show: true` together
-  with a non-default `cx`/`cy` is a configuration error (§6, §12).
+  `<text>`, so it can wrap and reuse Tailwind typography. A small module-local
+  child inside `<PieChart>` reads `usePlotArea()` and reports `{ x, y, width,
+  height }` to the parent; the overlay is centered at
+  `(x + width / 2, y + height / 2)`. This keeps it aligned when margins or the
+  measured legend move the plot.
+- Normalize `pie.innerRadius` before deciding whether the chart is a donut:
+  positive numbers and positive percentage strings are donuts; `undefined`,
+  `0`, and `"0%"` are full pies. The center label is skipped for a full pie.
+- The overlay supports only the default `pie.cx`/`pie.cy` (`undefined` or
+  `"50%"`). An off-center donut still renders, but its center label is skipped.
+- `centerLabel.mode: "custom"` renders `centerLabel.value` verbatim and ignores
+  `centerLabel.numberFormat`. Total and selected modes use the configured
+  formatter and default to `"number"`.
 
 ### 5.4 Selection
 
-Follows `BarChartModule` exactly:
+Follows the wrapper selection contract, with Pie-specific event handling:
 
-- Click handler on `<Pie onClick={...}>` receives the slice payload.
+- Recharts calls `<Pie onClick>` with `(sector, index, event)`. Its `sector` and
+  `sector.payload` are derived objects, not the original `chartData` object.
+  Resolve the clicked item as `renderSlices[index]`; do not pass either Recharts
+  object to selection or tooltip APIs.
+- If the indexed item is `kind: "others"`, return before tooltip or selection
+  work. Otherwise, use `renderSlice.row`, which is the original source object.
 - `additive = event.ctrlKey || event.metaKey || event.shiftKey`.
 - `onSelectionChange([row], additive ? { additive: true } : undefined)`.
-  Signature confirmed at `types/baseChart.d.ts:35`
-  (`SelectionChangeOptions = { additive?: boolean }`).
+  The signature is defined by `SelectionChangeOptions` in
+  `types/baseChart.d.ts` (`{ additive?: boolean }`).
 - When `enhancedTooltip` is true, also open the tooltip. The store is a
   **default export** `useTooltipStore` from `@/stores/tooltip`, selected with
   `useShallow` from `zustand/shallow` — there is no named `showTooltipOnClick`
-  import. Mirror `modules/BarChartModule/index.tsx:28,363-368,429-438`:
+  import. Mirror `modules/BarChartModule/index.tsx`:
   `showTooltipOnClick({ chartID, dataPoint: row, position: { x: event.clientX, y: event.clientY } })`.
 - **No `lasso.mode === null` gate.** `BarChartModule` gates clicks on it because
   it registers a lasso adapter and must not fire selection mid-gesture.
@@ -283,9 +327,8 @@ Follows `BarChartModule` exactly:
   adapter is ever added, the gate must be added with it.
 - Highlighting compares by **object identity** against a
   `useMemo(() => new Set(selectedRows), [selectedRows])`, matching
-  `ChartWrapper/index.tsx:332-344`, so the transform chain must preserve
-  original row object references (`[...data]`, `.filter`, `.sort` do; `.map`
-  into new objects does **not**).
+  `ChartWrapper`. A source slice is selected when
+  `selectedSet.has(renderSlice.row)`; a synthetic slice is never selected.
 - `selectedRows` is injected as `readonly D[]`. Copy it (`[...selectedRows]`)
   before passing it anywhere expecting a mutable `D[]`.
 
@@ -311,7 +354,9 @@ would break the tooltip/connection contract, which requires every data-point
 property to be an atomic value batched into tooltip SQL. Decision:
 
 - The "Sonstige" slice is **not selectable**. Clicking it is a no-op, its
-  cursor stays `default`, and this is documented in §11 and §16.
+  cursor stays `default`, and it never opens the enhanced tooltip. This is
+  enforced by the `RenderSlice.kind` discriminant, not by comparing names.
+  A real source row named "Sonstige" therefore remains selectable.
 - Alternative considered and rejected: emitting all absorbed rows on click.
   It silently produces a selection the user did not visibly make and makes
   connection filtering unpredictable.
@@ -321,8 +366,9 @@ property to be an atomic value batched into tooltip SQL. Decision:
 `ChartWrapper` owns loading / fetch error / schema-validation error. The module
 renders only these additional in-module states:
 
-- **All rows filtered out** (empty array, or every value is 0) → a neutral
-  "Keine darstellbaren Werte" message.
+- **All rows filtered out inside the module** (the non-empty response contains
+  only zero values) → a neutral "Keine darstellbaren Werte" message. A raw
+  empty response is handled by `ChartWrapper`, which does not mount the module.
 - **`maxSlices` exceeded** → an explicit message naming the actual slice count
   and the configured limit, and pointing at `groupOthers`. This is a render
   guard, not a thrown error.
@@ -331,8 +377,9 @@ renders only these additional in-module states:
 
 The module also receives `height`, `isLoading`, `isFetching`, and `isError`.
 `height` sizes the `ResponsiveContainer`. `isLoading` / `isError` are handled by
-`ChartWrapper` and are not re-rendered here; `isFetching` is used only to dim
-the chart during a background refetch, matching `BarChartModule`.
+`ChartWrapper` and are not re-rendered here. `ChartWrapper` also replaces the
+module with its loading state while `isFetching`, so this module does not dim or
+otherwise handle background refetches.
 
 ### 5.6 Lasso
 
@@ -341,7 +388,7 @@ the chart during a background refetch, matching `BarChartModule`.
 ```
 
 The `lasso` prop is accepted (it is part of `ChartWrapperInjectedProps`, typed
-`LassoController<D>` at `types/lasso.d.ts:35-38`) and deliberately unused.
+`LassoController<D>` in `types/lasso.d.ts`) and deliberately unused.
 `ChartWrapper` discovers lasso capability at runtime from adapter registration,
 so not registering is sufficient — no wrapper change and no config flag is
 needed. Confirm during implementation that the wrapper's lasso toolbar is hidden
@@ -365,21 +412,31 @@ Sections needing particular care:
   per slice; unique `name` is required but unenforceable; `value = 0` rows are
   dropped by the module.
 - **§6 Configuration Rules** — `centerLabel` requires `pie.innerRadius > 0` and
-  default `cx`/`cy`; `labels.minPercent` and `groupOthers` `threshold` value are
-  0..1; `groupOthers` `topN` value is a positive integer.
+  default `cx`/`cy`; normalize `0`, `"0%"`, and omitted `innerRadius` as a full
+  pie. `labels.minPercent`, `groupOthers` `threshold`, and
+  `selectionStyle.fadeOthersOpacity` are 0..1. `groupOthers` `topN`,
+  `maxSlices`, and `labels.maxLabelChars` are positive integers. Currency
+  formatting requires a valid `currency` code. Percent label content requires
+  percent formatting. `centerLabel.value` is required in `"custom"` mode and
+  its `numberFormat` is ignored. A configured `groupOthers.label` should not
+  duplicate a source `name`, because the legend would contain indistinguishable
+  entries even though internal selection remains correct.
 - **§8 Data and Configuration Relationship** — unlike `BarChartConfig.series`,
   slices are **not** declared in config. Config references data only by the
   `name` string (`colors.byName`). Wrong or stale `byName` keys fail silently
   by falling back to the palette — call this out.
 - **§10 Expected Props** — document `chartConfig` (that is the prop name, not
-  `config`), `selectedRows` (`readonly`), `onSelectionChange`, `height`,
-  `isFetching`, and that `lasso` is intentionally unused. Note that the visible
-  enhanced tooltip and the connection context menu belong to `ChartWrapper`.
+  `config`), `chartData`, `selectedRows` (`readonly`), `onSelectionChange`,
+  `height`, `chartID`, `enhancedTooltip`, and that `lasso` is intentionally
+  unused. Note that loading, fetching, errors, the visible enhanced tooltip,
+  and the connection context menu belong to `ChartWrapper`.
 - **§11 Runtime Behavior** — the fixed derive order from §5.1, and that
-  "Sonstige" is not clickable.
+  "Sonstige" is not clickable. Document the three-argument Recharts click
+  callback and the index lookup that recovers the original source row.
 - **§12 Validation and Errors** — negative value (wrapper schema error),
-  `maxSlices` exceeded (module render guard), all-zero data (module empty
-  state), `centerLabel` on a full pie or off-center donut (silently skipped).
+  raw empty data (wrapper empty state), `maxSlices` exceeded (module render
+  guard), all-zero data (module empty state), `centerLabel` on a full pie or
+  off-center donut (silently skipped).
   Duplicate `name` is **not** listed here — it is not detectable by the schema
   and belongs in §16.
 - **§16 Known Limitations** — no lasso, no zoom, no nested rings, no
@@ -408,10 +465,20 @@ Sections needing particular care:
    `modules/modulRegistry.ts` and unions `PieChartConfig` into `ChartConfigs`.
 3. Typecheck / build.
 4. Manual check with a scratch dashboard entry covering: full pie, donut with
-   center total, `groupOthers` in both modes, outside labels with leader lines,
-   `colors.byName`, additive click selection (verify stroke + fade on multiple
-   slices at once), and an `enhancedTooltip` chart with a connection to a
-   second chart.
+  center total/selected/custom, a positioned legend with a centered KPI,
+  `groupOthers` in both modes, outside labels with leader lines,
+  `colors.byName`, all sort modes, and all number formats. Exercise additive
+  click selection and verify stroke + fade on multiple slices at once. Verify
+  that clicking the synthetic slice is a complete no-op while a real source
+  row with the same label remains selectable. Exercise an `enhancedTooltip`
+  chart with a connection to a second chart.
+5. Exercise state ownership and guards separately: verify that raw empty input
+  uses the wrapper empty state, while all-zero input uses the module empty
+  state. Exceed `maxSlices` once with grouping disabled and once with grouping
+  enabled but insufficient. Also cover `innerRadius: "0%"`, a full pie with
+  `centerLabel.show`, and an off-center donut with `centerLabel.show`. The
+  scratch dashboard is temporary and is removed after verification; no demo
+  dashboard is committed.
 
 The module folder must satisfy the contract both before and after every commit —
 no partially migrated intermediate state.

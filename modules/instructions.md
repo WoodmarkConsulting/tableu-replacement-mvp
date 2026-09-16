@@ -68,6 +68,24 @@ For module-specific details, read `modules/LineChartModule/instructions.md`.
 
 For module-specific details, read `modules/BarChartModule/instructions.md`.
 
+### `PieChartModule`
+
+- Purpose: Renders a single non-negative measure as a full pie or donut with
+  configurable labels, legend content, long-tail grouping, and optional center
+  KPI.
+- Best use: Showing part-to-whole composition across a modest number of unique
+  categories.
+- Input: Receives `chartData` (`PieChartData[]`, one pre-aggregated
+  `{ name, value }` row per slice) and a `PieChartConfig` through
+  `ChartWrapperInjectedProps`.
+- Notes: Supports click and modifier-assisted additive selection. Selected
+  slices receive a stroke while other slices fade. A synthetic `groupOthers`
+  slice is deliberately not selectable. Prefer `BarChartModule` for precise
+  category comparison, signed values, or visible zeroes; prefer `CardModule`
+  for one standalone aggregate.
+
+For module-specific details, read `modules/PieChartModule/instructions.md`.
+
 ### `ScatterPlotModule`
 
 - Purpose: Renders dense numeric X/Y point clouds with deck.gl and an orthographic WebGL view.
