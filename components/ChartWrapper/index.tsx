@@ -22,7 +22,13 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { ArrowRightCircle, ExternalLink, Eye, ListFilter } from "lucide-react";
+import {
+  ArrowRightCircle,
+  ExternalLink,
+  Eye,
+  ListFilter,
+  XCircle,
+} from "lucide-react";
 
 import {
   Card,
@@ -498,6 +504,14 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     }
   };
 
+  const clearSelection = () => {
+    handleSelectionChange([]);
+
+    if (useTooltipStore.getState().chartID === chartID) {
+      hideTooltip();
+    }
+  };
+
   const applyConnectionToChart = (targetChartID: TableSchemaKey) => {
     const targetFilters = selectedConnectionFilters?.[targetChartID];
 
@@ -743,6 +757,15 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
                 <Eye />
                 Tooltip anzeigen
               </ContextMenuItem>
+
+              <ContextMenuItem
+                disabled={selectedRows.length === 0}
+                onClick={clearSelection}>
+                <XCircle />
+                Auswahl aufheben
+              </ContextMenuItem>
+
+              <ContextMenuSeparator />
 
               <ContextMenuSub>
                 <ContextMenuSubTrigger
