@@ -537,8 +537,9 @@ readonly TableRowData[];
 
 Description:
 
-The current selection, owned by `ChartWrapper`. The module highlights matching rows by `id`.
-Source: `wrapper`.
+The current selection, owned by `ChartWrapper`. The module highlights matching rows by `id`
+with a primary-tinted background and a primary left accent; the sticky first cell preserves
+the same highlight. Source: `wrapper`.
 
 ### `onSelectionChange`
 
@@ -587,8 +588,9 @@ element per selected row) and emit atomic aliases for any `expectedColumns`.
   visibility map each render.
 - Sorting reorders siblings within their parent; filtering keeps ancestors of matching leaf
   rows; pagination applies to top-level rows and keeps descendants attached.
-- Selection highlights rows whose `id` is in `selectedRows`; parent rows emit only their own
-  row; `subRows` are stripped before calling `onSelectionChange`.
+- Selection highlights rows whose `id` is in `selectedRows` with a primary tint and left
+  accent, including the sticky first cell; parent rows emit only their own row; `subRows` are
+  stripped before calling `onSelectionChange`.
 
 ---
 

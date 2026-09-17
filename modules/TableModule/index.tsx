@@ -463,8 +463,11 @@ function TableModule(props: Props) {
                     }
                     className={cn(
                       selectionEnabled && "cursor-pointer",
+                      isSelected &&
+                        "bg-primary/15 hover:bg-primary/20 data-[state=selected]:bg-primary/15 data-[state=selected]:hover:bg-primary/20",
                       chartConfig.appearance.zebraStripes &&
                         rowIndex % 2 === 1 &&
+                        !isSelected &&
                         "bg-muted/40",
                     )}
                   >
@@ -480,9 +483,15 @@ function TableModule(props: Props) {
                           className={cn(
                             alignClass(meta?.align ?? "left"),
                             densityCellClass,
+                            isFirst && "border-l-4 border-l-transparent",
                             isFirst &&
                               stickyFirst &&
                               "sticky left-0 z-10 bg-background",
+                            isFirst && isSelected && "border-l-primary",
+                            isFirst &&
+                              stickyFirst &&
+                              isSelected &&
+                              "bg-primary/15",
                           )}
                         >
                           {flexRender(
