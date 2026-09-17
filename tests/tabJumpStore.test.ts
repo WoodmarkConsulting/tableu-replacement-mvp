@@ -2,6 +2,34 @@ import { describe, it, beforeEach } from "vitest";
 import assert from "node:assert/strict";
 import useFiltersStore, { tabKey } from "../stores/filterProvider";
 
+describe("stores/filterProvider dimension validation", () => {
+  it("rejects duplicate dimension ids during initialization", () => {
+    useFiltersStore.getState().resetFilterStore();
+
+    assert.throws(() =>
+      useFiltersStore.getState().initFilterStore({
+        dimensions: [
+          {
+            id: "region",
+            label: "Global Region",
+            scope: "global",
+            type: "string",
+          },
+          {
+            id: "region",
+            label: "Tab Region",
+            scope: "tab",
+            type: "string",
+            tab: "TabB",
+          },
+        ],
+        initialActiveTab: "TabA",
+      }),
+      /Filter dimension id "region" must be unique within a dashboard\./,
+    );
+  });
+});
+
 describe("stores/filterProvider tab jumps", () => {
   const dimensions: FilterDimension[] = [
     {
@@ -44,13 +72,6 @@ describe("stores/filterProvider tab jumps", () => {
       label: "Shadowed Dim",
       scope: "global",
       type: "string",
-    },
-    {
-      id: "shadowed_dim",
-      label: "Shadowed Dim Tab",
-      scope: "tab",
-      type: "string",
-      tab: "TabB",
     },
     {
       id: "tab_c_dim",
@@ -186,7 +207,7 @@ describe("stores/filterProvider tab jumps", () => {
     assert.equal(useFiltersStore.getState().breadcrumbs.length, 0);
   });
 
-  it("rejects dateString and dateRange targets as well as shadowed dimensions", () => {
+  it("rejects date targets and dimensions outside the target tab", () => {
     const dateJump: TabJumpConfig = {
       fromChartID: "123456as",
       targetTab: "TabB",
@@ -200,7 +221,7 @@ describe("stores/filterProvider tab jumps", () => {
 
     assert.equal(useFiltersStore.getState().executeTabJump(dateJump, [{ date: "2026-01-01" }]), false);
 
-    const shadowedJump: TabJumpConfig = {
+    const globalDimensionJump: TabJumpConfig = {
       fromChartID: "123456as",
       targetTab: "TabB",
       mappings: [
@@ -211,7 +232,7 @@ describe("stores/filterProvider tab jumps", () => {
       ],
     };
 
-    assert.equal(useFiltersStore.getState().executeTabJump(shadowedJump, [{ val: "val1" }]), false);
+    assert.equal(useFiltersStore.getState().executeTabJump(globalDimensionJump, [{ val: "val1" }]), false);
   });
 
   it("previousValues captures undefined for unset keys; navigateBack deletes the key rather than writing back raw defaultValue", () => {

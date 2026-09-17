@@ -104,6 +104,8 @@ combobox. `select` and `multiselect` read their choices from `options`. `option`
 renders a segmented single-choice control where exactly one value is always
 selected (mandatory); it reads its choices from `options`, falls back to 2
 default options when none are configured, and binds to SQL as a single string.
+Every dimension `id` must be non-empty and unique across the complete dashboard,
+including dimensions assigned to different tabs or scopes.
 
 A `multiselect` value binds to SQL as a comma-joined string. Charts must expand
 it with `split` and treat an unset (`NULL`) value as "no filter":

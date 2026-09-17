@@ -22,6 +22,7 @@ type DateRangeValue = {
 type FilterValue = string | number | null | DateRangeValue | string[];
 
 type FilterDimension<Tconf extends TabsConfig[] = TabsConfig[]> = {
+  // Stable identifier that must be unique across the complete dashboard.
   id: string;
   label: string;
   type: FilterType;

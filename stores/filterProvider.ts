@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import { validateFilterDimensions } from "@/lib/filterDimensions";
+
 type CreateFilterStoreArgs = {
   dimensions: FilterDimension[];
   initialActiveTab: string;
@@ -216,6 +218,8 @@ const useFiltersStore = create<FilterStoreState>((set, get) => {
       return;
     }
 
+    validateFilterDimensions(dimensions);
+
     const seeded = {
       ...buildDefaultValues(dimensions),
       ...(initialValues ?? {}),
@@ -319,13 +323,6 @@ const useFiltersStore = create<FilterStoreState>((set, get) => {
       );
 
       if (!targetDim) {
-        return false;
-      }
-
-      const hasGlobalShadow = state.dimensions.some(
-        (d) => d.id === mapping.targetDimensionId && d.scope === "global",
-      );
-      if (hasGlobalShadow) {
         return false;
       }
 

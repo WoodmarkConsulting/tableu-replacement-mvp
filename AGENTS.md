@@ -71,6 +71,7 @@ The runtime flow is:
 Dashboards share a filter framework driven entirely by config:
 
 - **Dimensions** — `DashboardConfig.filters: FilterDimension[]`, each `{ id, label, type, scope, tab?, options?, defaultValue? }`.
+  - `id` must be non-empty and unique across the complete dashboard. Do not reuse an ID between global and tab dimensions or between different tabs.
   - `type`: `"string" | "number" | "dateString" | "dateRange" | "select" | "multiselect" | "option"`. All are single-value except `multiselect`, which holds a `string[]`.
   - `select` and `multiselect` read their choices from `options`. `multiselect` renders a searchable combobox (Popover + Command) and binds to SQL as a comma-joined string.
   - `option` renders a segmented single-choice control where exactly one value is always selected (mandatory); it reads its choices from `options` and falls back to 2 default options when none are configured. It binds to SQL as a single string.

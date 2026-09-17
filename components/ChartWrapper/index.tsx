@@ -567,13 +567,6 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
         return false;
       }
 
-      const hasGlobalShadow = dimensions.some(
-        (d) => d.id === mapping.targetDimensionId && d.scope === "global",
-      );
-      if (hasGlobalShadow) {
-        return false;
-      }
-
       if (targetDim.type === "dateString" || targetDim.type === "dateRange") {
         return false;
       }
