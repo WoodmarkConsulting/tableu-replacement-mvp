@@ -1417,6 +1417,8 @@
           "components": [
             {
               "moduleName": "TableModule",
+              "enhancedTooltip": true,
+              "autoApplyConnections": false,
               "space": 12,
               "chartTitle": "Battery",
               "chartDescription": "Error quota and vehicle count per battery.",
@@ -1562,6 +1564,13 @@
       "targetTab": "Production Numbers 2",
       "label": "Details in \"Production Numbers 2\" ansehen",
       "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_ms_cd" }]
+    }
+  ],
+  "connections": [
+    {
+      "fromChartID": "72a22d66-9e60-4d69-8354-a38c070ea2fd",
+      "toChartID": "e13d7ce9-dec2-423e-b183-6d346c7e7660",
+      "expectedColumns": ["Batterie"]
     }
   ]
 }
