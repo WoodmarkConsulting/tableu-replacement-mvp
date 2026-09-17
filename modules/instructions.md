@@ -60,11 +60,11 @@ For module-specific details, read `modules/LineChartModule/instructions.md`.
 - Input: Receives `chartData` (`BarChartData[]`, one row per category with a per-series
   `values` array) and a `BarChartConfig` through `ChartWrapperInjectedProps`.
 - Notes: Supports vertical and horizontal orientation, per-category and threshold coloring,
-  value labels, sorting, reference lines, and per-category target markers. Selection is by
-  bar click plus a rectangular/polygon lasso adapter (no zoom); selected bars are highlighted
-  and non-selected bars fade. This differs from `LineChartModule` (continuous numeric/time X
-  axis) and `HistogramModule` (numeric bins of a single variable); use those instead when the
-  X axis is not a set of discrete categories.
+  value labels with automatic outside-label spacing, sorting, reference lines, and
+  per-category target markers. Selection is by bar click plus a rectangular/polygon lasso
+  adapter (no zoom); selected bars are highlighted and non-selected bars fade. This differs
+  from `LineChartModule` (continuous numeric/time X axis) and `HistogramModule` (numeric bins
+  of a single variable); use those instead when the X axis is not a set of discrete categories.
 
 For module-specific details, read `modules/BarChartModule/instructions.md`.
 

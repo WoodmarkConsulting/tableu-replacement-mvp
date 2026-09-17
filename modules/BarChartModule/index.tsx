@@ -405,6 +405,19 @@ function BarChartModule(props: Props) {
 
   const isStacked = layout === "stacked" || layout === "stacked100";
   const chartLayout = orientation === "horizontal" ? "vertical" : "horizontal";
+  const hasOutsideValueLabels =
+    valueLabels.show && valueLabels.position !== "inside";
+  const effectiveMargin = {
+    ...margin,
+    top:
+      orientation === "vertical" && hasOutsideValueLabels
+        ? Math.max(margin.top, 24)
+        : margin.top,
+    right:
+      orientation === "horizontal" && hasOutsideValueLabels
+        ? Math.max(margin.right, 40)
+        : margin.right,
+  };
 
   const handleChartClick = (
     state: MouseHandlerDataParam,
@@ -519,7 +532,7 @@ function BarChartModule(props: Props) {
         accessibilityLayer
         data={rechartsData}
         layout={chartLayout}
-        margin={margin}
+        margin={effectiveMargin}
         barCategoryGap={bars.categoryGap}
         barGap={layout === "overlay" ? "-100%" : bars.barGap}
         onClick={

@@ -529,6 +529,8 @@ Behavior:
 
 - `inside` centers the label inside the bar.
 - `outside` and `auto` place the label at the top (vertical) or right (horizontal) of the bar.
+- Outside labels receive a minimum top or right chart margin so values at the axis maximum
+  remain fully visible.
 - `numberFormat` refines the numeric output on top of `format`
   (see the shared `numberFormat` reference below).
 
