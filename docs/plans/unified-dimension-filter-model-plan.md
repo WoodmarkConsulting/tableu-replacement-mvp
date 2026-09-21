@@ -1,6 +1,6 @@
 # Unified Dimension Filter Model — Migration Plan
 
-Status: Proposed
+Status: Implemented
 
 ## Goal
 
