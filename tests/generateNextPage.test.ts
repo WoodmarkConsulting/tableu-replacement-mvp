@@ -138,21 +138,24 @@ describe("generateNextPage boilerplate", () => {
           ],
         },
       ],
-      connections: [
+      actions: [
         {
           id: "vehicle-selection",
           fromChartID: sourceChartID,
-          toChartID: targetChartID,
+          target: { kind: "chart", chartID: targetChartID },
+          sourceResolution: "tooltipLookup",
+          trigger: "manual",
           mappings: [
             { sourceField: "vehicle_id", targetDimensionId: "selected_vin" },
           ],
         },
-      ],
-      tabJumps: [
         {
           id: "vehicle-details",
           fromChartID: sourceChartID,
-          targetTab: "Details",
+          target: { kind: "tab", tab: "Details" },
+          sourceResolution: "clientRow",
+          trigger: "manual",
+          navigate: { restoreOnReturn: true },
           mappings: [
             {
               sourceField: "vin",
@@ -165,10 +168,10 @@ describe("generateNextPage boilerplate", () => {
 
     const code = buildPageBoilerplate("batteryOverview", mockDashboardConfig);
 
-    expect(code.includes("connections: [")).toBe(true);
+    expect(code.includes("actions: [")).toBe(true);
     expect(code.includes('"vehicle-selection"')).toBe(true);
+    expect(code.includes('"vehicle-details"')).toBe(true);
     expect(code.includes('"vin"')).toBe(true);
-    expect(code.includes("tabJumps: [")).toBe(true);
     expect(code.includes('"targetDimensionId": "selected_vin"')).toBe(true);
   });
 });

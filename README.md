@@ -137,7 +137,7 @@ When composition leaves no possible value, the chart does not query; it renders
 the "Widersprüchliche Filter" state listing the affected dimension labels and
 offers to remove the conflicting contributions.
 
-## Selection, tooltips, and chart connections
+## Selection, tooltips, and chart actions
 
 `ChartWrapper` owns selection state for every selection-capable module. Click and lasso
 selection update the same `selectedRows` collection; modules render only their own visual
@@ -146,7 +146,7 @@ highlight. A data refetch or relevant chart configuration change invalidates the
 `LineChartModule` registers a runtime lasso adapter. While selection mode is active, users can
 draw repeatedly without re-enabling it. Starting a new valid gesture closes the previous
 tooltip, and a successful selection can open a new one. Rectangular lasso zoom is visual only
-and does not apply chart connections.
+and does not apply chart actions.
 
 When a chart sets `enhancedTooltip: true`, selected rows can open a scrollable detail card backed
 by `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`. The tooltip API batches all rows from one
@@ -157,24 +157,13 @@ must restore the correct element type with `from_json`. The tooltip is associate
 Right-clicking a rendered chart opens a shared context menu:
 
 - **Tooltip anzeigen** is disabled until rows are selected and `enhancedTooltip` is enabled.
-- **Verlinktes Diagramm filtern** is disabled until the source has an outgoing connection, rows
-  are selected, and the connection values have been resolved.
-- A target entry applies filters immediately to that one chart.
-- The tooltip footer button applies the staged values to all linked target charts.
-- **Auf Tab springen** / **Details in "[Tab]" ansehen** appears when `tabJumps` are configured for the chart. Selecting data points and clicking this action drills into the target tab, sets the target tab's filter dimensions, applies them immediately, switches tabs, and displays a return breadcrumb (`TabBreadcrumb`).
-- Connections may set `apply: "auto"` to apply resolved outgoing filters
-  immediately; the default remains manual application. The
-  source tooltip stays open and keeps its all-target button after auto-apply.
+- **Filtern** opens a unified submenu categorized into:
+  - **"Auf diesem Tab"**: chart targets on the current tab, plus "Alle filtern".
+  - **"Auf anderen Tabs"**: drilldowns and cross-tab targets. Actions with `navigate` switch tabs and push a return breadcrumb (`TabBreadcrumb`), while non-navigating actions update target filters in-place.
+- Actions can be triggered manually (`trigger: "manual"`) or automatically on selection (`trigger: "auto"`).
+- In-memory data resolution (`sourceResolution: "clientRow"`) extracts values from `selectedRows` without a warehouse query, whereas `"tooltipLookup"` queries warehouse detail via `.tooltip.sql`.
 
-Connections are declared in `DashboardConfig.connections` with `id`,
-`fromChartID`, `toChartID`, and dimension `mappings`. Each `sourceField` is an
-exact alias returned by the source tooltip SQL; the target chart's
-`filterBindings` maps `targetDimensionId` to its typed SQL input field.
-`TabsWrapper` derives target labels from `chartTitle` across all
-tabs, so users see chart names rather than internal IDs; untitled targets display
-`Unbenanntes Diagramm`.
-
-Tab jumps are declared in `DashboardConfig.tabJumps` with `fromChartID`, `targetTab`, `mappings` (`sourceField` and `targetDimensionId`), optional `label`, and optional `restoreOnReturn`.
+Actions are declared in `DashboardConfig.actions` with `id`, `fromChartID`, `target` (`{ kind: "chart", chartID }` or `{ kind: "tab", tab }`), `sourceResolution` (`"clientRow"` or `"tooltipLookup"`), `mappings`, optional `trigger` (`"manual"` | `"auto"`), optional `navigate`, and optional `maxDistinctValues`.
 
 ## Dashboard config model
 

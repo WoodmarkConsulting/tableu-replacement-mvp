@@ -8,7 +8,6 @@ import {
   isFilterContributionShape,
   matchesDimensionType,
 } from "@/lib/filters/contributions";
-import { resolveTabJumpContributions } from "@/lib/filters/tabJump";
 import { validateFilterDimensions } from "@/lib/filterDimensions";
 
 type CreateFilterStoreArgs = {
@@ -201,11 +200,11 @@ export type FilterStoreState = {
   // another chart's staged action.
   clearPendingAction: (sourceChartID?: string) => void;
   clearActionSource: (sourceChartID: string, actionIds?: string[]) => void;
-  executeTabJump: (
-    jump: TabJumpConfig,
-    selectedRows: Record<string, unknown>[],
+  executeAction: (
+    action: ChartAction,
+    contributions: FilterContribution[],
     fromChartTitle?: string,
-  ) => boolean;
+  ) => void;
   navigateBack: () => void;
   clearBreadcrumbs: () => void;
   setActiveTab: (tab: string) => void;
@@ -414,46 +413,74 @@ const useFiltersStore = create<FilterStoreState>((set, get) => ({
           : state.pendingAction,
     })),
 
-  executeTabJump: (jump, selectedRows, fromChartTitle) => {
+  executeAction: (action, contributions, fromChartTitle) => {
     const state = get();
-    const nextContributions = resolveTabJumpContributions(
-      state.dimensions,
-      jump,
-      selectedRows,
-    );
+    const indexed = indexContributions(contributions);
+    const actionIds = new Set([action.id]);
 
-    if (!nextContributions) {
-      return false;
+    if (action.navigate && action.target.kind === "tab") {
+      const targetTab = action.target.tab;
+      const previousContributions: Record<
+        string,
+        FilterContribution | undefined
+      > = {};
+      for (const contribution of contributions) {
+        previousContributions[contribution.key] =
+          state.appliedContributions[contribution.key];
+      }
+
+      const breadcrumb: TabJumpBreadcrumb = {
+        fromTab: state.activeTab,
+        fromChartID: action.fromChartID,
+        fromChartTitle,
+        targetTab,
+        appliedKeys: Object.keys(indexed),
+        previousContributions,
+        restoreOnReturn: action.navigate.restoreOnReturn ?? true,
+      };
+
+      set((current) => ({
+        draftContributions: {
+          ...removeSourceContributions(
+            current.draftContributions,
+            action.fromChartID,
+            actionIds,
+          ),
+          ...indexed,
+        },
+        appliedContributions: {
+          ...removeSourceContributions(
+            current.appliedContributions,
+            action.fromChartID,
+            actionIds,
+          ),
+          ...indexed,
+        },
+        activeTab: targetTab,
+        hasApplied: true,
+        breadcrumbs: [...current.breadcrumbs, breadcrumb],
+      }));
+    } else {
+      set((current) => ({
+        draftContributions: {
+          ...removeSourceContributions(
+            current.draftContributions,
+            action.fromChartID,
+            actionIds,
+          ),
+          ...indexed,
+        },
+        appliedContributions: {
+          ...removeSourceContributions(
+            current.appliedContributions,
+            action.fromChartID,
+            actionIds,
+          ),
+          ...indexed,
+        },
+        hasApplied: true,
+      }));
     }
-
-    const previousContributions: Record<
-      string,
-      FilterContribution | undefined
-    > = {};
-    for (const contribution of nextContributions) {
-      previousContributions[contribution.key] =
-        state.appliedContributions[contribution.key];
-    }
-
-    const indexed = indexContributions(nextContributions);
-    const breadcrumb: TabJumpBreadcrumb = {
-      fromTab: state.activeTab,
-      fromChartID: jump.fromChartID,
-      fromChartTitle,
-      targetTab: jump.targetTab,
-      appliedKeys: Object.keys(indexed),
-      previousContributions,
-      restoreOnReturn: jump.restoreOnReturn ?? true,
-    };
-
-    set((current) => ({
-      draftContributions: { ...current.draftContributions, ...indexed },
-      appliedContributions: { ...current.appliedContributions, ...indexed },
-      activeTab: jump.targetTab,
-      hasApplied: true,
-      breadcrumbs: [...current.breadcrumbs, breadcrumb],
-    }));
-    return true;
   },
 
   navigateBack: () =>

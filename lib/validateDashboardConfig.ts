@@ -1,7 +1,7 @@
 import { assertKeySafe, validateFilterDimensions } from "./filterDimensions";
 
 const enumerableTypes: FilterType[] = ["select", "multiselect", "option"];
-// A drilldown must resolve to a value the target control can hold and compare.
+// A drilldown or action must resolve to a value the target control can hold and compare.
 const undrillableTypes: FilterType[] = ["dateString", "dateRange"];
 
 export function validateDashboardConfig(config: DashboardConfig): void {
@@ -75,6 +75,21 @@ export function validateDashboardConfig(config: DashboardConfig): void {
     }
   }
 
+  const raw = config as Record<string, unknown>;
+  if ("connections" in raw) {
+    throw new Error(
+      `Dashboard "${config.reportName}": legacy "connections" is no longer supported. Use "actions" instead.`,
+    );
+  }
+
+  if ("tabJumps" in raw) {
+    throw new Error(
+      `Dashboard "${config.reportName}": legacy "tabJumps" is no longer supported. Use "actions" instead.`,
+    );
+  }
+
+  const actions = config.actions ?? [];
+
   const actionIds = new Set<string>();
   const producerCounts = new Map<string, number>();
   for (const dimension of config.filters) {
@@ -83,93 +98,105 @@ export function validateDashboardConfig(config: DashboardConfig): void {
     }
   }
 
-  const registerAction = (id: string) => {
-    if (!id || actionIds.has(id)) {
-      throw new Error(`Filter action id "${id}" must be non-empty and unique.`);
+  for (const action of actions) {
+    if (!action.id || actionIds.has(action.id)) {
+      throw new Error(`Filter action id "${action.id}" must be non-empty and unique.`);
     }
-    assertKeySafe("Filter action id", id);
-    actionIds.add(id);
-  };
+    assertKeySafe("Filter action id", action.id);
+    actionIds.add(action.id);
 
-  for (const jump of config.tabJumps ?? []) {
-    registerAction(jump.id);
-    if (!charts.has(jump.fromChartID)) {
+    if (
+      action.sourceResolution !== "clientRow" &&
+      action.sourceResolution !== "tooltipLookup"
+    ) {
       throw new Error(
-        `Tab jump "${jump.id}" references unknown source chart "${jump.fromChartID}".`,
+        `Action "${action.id}" must specify sourceResolution ("clientRow" | "tooltipLookup").`,
       );
     }
-    if (!tabs.has(jump.targetTab)) {
+
+    if (!charts.has(action.fromChartID)) {
       throw new Error(
-        `Tab jump "${jump.id}" references unknown target tab "${jump.targetTab}".`,
+        `Action "${action.id}" references unknown source chart "${action.fromChartID}".`,
       );
     }
-    assertKeySafe(`Target tab of tab jump "${jump.id}"`, jump.targetTab);
 
-    for (const mapping of jump.mappings) {
+    if (action.navigate) {
+      if (action.trigger === "auto") {
+        throw new Error(`Action "${action.id}" with navigate must use trigger "manual".`);
+      }
+      if (action.target.kind !== "tab") {
+        throw new Error(`Action "${action.id}" has navigate but target kind is not "tab".`);
+      }
+    }
+
+    if (action.maxDistinctValues !== undefined) {
+      if (typeof action.maxDistinctValues !== "number" || action.maxDistinctValues <= 0) {
+        throw new Error(`Action "${action.id}" maxDistinctValues must be a positive number.`);
+      }
+    }
+
+    if (action.target.kind === "chart") {
+      const targetChart = charts.get(action.target.chartID);
+      if (!targetChart) {
+        throw new Error(
+          `Action "${action.id}" references unknown target chart "${action.target.chartID}".`,
+        );
+      }
+    } else if (action.target.kind === "tab") {
+      if (!tabs.has(action.target.tab)) {
+        throw new Error(
+          `Action "${action.id}" references unknown target tab "${action.target.tab}".`,
+        );
+      }
+      assertKeySafe(`Target tab of action "${action.id}"`, action.target.tab);
+    } else {
+      throw new Error(
+        `Action "${action.id}" has invalid target kind "${(action.target as Record<string, unknown>)?.kind}".`,
+      );
+    }
+
+    if (!Array.isArray(action.mappings) || action.mappings.length === 0) {
+      throw new Error(`Action "${action.id}" must specify at least one mapping.`);
+    }
+
+    for (const mapping of action.mappings) {
       const dimension = dimensions.get(mapping.targetDimensionId);
       if (!dimension) {
         throw new Error(
-          `Tab jump "${jump.id}" maps unknown dimension "${mapping.targetDimensionId}".`,
+          `Action "${action.id}" maps unknown dimension "${mapping.targetDimensionId}".`,
         );
       }
+
       if (undrillableTypes.includes(dimension.type)) {
         throw new Error(
-          `Tab jump "${jump.id}" cannot target ${dimension.type} dimension "${dimension.id}".`,
+          `Action "${action.id}" cannot target ${dimension.type} dimension "${dimension.id}".`,
         );
       }
-      const reachesChart = (chartsByTab.get(jump.targetTab) ?? []).some(
-        (chart) => chart.filterBindings?.[dimension.id] !== undefined,
-      );
-      if (!reachesChart) {
-        throw new Error(
-          `Tab jump "${jump.id}" dimension "${dimension.id}" is not bound by a chart on tab "${jump.targetTab}".`,
-        );
-      }
-      producerCounts.set(dimension.id, (producerCounts.get(dimension.id) ?? 0) + 1);
-    }
-  }
 
-  const graph = new Map<string, string[]>();
-  for (const connection of config.connections ?? []) {
-    registerAction(connection.id);
-    const source = charts.get(connection.fromChartID);
-    const target = charts.get(connection.toChartID);
-    if (!source || !target) {
-      throw new Error(
-        `Chart connection "${connection.id}" references an unknown source or target chart.`,
-      );
-    }
+      if ((action.trigger ?? "manual") === "auto" && dimension.type !== "multiselect") {
+        throw new Error(
+          `Action "${action.id}" with trigger "auto" must target a multiselect dimension, received "${dimension.id}".`,
+        );
+      }
 
-    const legacy = connection as unknown as Record<string, unknown>;
-    if ("expectedColumns" in legacy) {
-      throw new Error(
-        `Chart connection "${connection.id}" uses legacy expectedColumns; use mappings instead.`,
-      );
-    }
-    graph.set(connection.fromChartID, [
-      ...(graph.get(connection.fromChartID) ?? []),
-      connection.toChartID,
-    ]);
+      if (action.target.kind === "chart") {
+        const targetChart = charts.get(action.target.chartID)!;
+        if (targetChart.filterBindings?.[dimension.id] === undefined) {
+          throw new Error(
+            `Target chart "${targetChart.chartID}" does not bind dimension "${dimension.id}".`,
+          );
+        }
+      } else if (action.target.kind === "tab") {
+        const reachesChart = (chartsByTab.get(action.target.tab) ?? []).some(
+          (chart) => chart.filterBindings?.[dimension.id] !== undefined,
+        );
+        if (!reachesChart) {
+          throw new Error(
+            `Action "${action.id}" dimension "${dimension.id}" is not bound by a chart on tab "${action.target.tab}".`,
+          );
+        }
+      }
 
-    for (const mapping of connection.mappings) {
-      const dimension = dimensions.get(mapping.targetDimensionId);
-      if (!dimension) {
-        throw new Error(
-          `Chart connection "${connection.id}" maps unknown dimension "${mapping.targetDimensionId}".`,
-        );
-      }
-      // A selection always resolves to a value set, so the target must be able
-      // to hold more than one value.
-      if (dimension.type !== "multiselect") {
-        throw new Error(
-          `Chart connection "${connection.id}" must target a multiselect dimension, received "${dimension.id}".`,
-        );
-      }
-      if (target.filterBindings?.[dimension.id] === undefined) {
-        throw new Error(
-          `Target chart "${target.chartID}" does not bind dimension "${dimension.id}".`,
-        );
-      }
       producerCounts.set(dimension.id, (producerCounts.get(dimension.id) ?? 0) + 1);
     }
   }
@@ -185,11 +212,36 @@ export function validateDashboardConfig(config: DashboardConfig): void {
     }
   }
 
+  const graph = new Map<string, string[]>();
+  for (const action of actions) {
+    if (action.navigate) {
+      continue;
+    }
+    if (action.target.kind === "chart") {
+      graph.set(action.fromChartID, [
+        ...(graph.get(action.fromChartID) ?? []),
+        action.target.chartID,
+      ]);
+    } else if (action.target.kind === "tab") {
+      const targetCharts = (chartsByTab.get(action.target.tab) ?? []).filter((chart) =>
+        action.mappings.some(
+          (mapping) => chart.filterBindings?.[mapping.targetDimensionId] !== undefined,
+        ),
+      );
+      for (const targetChart of targetCharts) {
+        graph.set(action.fromChartID, [
+          ...(graph.get(action.fromChartID) ?? []),
+          targetChart.chartID,
+        ]);
+      }
+    }
+  }
+
   const visiting = new Set<string>();
   const visited = new Set<string>();
   const visit = (chartID: string) => {
     if (visiting.has(chartID)) {
-      throw new Error("Chart connection graph must be acyclic.");
+      throw new Error("Chart action graph must be acyclic.");
     }
     if (visited.has(chartID)) {
       return;

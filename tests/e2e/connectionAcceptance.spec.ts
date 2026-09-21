@@ -51,7 +51,7 @@ const applyConnectionTo = async (page: Page, targetTitle: string) => {
     .click({ button: "right" });
 
   const submenu = page.getByRole("menuitem", {
-    name: "Verlinktes Diagramm filtern",
+    name: "Filtern",
   });
   await expect(submenu).toBeEnabled();
   await submenu.click();
@@ -200,6 +200,159 @@ test.describe("Connection Acceptance dashboard", () => {
       .poll(() => warehouse.callsFor(CHART.tableOverview).length)
       .toBeGreaterThan(callsBefore);
     expect(warehouse.lastFilters(CHART.tableOverview)?.ecu_nm).toBe("ECU-Beta");
+  });
+
+  test("unified Filtern submenu shows current-tab and other-tab sections and excludes auto actions", async ({
+    page,
+  }) => {
+    await apply(page);
+    await expect(
+      chart(page, CHART.bar).locator(".recharts-bar-rectangle").first(),
+    ).toBeVisible();
+
+    await selectBar(page, 0);
+    await expect.poll(() => warehouse.tooltipCalls.length).toBeGreaterThan(0);
+
+    const tooltipClose = page.getByRole("button", { name: "Tooltip schließen" });
+    if (await tooltipClose.isVisible()) {
+      await tooltipClose.click();
+    }
+
+    await chart(page, CHART.bar)
+      .locator(".recharts-bar-rectangle")
+      .first()
+      .click({ button: "right" });
+
+    const submenu = page.getByRole("menuitem", { name: "Filtern" });
+    await expect(submenu).toBeEnabled();
+    await submenu.click();
+
+    // Section 1: Auf diesem Tab
+    await expect(page.getByText("Auf diesem Tab")).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "Details Übersicht" }),
+    ).toBeVisible();
+
+    // Section 2: Auf anderen Tabs
+    await expect(page.getByText("Auf anderen Tabs")).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: 'Details in "Detail" ansehen' }),
+    ).toBeVisible();
+
+    // Auto action must NOT appear in manual context menu
+    await expect(
+      page.getByRole("menuitem", { name: "Details Fahrzeugreihe" }),
+    ).toBeHidden();
+  });
+
+  test("a navigating drilldown switches tabs, pushes breadcrumb, and restores on return", async ({
+    page,
+  }) => {
+    await apply(page);
+    await expect(
+      chart(page, CHART.bar).locator(".recharts-bar-rectangle").first(),
+    ).toBeVisible();
+
+    await selectBar(page, 0);
+    await expect.poll(() => warehouse.tooltipCalls.length).toBeGreaterThan(0);
+
+    const tooltipClose = page.getByRole("button", { name: "Tooltip schließen" });
+    if (await tooltipClose.isVisible()) {
+      await tooltipClose.click();
+    }
+
+    await chart(page, CHART.bar)
+      .locator(".recharts-bar-rectangle")
+      .first()
+      .click({ button: "right" });
+
+    const submenu = page.getByRole("menuitem", { name: "Filtern" });
+    await expect(submenu).toBeEnabled();
+    await submenu.click();
+
+    const drilldownItem = page.getByRole("menuitem", {
+      name: 'Details in "Detail" ansehen',
+    });
+    await expect(drilldownItem).toBeVisible();
+    await drilldownItem.click();
+
+    // Switched to tab Detail
+    await expect(page.getByRole("tab", { name: "Detail" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(activeFilters(page)).toContainText("via Drilldown");
+    await expect
+      .poll(() => warehouse.lastFilters(CHART.tableDetail)?.ecu_nm)
+      .toBe("ECU-Alpha");
+
+    // Breadcrumb is displayed
+    const breadcrumb = page.getByRole("button", {
+      name: /Zurück zu Übersicht/,
+    });
+    await expect(breadcrumb).toBeVisible();
+
+    // Click breadcrumb to return
+    await breadcrumb.click();
+
+    await expect(page.getByRole("tab", { name: "Übersicht" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(breadcrumb).toBeHidden();
+  });
+
+  test("a chart whose actions are all clientRow and whose enhancedTooltip is false issues no tooltip query on selection", async ({
+    page,
+  }) => {
+    await apply(page);
+    const tableRow = chart(page, CHART.tableOverview).locator("tbody tr").first();
+    await expect(tableRow).toBeVisible();
+
+    const tooltipCallsBefore = warehouse.tooltipCalls.length;
+
+    // Select row in tableOverview (which has enhancedTooltip: false and clientRow action only)
+    await tableRow.click();
+    await page.waitForTimeout(400);
+
+    expect(warehouse.tooltipCalls.length).toBe(tooltipCallsBefore);
+  });
+
+  test("a cross-tab non-navigating action applies without switching tabs", async ({
+    page,
+  }) => {
+    await apply(page);
+    const tableRow = chart(page, CHART.tableOverview).locator("tbody tr").first();
+    await expect(tableRow).toBeVisible();
+
+    // Select first row (ECU-Alpha)
+    await tableRow.click();
+
+    // Right-click to open context menu on tableOverview
+    await tableRow.click({ button: "right" });
+
+    const submenu = page.getByRole("menuitem", { name: "Filtern" });
+    await expect(submenu).toBeEnabled();
+    await submenu.click();
+
+    const crossTabAction = page.getByRole("menuitem", {
+      name: 'Details Fahrzeugreihe auf Tab "Detail" filtern',
+    });
+    await expect(crossTabAction).toBeVisible();
+    await crossTabAction.click();
+
+    // Crucial: did NOT switch tabs
+    await expect(page.getByRole("tab", { name: "Übersicht" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    // When switching to Detail tab, the filter was applied and shows the chip on that tab
+    await page.getByRole("tab", { name: "Detail" }).click();
+    await expect(activeFilters(page)).toContainText("via Auswahl");
+    await expect
+      .poll(() => warehouse.lastFilters(CHART.tableDetail)?.ecu_nm)
+      .toBe("ECU-Alpha");
   });
 
   test("a control and a selection that share no values render the conflict state", async ({

@@ -18,7 +18,9 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   ContextMenu,
   ContextMenuContent,
+  ContextMenuGroup,
   ContextMenuItem,
+  ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,
@@ -26,7 +28,6 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
-  ArrowRightCircle,
   ExternalLink,
   Eye,
   ListFilter,
@@ -43,10 +44,9 @@ import {
 
 import {
   contributionAppliesTo,
-  contributionKey,
 } from "@/lib/filters/contributions";
 import { resolveChartFilters } from "@/lib/filters/resolveChartFilters";
-import { resolveTabJumpContributions } from "@/lib/filters/tabJump";
+import { canExecuteAction } from "@/lib/filters/actions";
 import { cn } from "@/lib/utils";
 
 import {
@@ -63,6 +63,8 @@ import type { ChartQueryValue, TooltipDataPoint } from "@/app/api/utils/types";
 import TooltipCard from "../TooltipCard";
 import ChartState from "./ChartState";
 import {
+  handleChartContextSync,
+  resolveChartActions,
   shouldHideTooltipForInteractionLock,
 } from "./connectionApplication";
 import LassoInteractionOverlay from "./LassoInteractionOverlay";
@@ -77,30 +79,15 @@ import {
 type ModuleSchema<M extends ModuleRegistryKeys> =
   (typeof moduleRegistry)[M]["dataSchema"];
 
-const EMPTY_CONNECTIONS: ChartConnection[] = [];
-const EMPTY_TAB_JUMPS: TabJumpConfig[] = [];
-
-function isConnectionFilterValue(value: unknown): value is string | number | boolean {
-  return (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  );
-}
-
-function getConnectionValues(value: unknown): (string | number | boolean)[] {
-  const values = Array.isArray(value) ? value : [value];
-
-  return values.filter(isConnectionFilterValue);
-}
+const EMPTY_ACTIONS: ChartAction[] = [];
 
 function ChartWrapper<M extends ModuleRegistryKeys>(
   props: TabsComponentConfig & {
     moduleName: M;
     height: number;
-    connections?: ChartConnection[];
-    tabJumps?: TabJumpConfig[];
+    actions?: ChartAction[];
     chartLabels: Partial<Record<TableSchemaKey, string>>;
+    chartTabs?: Partial<Record<TableSchemaKey, string>>;
   },
 ) {
   type ModuleChartData<M extends ModuleRegistryKeys> = z.infer<ModuleSchema<M>>;
@@ -112,9 +99,9 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     selfFetching = false,
     filterBindings,
     lassoEnabled = true,
-    connections = EMPTY_CONNECTIONS,
-    tabJumps = EMPTY_TAB_JUMPS,
+    actions = EMPTY_ACTIONS,
     chartLabels,
+    chartTabs = {},
     ...baseProps
   } = props;
   const { chartID, chartTitle, chartDescription } = baseProps;
@@ -189,12 +176,9 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   );
   const hasApplied = useFilterStore((state) => state.hasApplied);
   const dimensions = useFilterStore((state) => state.dimensions);
-  const executeTabJump = useFilterStore((state) => state.executeTabJump);
+  const executeAction = useFilterStore((state) => state.executeAction);
   const stagePendingAction = useFilterStore(
     (state) => state.stagePendingAction,
-  );
-  const applyPendingAction = useFilterStore(
-    (state) => state.applyPendingAction,
   );
   const applyActionContributions = useFilterStore(
     (state) => state.applyActionContributions,
@@ -210,13 +194,14 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   );
   const recordTiming = useQueryTimingStore((state) => state.recordTiming);
 
-  const matchingJumps = tabJumps.filter((jump) => jump.fromChartID === chartID);
-
-  const outgoingConnections = connections.filter(
-    (connection) => connection.fromChartID === chartID,
+  const outgoingActions = useMemo(
+    () => actions.filter((action) => action.fromChartID === props.chartID),
+    [actions, props.chartID],
   );
-  const outgoingChartIDs = Array.from(
-    new Set(outgoingConnections.map((connection) => connection.toChartID)),
+
+  const manualOutgoingActions = useMemo(
+    () => outgoingActions.filter((action) => (action.trigger ?? "manual") === "manual"),
+    [outgoingActions],
   );
 
   // Read from `props` directly: the destructured copies come from a rest object
@@ -368,24 +353,18 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   // clear it, or switching back to this chart's tab would silently drop the
   // connection filters it applied to charts on another tab.
   useEffect(() => {
-    if (appliedContextRef.current === zoomContext) {
-      return;
-    }
-
-    const isFirstRun = appliedContextRef.current === null;
-    appliedContextRef.current = zoomContext;
-
-    if (isFirstRun) {
-      return;
-    }
-
-    connectionRequestRef.current += 1;
-    selectionRef.current = null;
-
-    if (connections.some((connection) => connection.fromChartID === chartID)) {
-      clearActionSource(chartID);
-    }
-  }, [chartID, connections, clearActionSource, zoomContext]);
+    handleChartContextSync({
+      chartID,
+      zoomContext,
+      appliedContextRef,
+      connectionRequestRef,
+      outgoingActions,
+      clearActionSource,
+      onInvalidateSelection: () => {
+        selectionRef.current = null;
+      },
+    });
+  }, [chartID, outgoingActions, clearActionSource, zoomContext]);
 
   // Applied contributions outlive the chart so cross-tab targets keep them;
   // only the in-flight request and this chart's staged action are dropped.
@@ -397,105 +376,21 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     [chartID, clearPendingAction],
   );
 
-  const resolveConnectionFilters = async (rows: DataType[]) => {
-    if (outgoingConnections.length === 0) {
-      setResolvedConnectionContributions(null);
-      return;
-    }
-
-    const requestID = ++connectionRequestRef.current;
-
-    if (rows.length === 0) {
-      setResolvedConnectionContributions(null);
-      clearPendingAction(chartID);
-      const autoActionIds = outgoingConnections
-        .filter((connection) => connection.apply === "auto")
-        .map((connection) => connection.id);
-      if (autoActionIds.length > 0) {
-        clearActionSource(chartID, autoActionIds);
-      }
-      return;
-    }
-
-    setResolvedConnectionContributions(null);
-    clearPendingAction(chartID);
-
-    try {
-      const tooltipResult = await fetchTooltipData(
-        chartID,
-        rows as TooltipDataPoint[],
-      );
-
-      if (requestID !== connectionRequestRef.current) {
-        return;
-      }
-
-      const nextContributions: FilterContribution[] = [];
-
-      for (const connection of outgoingConnections) {
-        for (const mapping of connection.mappings) {
-          const values = tooltipResult.dataPoint.flatMap((dataPoint) =>
-            getConnectionValues(dataPoint[mapping.sourceField]),
-          );
-          const source: FilterSource = {
-            kind: "chartSelection",
-            actionId: connection.id,
-            sourceChartID: chartID,
-          };
-          const target: FilterTarget = {
-            kind: "chart",
-            chartID: connection.toChartID,
-          };
-          const key = contributionKey(
-            source,
-            target,
-            mapping.targetDimensionId,
-          );
-
-          nextContributions.push({
-            key,
-            dimensionId: mapping.targetDimensionId,
-            source,
-            target,
-            value: Array.from(new Set(values.map(String))).sort(),
-          });
-        }
-      }
-
-      setResolvedConnectionContributions({
-        context: zoomContext,
-        contributions: nextContributions,
-      });
-      stagePendingAction(chartID, nextContributions);
-
-      const autoConnections = new Set(
-        outgoingConnections
-          .filter((connection) => connection.apply === "auto")
-          .map((connection) => connection.id),
-      );
-      if (autoConnections.size > 0) {
-        applyActionContributions(
-          chartID,
-          nextContributions.filter(
-            (contribution) =>
-              contribution.source.kind === "chartSelection" &&
-              autoConnections.has(contribution.source.actionId),
-          ),
-          Array.from(autoConnections),
-        );
-      }
-    } catch (connectionError) {
-      if (requestID !== connectionRequestRef.current) {
-        return;
-      }
-
-      setResolvedConnectionContributions(null);
-      clearPendingAction(chartID);
-      console.error(
-        `Failed to resolve chart connections for "${chartID}":`,
-        connectionError,
-      );
-    }
+  const resolveActions = async (rows: DataType[]) => {
+    await resolveChartActions({
+      chartID,
+      zoomContext,
+      dimensions,
+      outgoingActions,
+      rows: rows as Record<string, unknown>[],
+      fetchTooltip: fetchTooltipData,
+      connectionRequestRef,
+      setResolvedConnectionContributions,
+      stagePendingAction,
+      clearPendingAction,
+      applyActionContributions,
+      clearActionSource,
+    });
   };
 
   const handleSelectionChange = (
@@ -525,7 +420,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
     selectionRef.current = nextSelection;
     setSelection(nextSelection);
-    void resolveConnectionFilters(nextRows);
+    void resolveActions(nextRows);
   };
 
   const handleLassoSelection = (
@@ -575,39 +470,101 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     }
   };
 
-  const applyConnectionToChart = (targetChartID: TableSchemaKey) => {
-    const targetContributions = selectedConnectionContributions?.filter(
-      (contribution) =>
-        contribution.target.kind === "chart" &&
-        contribution.target.chartID === targetChartID,
-    );
-
-    if (!targetContributions?.length) {
-      return;
-    }
-
-    stagePendingAction(chartID, targetContributions);
-    applyPendingAction();
-  };
-
-  const canExecuteJump = (jump: TabJumpConfig, rows: DataType[]) =>
-    resolveTabJumpContributions(
-      dimensions,
-      jump,
-      rows as Record<string, unknown>[],
-    ) !== null;
-
-  const handleTabJump = (jump: TabJumpConfig) => {
-    executeTabJump(jump, selectedRows as Record<string, unknown>[], chartTitle);
-  };
-
-  const applyConnectionsToAllCharts = () => {
+  const getExecutableActionContributions = (action: ChartAction): FilterContribution[] | null => {
     if (!selectedConnectionContributions) {
+      return null;
+    }
+    const actionContribs = selectedConnectionContributions.filter(
+      (c) => "actionId" in c.source && c.source.actionId === action.id,
+    );
+    return actionContribs.length > 0 ? actionContribs : null;
+  };
+
+  const getActionDisabledReason = (action: ChartAction): string | null => {
+    if (selectedRows.length === 0) {
+      return "Keine Auswahl";
+    }
+    if (action.sourceResolution === "clientRow") {
+      const gate = canExecuteAction(dimensions, action, selectedRows as Record<string, unknown>[]);
+      if (!gate.ok) {
+        switch (gate.reason) {
+          case "noSelection":
+            return "Keine Auswahl";
+          case "multipleValuesForSingleSelect":
+            return "Mehrere Werte ausgewählt";
+          case "valueLimitExceeded":
+            return "Wertgrenze überschritten";
+          case "nonPrimitiveField":
+            return "Ungültiges Datenfeld";
+          case "undrillableDimension":
+            return "Nicht filterbare Dimension";
+          case "unknownDimension":
+            return "Unbekannte Dimension";
+        }
+      }
+      return null;
+    }
+    // tooltipLookup
+    if (!selectedConnectionContributions) {
+      return "Werte werden geladen...";
+    }
+    const contribs = getExecutableActionContributions(action);
+    if (!contribs || contribs.length === 0) {
+      return "Keine übereinstimmenden Daten";
+    }
+    return null;
+  };
+
+  const handleExecuteAction = (action: ChartAction) => {
+    const contribs = getExecutableActionContributions(action);
+    if (!contribs) {
       return;
     }
+    executeAction(action, contribs, chartTitle);
+  };
 
-    stagePendingAction(chartID, selectedConnectionContributions);
-    applyPendingAction();
+  const currentTabActions = useMemo(() => {
+    return manualOutgoingActions.filter((action) => {
+      if (action.target.kind === "chart") {
+        const targetTab = chartTabs[action.target.chartID];
+        return targetTab === activeTab;
+      }
+      return action.target.tab === activeTab;
+    });
+  }, [manualOutgoingActions, chartTabs, activeTab]);
+
+  const otherTabActions = useMemo(() => {
+    return manualOutgoingActions.filter((action) => {
+      if (action.target.kind === "chart") {
+        const targetTab = chartTabs[action.target.chartID];
+        return targetTab !== undefined && targetTab !== activeTab;
+      }
+      return action.target.tab !== activeTab;
+    });
+  }, [manualOutgoingActions, chartTabs, activeTab]);
+
+  const executableCurrentTabActions = useMemo(() => {
+    if (!selectedConnectionContributions) {
+      return [];
+    }
+    const contributions = selectedConnectionContributions;
+    return currentTabActions.filter((action) => {
+      const actionContribs = contributions.filter(
+        (c) => "actionId" in c.source && c.source.actionId === action.id,
+      );
+      return actionContribs.length > 0;
+    });
+  }, [currentTabActions, selectedConnectionContributions]);
+
+  const applyAllCurrentTabActions = () => {
+    if (executableCurrentTabActions.length === 0) {
+      return;
+    }
+    const allContribs = executableCurrentTabActions.flatMap(
+      (action) => getExecutableActionContributions(action) ?? [],
+    );
+    const actionIds = executableCurrentTabActions.map((action) => action.id);
+    applyActionContributions(chartID, allContribs, actionIds);
   };
 
   if (error) {
@@ -815,65 +772,104 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
               <ContextMenuSub>
                 <ContextMenuSubTrigger
                   disabled={
-                    outgoingChartIDs.length === 0 ||
+                    manualOutgoingActions.length === 0 ||
                     selectedRows.length === 0 ||
                     !selectedConnectionContributions
                   }>
                   <ListFilter />
-                  Verlinktes Diagramm filtern
+                  Filtern
                 </ContextMenuSubTrigger>
-                <ContextMenuSubContent className="w-64">
-                  <ContextMenuItem onClick={applyConnectionsToAllCharts}>
-                    <ListFilter />
-                    Alle filtern
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
+                <ContextMenuSubContent className="w-72">
+                  {currentTabActions.length > 0 ? (
+                    <ContextMenuGroup>
+                      <ContextMenuLabel>Auf diesem Tab</ContextMenuLabel>
+                      {executableCurrentTabActions.length > 1 ? (
+                        <ContextMenuItem onClick={applyAllCurrentTabActions}>
+                          <ListFilter />
+                          Alle filtern
+                        </ContextMenuItem>
+                      ) : null}
 
-                  {outgoingChartIDs.map((targetChartID) => (
-                    <ContextMenuItem
-                      key={targetChartID}
-                      disabled={
-                        !selectedConnectionContributions?.some(
-                          (contribution) =>
-                            contribution.target.kind === "chart" &&
-                            contribution.target.chartID === targetChartID,
-                        )
-                      }
-                      onClick={() => applyConnectionToChart(targetChartID)}>
-                      {chartLabels[targetChartID] ?? targetChartID}
-                    </ContextMenuItem>
-                  ))}
+                      {currentTabActions.map((action) => {
+                        const targetChartID =
+                          action.target.kind === "chart"
+                            ? action.target.chartID
+                            : undefined;
+                        const label =
+                          action.label ??
+                          (targetChartID
+                            ? (chartLabels[targetChartID] ?? targetChartID)
+                            : action.target.kind === "tab"
+                              ? `Tab "${action.target.tab}"`
+                              : "Diagramm filtern");
+                        const disabledReason = getActionDisabledReason(action);
+                        const isDisabled = disabledReason !== null;
+
+                        return (
+                          <ContextMenuItem
+                            key={action.id}
+                            disabled={isDisabled}
+                            onClick={() => handleExecuteAction(action)}>
+                            <ListFilter />
+                            <span className="flex-1 truncate">{label}</span>
+                            {isDisabled && selectedRows.length > 0 ? (
+                              <span className="text-[10px] text-muted-foreground ml-auto pl-2">
+                                ({disabledReason})
+                              </span>
+                            ) : null}
+                          </ContextMenuItem>
+                        );
+                      })}
+                    </ContextMenuGroup>
+                  ) : null}
+
+                  {currentTabActions.length > 0 && otherTabActions.length > 0 ? (
+                    <ContextMenuSeparator />
+                  ) : null}
+
+                  {otherTabActions.length > 0 ? (
+                    <ContextMenuGroup>
+                      <ContextMenuLabel>Auf anderen Tabs</ContextMenuLabel>
+                      {otherTabActions.map((action) => {
+                        const targetTab =
+                          action.target.kind === "tab"
+                            ? action.target.tab
+                            : chartTabs[action.target.chartID] ?? "Anderer Tab";
+
+                        const label =
+                          action.label ??
+                          (action.navigate
+                            ? `Details in "${targetTab}" ansehen`
+                            : action.target.kind === "chart"
+                              ? `"${chartLabels[action.target.chartID] ?? action.target.chartID}" auf Tab "${targetTab}" filtern`
+                              : `Auf Tab "${targetTab}" filtern`);
+
+                        const disabledReason = getActionDisabledReason(action);
+                        const isDisabled = disabledReason !== null;
+
+                        return (
+                          <ContextMenuItem
+                            key={action.id}
+                            disabled={isDisabled}
+                            onClick={() => handleExecuteAction(action)}>
+                            {action.navigate ? (
+                              <ExternalLink />
+                            ) : (
+                              <ListFilter />
+                            )}
+                            <span className="flex-1 truncate">{label}</span>
+                            {isDisabled && selectedRows.length > 0 ? (
+                              <span className="text-[10px] text-muted-foreground ml-auto pl-2">
+                                ({disabledReason})
+                              </span>
+                            ) : null}
+                          </ContextMenuItem>
+                        );
+                      })}
+                    </ContextMenuGroup>
+                  ) : null}
                 </ContextMenuSubContent>
               </ContextMenuSub>
-
-              {matchingJumps.length === 1 ? (
-                <ContextMenuItem
-                  disabled={!canExecuteJump(matchingJumps[0], selectedRows)}
-                  onClick={() => handleTabJump(matchingJumps[0])}>
-                  <ExternalLink className="size-4 mr-2" />
-                  {matchingJumps[0].label ??
-                    `Selektion in "${matchingJumps[0].targetTab}" ansehen`}
-                </ContextMenuItem>
-              ) : null}
-
-              {matchingJumps.length > 1 ? (
-                <ContextMenuSub>
-                  <ContextMenuSubTrigger disabled={selectedRows.length === 0}>
-                    <ArrowRightCircle className="size-4 mr-2" />
-                    Auf Tab springen
-                  </ContextMenuSubTrigger>
-                  <ContextMenuSubContent className="w-64">
-                    {matchingJumps.map((jump, index) => (
-                      <ContextMenuItem
-                        key={`${jump.targetTab}:${index}`}
-                        disabled={!canExecuteJump(jump, selectedRows)}
-                        onClick={() => handleTabJump(jump)}>
-                        {jump.label ?? jump.targetTab}
-                      </ContextMenuItem>
-                    ))}
-                  </ContextMenuSubContent>
-                </ContextMenuSub>
-              ) : null}
             </ContextMenuContent>
           </ContextMenu>
         ) : null}
@@ -882,7 +878,8 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
           <TooltipCard
             tooltip={tooltip}
             position={position}
-            amountOfChartConnections={outgoingConnections.length}
+            executableActionCount={executableCurrentTabActions.length}
+            onApplyActions={applyAllCurrentTabActions}
           />
         ) : null}
       </CardContent>

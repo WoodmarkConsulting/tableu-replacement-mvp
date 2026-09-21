@@ -51,8 +51,7 @@ export function buildPageBoilerplate(
               reportName: ${JSON.stringify(dashboardConfig.reportName)},
               filters: ${JSON.stringify(dashboardConfig.filters, null, 2)},
               tabs: tabsConfig,
-              connections: ${JSON.stringify(dashboardConfig.connections, null, 2)},
-              tabJumps: ${JSON.stringify(dashboardConfig.tabJumps, null, 2)},
+              actions: ${JSON.stringify(dashboardConfig.actions ?? [], null, 2)},
             };
 
 

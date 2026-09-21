@@ -21,16 +21,14 @@ const fillRow = (components: TabsConfig["rows"][number]["components"]) => {
 
 type Props = {
   tabsConfig: TabsConfig[];
-  connections?: ChartConnection[];
-  tabJumps?: TabJumpConfig[];
+  actions?: ChartAction[];
   value?: string;
   onValueChange?: (value: string) => void;
 };
 
 export function TabsWrapper({
   tabsConfig,
-  connections,
-  tabJumps,
+  actions,
   value,
   onValueChange,
 }: Props) {
@@ -40,6 +38,17 @@ export function TabsWrapper({
         row.components.map((component) => [
           component.chartID,
           component.chartTitle ?? "Unbenanntes Diagramm",
+        ]),
+      ),
+    ),
+  ) as Partial<Record<TableSchemaKey, string>>;
+
+  const chartTabs = Object.fromEntries(
+    tabsConfig.flatMap((tab) =>
+      tab.rows.flatMap((row) =>
+        row.components.map((component) => [
+          component.chartID,
+          tab.trigger,
         ]),
       ),
     ),
@@ -81,9 +90,9 @@ export function TabsWrapper({
                         }}>
                         <ChartWrapper
                           {...compConfig}
-                          connections={connections}
-                          tabJumps={tabJumps}
+                          actions={actions}
                           chartLabels={chartLabels}
+                          chartTabs={chartTabs}
                           height={row.height || 15}
                         />
                       </div>

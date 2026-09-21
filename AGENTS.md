@@ -26,7 +26,7 @@ The intended end state is:
 ## Important paths
 
 - `pagesConfig/pages.json`: Registry the generator reads — maps each `dashboardName` to its config JSON. (`pagesConfig/index.ts` is legacy and not used by generation.)
-- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filters, tabs, connections?, tabJumps? }` (see Filtering framework). Each component carries `chartID`, `chartConfig`, optional `filterBindings`, and optional `enhancedTooltip`.
+- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filters, tabs, actions? }`. Each component carries `chartID`, `chartConfig`, optional `filterBindings`, and optional `enhancedTooltip`.
 - `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename. The framework always binds one JSON object as `:input`; chart SQL declares its accepted filter and connection fields with `from_json` and a typed `STRUCT`.
 - `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail query for selected rows. It also returns exact `sourceField` aliases used by outgoing chart connection mappings.
 - `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
@@ -46,7 +46,7 @@ The intended end state is:
 For normal dashboard creation and updates, the agent should modify only:
 
 - `pagesConfig/pages.json` when adding a new dashboard entry
-- `pagesConfig/*.json` for `reportName`, `filters` (dimensions), tabs, rows, module selection, chart metadata, `filterBindings`, `enhancedTooltip`, `connections`, `tabJumps`, and module configuration
+- `pagesConfig/*.json` for `reportName`, `filters` (dimensions), tabs, rows, module selection, chart metadata, `filterBindings`, `enhancedTooltip`, `actions`, and module configuration
 - `pagesConfig/sql/*.sql` for chart data and target-side connection parameters
 - `pagesConfig/sql/tooltipSql/*.tooltip.sql` for selected-row details and source-side connection aliases
 
@@ -193,29 +193,85 @@ are never flattened or coerced. Each request batches all selected rows; never is
 per row from a module. Tooltip state records its source `chartID`, and only that wrapper renders
 the card.
 
+### Selection, enhanced tooltips, and actions
+
+Selection-capable modules report selected data through the optional
+`onSelectionChange(rows)` callback injected by `ChartWrapper`. Selection processing is
+framework behavior and does not add module-specific fields to dashboard configuration.
+`ChartWrapper` stores the current original rows and injects them back into the module as
+read-only `selectedRows`. Click and lasso selection use this same state. Data refetches and
+relevant chart configuration changes invalidate the selection. Each module owns only the
+chart-specific visual representation of those rows.
+
+Lasso support is also framework behavior and is not configured per dashboard.
+`ChartWrapper` injects a `lasso` controller and owns the toolbar, active mode, pointer
+gesture, plot-clipped overlay, and dispatch. A module registers a runtime adapter:
+
+- `select(shape)` enables lasso selection and returns the selected original data rows.
+- `applyZoom(shape)` plus `resetZoom()` enable visual-only lasso zoom.
+- `getPlotBounds()` reports the actual plot rectangle in pixels relative to the wrapper's
+  interaction surface. Freehand selection polygons and rectangular zoom shapes use
+  plot-normalized coordinates.
+
+Selection calls the central `onSelectionChange(rows)` flow only when rows were found.
+Zoom never calls that flow. Recharts-specific scales and hit detection stay inside the
+module implementation. `LineChartModule` currently supports freehand polygon selection and
+progressive rectangular X-axis zoom; other modules need not register an adapter.
+
+Selection mode remains active after a completed gesture and supports repeated lasso draws.
+Starting a new valid lasso gesture hides the previous tooltip; a successful selection may open
+a new tooltip at the release position. The active toolbar button uses the primary color so the
+mode remains visible.
+
+When `enhancedTooltip: true`, `ChartWrapper` can open a compact, internally scrollable static
+tooltip for the current selection. All selected rows are sent together to
+`POST /api/data/chart/tooltip`. The endpoint keeps only named parameters referenced by the
+tooltip SQL, deduplicates identical parameter tuples, and splits them into batches of 12,000
+selected rows. Up to five tooltip SQL statements run concurrently across all tooltip requests
+in one server process. `TOOLTIP_BATCH_SIZE` and `TOOLTIP_MAX_CONCURRENT_QUERIES` can override
+these defaults. Successful results are streamed as NDJSON chunks of 250 rows so the frontend
+can render them progressively; `TOOLTIP_STREAM_CHUNK_SIZE` overrides that delivery size. A failed
+batch adds a partial-results warning but does not discard completed batches.
+
+Tooltip SQL must be batch-union-safe: each selected parameter tuple must produce independent
+result rows that can be appended to results from other batches. Do not use calculations across
+the complete selection or global `LIMIT`/top-N semantics in batched tooltip SQL. Local grouping
+by the selected value is supported. The API does not guarantee global ordering across batches.
+
+Every referenced data-point property becomes a JSON array parameter, even for a single row.
+SQL must parse the actual shape, for example scalar `x: number` as
+`ARRAY<DOUBLE>`, `y: (number | null)[]` as `ARRAY<ARRAY<DOUBLE>>`, and a table
+`values: Record<string, scalar>` object as an array of structs, maps, or variants matching its
+known keys. Missing optional properties become `NULL` array entries; nested arrays and objects
+are never flattened or coerced. Each request batches all selected rows; never issue one request
+per row from a module. Tooltip state records its source `chartID`, and only that wrapper renders
+the card.
+
 Every rendered chart has a wrapper-owned right-click menu. **Tooltip anzeigen** is disabled
-without selected rows or when `enhancedTooltip` is false. **Verlinktes Diagramm filtern** is
-disabled without outgoing connections, selected rows, or successfully resolved connection
-values. Its submenu deduplicates target IDs and applies the chosen target immediately. The
-tooltip footer action applies the staged filters to all linked targets.
+without selected rows or when `enhancedTooltip` is false. **Filtern** opens a unified submenu
+categorized into **Auf diesem Tab** and **Auf anderen Tabs**:
+- **Trigger**: `"manual"` (context menu / tooltip button) vs. `"auto"` (selection triggers immediately).
+- **Source resolution**:
+  - `"clientRow"`: in-memory lookup from `selectedRows` (supports top-level keys and `values.<col>`).
+  - `"tooltipLookup"`: asynchronous warehouse query via `.tooltip.sql` (column aliases matching `sourceField`).
+- **Target scope**: `{ kind: "chart", chartID }` vs. `{ kind: "tab", tab }`.
+- **Navigation**: `navigate: { restoreOnReturn? }` (only valid on tab targets, requires `trigger: "manual"`). Navigating actions push breadcrumbs and switch tabs; non-navigating actions update filter contributions in-place.
+- **Value cap**: default 500 distinct values per mapping (`maxDistinctValues`), guarding against oversized SQL inputs.
 
-Outgoing connections use manual application by default. Set `apply: "auto"`
-on a connection to apply its resolved filters immediately after the source
-tooltip query succeeds. An
-empty selection then clears that source chart's applied connection filters
-immediately. Auto-applied filters remain staged so the source tooltip stays open
-and its all-target action remains available. Keep `apply` omitted or set it to
-`"manual"` when users should choose a target from the context menu or apply all
-staged targets from the tooltip.
-
-`DashboardConfig.connections` contains `{ id, fromChartID, toChartID, mappings, apply? }`.
-Each mapping's `sourceField` is an exact alias in source tooltip SQL and its
-`targetDimensionId` must be bound by the target chart. `TabsWrapper` supplies target
-labels from `chartTitle` across all tabs; internal chart IDs must not be shown to users, and an
-untitled target falls back to `Unbenanntes Diagramm`.
-
-`DashboardConfig.tabJumps` contains `{ id, fromChartID, targetTab, label?, mappings: [{ sourceField, targetDimensionId }], restoreOnReturn? }`.
-Charts with configured tab jumps show context menu item(s) to drill down into another tab. When triggered with selected rows, `executeTabJump` creates tab-targeted contributions, atomically applies both layers, switches tabs, and pushes a breadcrumb. `TabBreadcrumb` returns by restoring the exact contribution keys. Single-select target dimensions disable the jump when multiple distinct values are selected; `dateString` and `dateRange` dimensions cannot be targeted by drills.
+`DashboardConfig.actions` contains:
+```ts
+{
+  id: string;
+  fromChartID: string;
+  target: { kind: "chart"; chartID: string } | { kind: "tab"; tab: string };
+  sourceResolution: "clientRow" | "tooltipLookup";
+  trigger?: "manual" | "auto"; // default "manual"
+  navigate?: { restoreOnReturn?: boolean }; // tab targets only
+  mappings: { sourceField: string; targetDimensionId: string }[];
+  label?: string;
+  maxDistinctValues?: number;
+}
+```
 
 ### Shareable state
 

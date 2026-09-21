@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils";
 type Props = {
   tooltip: Tooltip | null;
   position: TooltipPosition | null;
-  amountOfChartConnections: number;
+  executableActionCount: number;
+  onApplyActions?: () => void;
 };
 
 const GAP = 12;
@@ -22,7 +23,8 @@ const VIEWPORT_PADDING = 8;
 const TooltipCard = ({
   tooltip,
   position,
-  amountOfChartConnections = 0,
+  executableActionCount = 0,
+  onApplyActions,
 }: Props) => {
   const isStaticTooltip = useTooltipStore((state) => state.isStaticTooltip);
   const hideTooltip = useTooltipStore((state) => state.hideTooltip);
@@ -160,12 +162,16 @@ const TooltipCard = ({
         ) : null}
       </div>
 
-      {isStaticTooltip && pendingAction && amountOfChartConnections ? (
+      {isStaticTooltip && pendingAction && executableActionCount ? (
         <div className="flex shrink-0 border-t bg-background p-3">
           <Button
             className="ml-auto mt-3 w-fit"
             onClick={() => {
-              applyPendingAction();
+              if (onApplyActions) {
+                onApplyActions();
+              } else {
+                applyPendingAction();
+              }
               hideTooltip();
             }}>
             <ListFilter data-icon="inline-start" />

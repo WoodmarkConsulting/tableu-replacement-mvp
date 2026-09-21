@@ -322,12 +322,16 @@
       ]
     }
   ],
-  "connections": [
+  "actions": [
     {
       "id": "ecu-to-details-uebersicht",
       "fromChartID": "3342fe24-5ed3-4560-b6e8-b6cdfcc776e1",
-      "toChartID": "b6875c8c-e334-4ffe-9fd0-847f038a5e65",
-      "apply": "manual",
+      "target": {
+        "kind": "chart",
+        "chartID": "b6875c8c-e334-4ffe-9fd0-847f038a5e65"
+      },
+      "sourceResolution": "tooltipLookup",
+      "trigger": "manual",
       "mappings": [
         {
           "sourceField": "ECU",
@@ -338,14 +342,55 @@
     {
       "id": "ecu-to-details-fahrzeugreihe",
       "fromChartID": "3342fe24-5ed3-4560-b6e8-b6cdfcc776e1",
-      "toChartID": "c15177ce-4ac1-415a-8504-50c4ab244950",
-      "apply": "manual",
+      "target": {
+        "kind": "chart",
+        "chartID": "c15177ce-4ac1-415a-8504-50c4ab244950"
+      },
+      "sourceResolution": "tooltipLookup",
+      "trigger": "auto",
       "mappings": [
         {
           "sourceField": "ECU",
           "targetDimensionId": "ecu_nm"
         }
       ]
+    },
+    {
+      "id": "ecu-drilldown-detail",
+      "fromChartID": "3342fe24-5ed3-4560-b6e8-b6cdfcc776e1",
+      "target": {
+        "kind": "tab",
+        "tab": "Detail"
+      },
+      "sourceResolution": "clientRow",
+      "trigger": "manual",
+      "navigate": {
+        "restoreOnReturn": true
+      },
+      "mappings": [
+        {
+          "sourceField": "category",
+          "targetDimensionId": "ecu_nm"
+        }
+      ],
+      "label": "Details in \"Detail\" ansehen"
+    },
+    {
+      "id": "overview-to-detail-fahrzeugreihe",
+      "fromChartID": "b6875c8c-e334-4ffe-9fd0-847f038a5e65",
+      "target": {
+        "kind": "chart",
+        "chartID": "c15177ce-4ac1-415a-8504-50c4ab244950"
+      },
+      "sourceResolution": "clientRow",
+      "trigger": "manual",
+      "mappings": [
+        {
+          "sourceField": "values.ecu_nm",
+          "targetDimensionId": "ecu_nm"
+        }
+      ],
+      "label": "Details Fahrzeugreihe auf Tab \"Detail\" filtern"
     }
   ]
 }

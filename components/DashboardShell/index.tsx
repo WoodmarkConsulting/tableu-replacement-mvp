@@ -28,7 +28,7 @@ export function DashboardShell({ config }: DashboardShellProps) {
     }
   }, [config]);
 
-  const { reportName, filters, tabs, connections, tabJumps } = config;
+  const { reportName, filters, tabs, actions } = config;
 
   const activeTab = useFilterStore((state) => state.activeTab);
   const setActiveTab = useFilterStore((state) => state.setActiveTab);
@@ -56,8 +56,7 @@ export function DashboardShell({ config }: DashboardShellProps) {
 
       <TabsWrapper
         tabsConfig={tabs}
-        connections={connections}
-        tabJumps={tabJumps}
+        actions={actions}
         value={activeTab}
         onValueChange={setActiveTab}
       />

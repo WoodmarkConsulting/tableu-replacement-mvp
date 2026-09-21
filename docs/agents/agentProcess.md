@@ -628,31 +628,28 @@ module. `ChartWrapper` provides it consistently:
 
 ---
 
-## 14. Configure Chart Connections
+## 14. Configure Chart Actions and Connections
 
 After the relevant visualizations are complete, ask whether selecting data in
-one chart should filter another chart. Present source and target choices using
-their visible titles, not their internal IDs.
+one chart should filter another chart or drill down to another tab. Present source and target choices using
+their visible titles and tabs, not their internal IDs.
 
-For each source chart with outgoing connections, also ask whether resolved
-connection filters should be applied manually or automatically. Manual is the
+For each source chart with outgoing actions, also ask whether resolved
+action filters should be applied manually or automatically (`trigger: "auto"`). Manual is the
 default and requires no property. For automatic application, set
-`apply: "auto"` on the connection object itself. Automatic
-application must keep the resolved filters staged: target refetches must not
-close the source tooltip, and its all-target button remains visible.
+`trigger: "auto"` on the action object itself. Note: navigating actions must always use `trigger: "manual"`.
 
 For every requested link:
 
 1. Confirm that the source module supports selection.
-2. Resolve the selected titles to `fromChartID` and `toChartID` internally.
-3. Give the connection a non-empty, dashboard-unique `id`.
-4. Add one `mappings` entry per linked value with a `sourceField` alias and a
-   `targetDimensionId` naming a `multiselect` dimension in `filters`.
-5. Return those values from the source tooltip SQL using the exact aliases.
-6. Bind the target dimension in the target chart's `filterBindings` and add the
+2. Resolve the selected titles to `fromChartID` and target (`{ kind: "chart", chartID }` or `{ kind: "tab", tab }`).
+3. Set `sourceResolution`: `"clientRow"` for synchronous in-memory extraction or `"tooltipLookup"` for warehouse query via `.tooltip.sql`.
+4. Give the action a non-empty, dashboard-unique `id`.
+5. Add one `mappings` entry per linked value with `sourceField` and `targetDimensionId`.
+6. For `"tooltipLookup"`, return those values from the source tooltip SQL using the exact aliases.
+7. Bind the target dimension in the target chart's `filterBindings` and add the
    matching optional field to the target chart SQL's typed `:input` struct. A
    missing or `null` field must not restrict the target query.
-7. Normalize delimited source strings into atomic values before returning them.
 8. Verify one representative value through source row, tooltip result, API JSON,
    client filter, target SQL parser, and target column comparison.
 

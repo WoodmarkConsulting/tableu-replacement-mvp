@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "vitest";
 
+import { resolveActionContributions } from "../lib/filters/actions";
 import { contributionKey } from "../lib/filters/contributions";
 import useFiltersStore, {
   controlContributionKey,
@@ -42,17 +43,33 @@ const dimensions: FilterDimension[] = [
   },
 ];
 
-const jump = (
+const makeAction = (
   id: string,
   targetTab: string,
   sourceField: string,
   targetDimensionId: string,
-): TabJumpConfig => ({
+): ChartAction => ({
   id,
   fromChartID: chartA,
-  targetTab,
+  sourceResolution: "clientRow",
+  trigger: "manual",
+  target: { kind: "tab", tab: targetTab },
+  navigate: { restoreOnReturn: true },
   mappings: [{ sourceField, targetDimensionId }],
 });
+
+const runAction = (
+  action: ChartAction,
+  rows: Record<string, unknown>[],
+  fromChartTitle?: string,
+): boolean => {
+  const contribs = resolveActionContributions(dimensions, action, rows);
+  if (!contribs) {
+    return false;
+  }
+  useFiltersStore.getState().executeAction(action, contribs, fromChartTitle);
+  return true;
+};
 
 const jumpKey = (
   actionId: string,
@@ -95,14 +112,13 @@ describe("stores/filterProvider unified contributions", () => {
 
   it("applies a tab jump atomically and deduplicates multiselect values", () => {
     let notifications = 0;
+    const action = makeAction("region-jump", "TabB", "regionCode", "region");
     const unsubscribe = useFiltersStore.subscribe(() => notifications++);
-    const success = useFiltersStore
-      .getState()
-      .executeTabJump(
-        jump("region-jump", "TabB", "regionCode", "region"),
-        [{ regionCode: "EU" }, { regionCode: "US" }, { regionCode: "EU" }],
-        "Chart One",
-      );
+    const success = runAction(
+      action,
+      [{ regionCode: "EU" }, { regionCode: "US" }, { regionCode: "EU" }],
+      "Chart One",
+    );
     unsubscribe();
 
     const key = jumpKey("region-jump", "TabB", "region");
@@ -118,12 +134,11 @@ describe("stores/filterProvider unified contributions", () => {
 
   it("rejects multiple values for a single-value target without mutation", () => {
     const before = useFiltersStore.getState();
-    const success = useFiltersStore
-      .getState()
-      .executeTabJump(
-        jump("error-jump", "TabB", "code", "error_code"),
-        [{ code: "A" }, { code: "B" }],
-      );
+    const action = makeAction("error-jump", "TabB", "code", "error_code");
+    const success = runAction(
+      action,
+      [{ code: "A" }, { code: "B" }],
+    );
 
     assert.equal(success, false);
     assert.deepEqual(
@@ -133,14 +148,14 @@ describe("stores/filterProvider unified contributions", () => {
     assert.equal(useFiltersStore.getState().breadcrumbs.length, 0);
   });
 
-  it("keeps control and tab-jump contributions distinct and rolls back exactly", () => {
+  it("keeps control and tab-jump contributions distinct and rolls back exactly (B9)", () => {
     const controlKey = controlContributionKey(dimensions[2])!;
     useFiltersStore.getState().setDraftFilter("error_code", "OLD");
     useFiltersStore.getState().applyFilters();
 
-    const config = jump("error-jump", "TabB", "code", "error_code");
+    const config = makeAction("error-jump", "TabB", "code", "error_code");
     assert.equal(
-      useFiltersStore.getState().executeTabJump(config, [{ code: "NEW" }]),
+      runAction(config, [{ code: "NEW" }]),
       true,
     );
 
@@ -166,19 +181,15 @@ describe("stores/filterProvider unified contributions", () => {
     assert.equal(useFiltersStore.getState().activeTab, "TabA");
   });
 
-  it("rolls nested tab jumps back one contribution set at a time", () => {
-    useFiltersStore
-      .getState()
-      .executeTabJump(
-        jump("to-b", "TabB", "code", "error_code"),
-        [{ code: "B" }],
-      );
-    useFiltersStore
-      .getState()
-      .executeTabJump(
-        jump("to-c", "TabC", "value", "tab_c_dim"),
-        [{ value: "C" }],
-      );
+  it("rolls nested tab jumps back one contribution set at a time (B9)", () => {
+    runAction(
+      makeAction("to-b", "TabB", "code", "error_code"),
+      [{ code: "B" }],
+    );
+    runAction(
+      makeAction("to-c", "TabC", "value", "tab_c_dim"),
+      [{ value: "C" }],
+    );
 
     useFiltersStore.getState().navigateBack();
     assert.equal(useFiltersStore.getState().activeTab, "TabB");
@@ -271,12 +282,10 @@ describe("stores/filterProvider unified contributions", () => {
   it("clearAll returns to the seeded defaults and the idle state", () => {
     useFiltersStore.getState().setDraftFilter("global_region", ["EU"]);
     useFiltersStore.getState().applyFilters();
-    useFiltersStore
-      .getState()
-      .executeTabJump(
-        jump("to-b", "TabB", "code", "error_code"),
-        [{ code: "A" }],
-      );
+    runAction(
+      makeAction("to-b", "TabB", "code", "error_code"),
+      [{ code: "A" }],
+    );
     useFiltersStore.getState().stagePendingAction(chartA, []);
     useFiltersStore.getState().clearAll();
 
@@ -353,12 +362,10 @@ describe("stores/filterProvider unified contributions", () => {
     const two = action("two", ["US"]);
 
     useFiltersStore.getState().applyActionContributions(chartA, [one, two]);
-    useFiltersStore
-      .getState()
-      .executeTabJump(
-        jump("to-b", "TabB", "code", "error_code"),
-        [{ code: "A" }],
-      );
+    runAction(
+      makeAction("to-b", "TabB", "code", "error_code"),
+      [{ code: "A" }],
+    );
 
     useFiltersStore.getState().clearActionSource(chartA, ["one"]);
     assert.equal(
@@ -473,5 +480,153 @@ describe("stores/filterProvider unified contributions", () => {
       activeTab: "TabA",
     });
     assert.deepEqual(useFiltersStore.getState().appliedContributions, before);
+  });
+
+  it("executeAction with navigate applies atomically to draft & applied and pushes breadcrumb", () => {
+    const action: ChartAction = {
+      id: "action-jump",
+      fromChartID: chartA,
+      sourceResolution: "clientRow",
+      trigger: "manual",
+      target: { kind: "tab", tab: "TabB" },
+      navigate: { restoreOnReturn: true },
+      mappings: [{ sourceField: "regionCode", targetDimensionId: "region" }],
+    };
+
+    const target: FilterTarget = { kind: "tab", tab: "TabB" };
+    const source: FilterSource = {
+      kind: "tabJump",
+      actionId: action.id,
+      sourceChartID: chartA,
+    };
+    const key = contributionKey(source, target, "region");
+    const contribution: FilterContribution = {
+      key,
+      dimensionId: "region",
+      source,
+      target,
+      value: ["EU", "US"],
+    };
+
+    let notifications = 0;
+    const unsubscribe = useFiltersStore.subscribe(() => notifications++);
+    useFiltersStore.getState().executeAction(action, [contribution], "Chart A Title");
+    unsubscribe();
+
+    const state = useFiltersStore.getState();
+    assert.equal(notifications, 1);
+    assert.deepEqual(state.appliedContributions[key].value, ["EU", "US"]);
+    assert.deepEqual(state.draftContributions[key].value, ["EU", "US"]);
+    assert.equal(state.activeTab, "TabB");
+    assert.equal(state.hasApplied, true);
+    assert.equal(state.breadcrumbs.length, 1);
+    assert.equal(state.breadcrumbs[0].fromChartTitle, "Chart A Title");
+    assert.equal(state.breadcrumbs[0].targetTab, "TabB");
+  });
+
+  it("executeAction without navigate updates both layers without changing activeTab or breadcrumbs", () => {
+    const action: ChartAction = {
+      id: "action-filter",
+      fromChartID: chartA,
+      sourceResolution: "clientRow",
+      trigger: "manual",
+      target: { kind: "chart", chartID: chartB },
+      mappings: [{ sourceField: "regionCode", targetDimensionId: "region" }],
+    };
+
+    const target: FilterTarget = { kind: "chart", chartID: chartB };
+    const source: FilterSource = {
+      kind: "chartSelection",
+      actionId: action.id,
+      sourceChartID: chartA,
+    };
+    const key = contributionKey(source, target, "region");
+    const contribution: FilterContribution = {
+      key,
+      dimensionId: "region",
+      source,
+      target,
+      value: ["EU"],
+    };
+
+    useFiltersStore.getState().executeAction(action, [contribution]);
+    const state = useFiltersStore.getState();
+    assert.deepEqual(state.appliedContributions[key].value, ["EU"]);
+    assert.deepEqual(state.draftContributions[key].value, ["EU"]);
+    assert.equal(state.activeTab, "TabA"); // untouched
+    assert.equal(state.hasApplied, true);
+    assert.equal(state.breadcrumbs.length, 0); // no breadcrumbs
+  });
+
+  it("executeAction replaces prior contributions from the same action on re-application (B8)", () => {
+    const action: ChartAction = {
+      id: "action-filter",
+      fromChartID: chartA,
+      sourceResolution: "clientRow",
+      trigger: "manual",
+      target: { kind: "chart", chartID: chartB },
+      mappings: [{ sourceField: "regionCode", targetDimensionId: "region" }],
+    };
+
+    const target: FilterTarget = { kind: "chart", chartID: chartB };
+    const source: FilterSource = {
+      kind: "chartSelection",
+      actionId: action.id,
+      sourceChartID: chartA,
+    };
+    const key = contributionKey(source, target, "region");
+
+    const contrib1: FilterContribution = {
+      key,
+      dimensionId: "region",
+      source,
+      target,
+      value: ["EU"],
+    };
+    useFiltersStore.getState().executeAction(action, [contrib1]);
+    assert.deepEqual(useFiltersStore.getState().appliedContributions[key].value, ["EU"]);
+
+    const contrib2: FilterContribution = {
+      key,
+      dimensionId: "region",
+      source,
+      target,
+      value: ["APAC"],
+    };
+    useFiltersStore.getState().executeAction(action, [contrib2]);
+    assert.deepEqual(useFiltersStore.getState().appliedContributions[key].value, ["APAC"]);
+  });
+
+  it("removing the last chip of a drilldown pops its breadcrumb (B10)", () => {
+    const action: ChartAction = {
+      id: "drill-action",
+      fromChartID: chartA,
+      sourceResolution: "clientRow",
+      trigger: "manual",
+      target: { kind: "tab", tab: "TabB" },
+      navigate: { restoreOnReturn: true },
+      mappings: [{ sourceField: "code", targetDimensionId: "error_code" }],
+    };
+
+    const target: FilterTarget = { kind: "tab", tab: "TabB" };
+    const source: FilterSource = {
+      kind: "tabJump",
+      actionId: action.id,
+      sourceChartID: chartA,
+    };
+    const key = contributionKey(source, target, "error_code");
+    const contribution: FilterContribution = {
+      key,
+      dimensionId: "error_code",
+      source,
+      target,
+      value: "E123",
+    };
+
+    useFiltersStore.getState().executeAction(action, [contribution]);
+    assert.equal(useFiltersStore.getState().breadcrumbs.length, 1);
+
+    useFiltersStore.getState().removeContribution(key);
+    assert.equal(useFiltersStore.getState().breadcrumbs.length, 0);
   });
 });

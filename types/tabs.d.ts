@@ -34,29 +34,33 @@ type FilterActionMapping = {
   targetDimensionId: string;
 };
 
-type TabJumpConfig<Tconf extends TabsConfig[] = TabsConfig[]> = {
-  id: string;
-  fromChartID: Tconf[number]["rows"][number]["components"][number]["chartID"];
-  targetTab: Tconf[number]["trigger"];
-  label?: string; // Optional context menu label, e.g. "Details in [Tab] ansehen"
-  mappings: FilterActionMapping[];
-  // If true (default), restores the target tab's previous filter values when
-  // returning via the breadcrumb. Named for what it does: restore, not clear.
-  restoreOnReturn?: boolean;
-};
+type ActionTrigger = "manual" | "auto";
+type ActionSourceResolution = "clientRow" | "tooltipLookup";
 
-type ChartConnection<Tconf extends TabsConfig[] = TabsConfig[]> = {
+type ActionTarget<Tconf extends TabsConfig[] = TabsConfig[]> =
+  | { kind: "chart"; chartID: Tconf[number]["rows"][number]["components"][number]["chartID"] }
+  | { kind: "tab"; tab: Tconf[number]["trigger"] };
+
+type ChartAction<Tconf extends TabsConfig[] = TabsConfig[]> = {
   id: string;
   fromChartID: Tconf[number]["rows"][number]["components"][number]["chartID"];
-  toChartID: Tconf[number]["rows"][number]["components"][number]["chartID"];
+  label?: string; // Optional context menu / tooltip label; ignored for trigger "auto"
+  trigger?: ActionTrigger; // Default: "manual"
+  // Required. There is no safe default: "clientRow" silently yields nothing for
+  // modules whose rows do not expose the field as a top-level primitive.
+  sourceResolution: ActionSourceResolution;
+  target: ActionTarget<Tconf>;
+  // Only valid when target.kind === "tab". The tab is target.tab; it is never
+  // repeated here, so the two can not diverge.
+  navigate?: { restoreOnReturn?: boolean }; // restoreOnReturn default: true
+  // Guard against lasso selections producing multi-thousand-value IN lists.
+  maxDistinctValues?: number; // Default: ACTION_VALUE_LIMIT (500)
   mappings: FilterActionMapping[];
-  apply?: "manual" | "auto";
 };
 
 type DashboardConfig<T extends TabsConfig[] = TabsConfig[]> = {
   reportName: string;
   filters: FilterDimension<T>[];
   tabs: T;
-  connections?: ChartConnection<T>[];
-  tabJumps?: TabJumpConfig<T>[];
+  actions?: ChartAction<T>[];
 };

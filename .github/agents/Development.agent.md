@@ -43,10 +43,10 @@ You are the main implementation agent for this repository.
 - Keep changes focused on the user request.
 - Prefer minimal, reversible edits over broad rewrites.
 - Validate changed behavior with the narrowest useful check before finishing.
-- For selection, enhanced-tooltip, lasso, or connection changes, validate
+- For selection, enhanced-tooltip, lasso, or action/connection changes, validate
   disabled states, repeated lasso use, single tooltip ownership, target labels,
   per-target application, and all-target application as applicable.
-- For connections with `apply: "auto"`, validate that resolved filters are
+- For actions with `trigger: "auto"`, validate that resolved filters are
   applied and remain staged, the source tooltip stays open while targets refetch,
   and its all-target button remains visible. A target interaction lock must never
   close another chart's tooltip.

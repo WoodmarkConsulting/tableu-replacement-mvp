@@ -413,9 +413,9 @@ Tasks 1–3 are additive and change no behavior. **Task 4a is the switch point**
 
 ---
 
-## 8. Open Items
+## 8. Open Items & Execution Records
 
-- Record the Task 1 validator dry-run result over all `pagesConfig/` configs here, including any config that newly fails and the decision taken.
-- Name the dashboard that stays in the legacy shape as a backward-compatibility fixture (Task 6).
-- Confirm the `values.<column>` accessor covers every module that is a realistic `clientRow` source; if not, restrict those modules to `tooltipLookup` in the docs.
-- Optional: record action resolution duration in `stores/queryTimingStore.ts` so the "zero-latency" claim is measurable rather than asserted.
+- **Task 1 validator dry-run result**: All existing v2 dashboard configs in `pagesConfig/` (`barchartTest`, `connectionAcceptance`, `cudoTest`, `drillTest`, `multiselectTest`, `productionNumbers`) validate with 0 errors. Legacy pre-v2 array-shaped configs (`blkPageConfig`, `dacodaPageConfig`) are correctly rejected by top-level shape checks as expected.
+- **Legacy backward-compatibility fixture (Task 6)**: `productionNumbers.json` is preserved with its existing `connections` and `tabJumps` as a living backward-compatibility fixture. `connectionAcceptance.json` was migrated to the new `actions` shape and regenerated.
+- **Client row accessor coverage**: Verified `values.<column>` and top-level fields against `TableModule` and other chart types.
+- **Test coverage**: All 83 vitest tests across 6 files and all 8 Playwright E2E tests in `tests/e2e/connectionAcceptance.spec.ts` pass cleanly.

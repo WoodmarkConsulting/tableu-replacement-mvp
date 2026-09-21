@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import barchartTest from "../pagesConfig/barchartTest.json";
+import blkPageConfig from "../pagesConfig/blkPageConfig.json";
+import connectionAcceptance from "../pagesConfig/connectionAcceptance.json";
+import cudoTest from "../pagesConfig/cudoTest.json";
+import dacodaPageConfig from "../pagesConfig/dacodaPageConfig.json";
+import drillTest from "../pagesConfig/drillTest.json";
+import multiselectTest from "../pagesConfig/multiselectTest.json";
+import productionNumbers from "../pagesConfig/productionNumbers.json";
 import { contributionKey } from "../lib/filters/contributions";
 import { resolveChartFilters } from "../lib/filters/resolveChartFilters";
 import { validateDashboardConfig } from "../lib/validateDashboardConfig";
@@ -389,11 +397,13 @@ describe("dashboard config validation", () => {
         control: { location: "dashboard" },
       });
       config.tabs[0].rows[0].components[0].filterBindings = { region: "region_code" };
-      config.tabJumps = [
+      config.actions = [
         {
           id: "drill-day",
           fromChartID: chartA,
-          targetTab: "Overview",
+          sourceResolution: "clientRow",
+          trigger: "manual",
+          target: { kind: "tab", tab: "Overview" },
           mappings: [{ sourceField: "day", targetDimensionId: "day" }],
         },
       ];
@@ -404,7 +414,7 @@ describe("dashboard config validation", () => {
     }
   });
 
-  it("rejects legacy connection and chart keys", () => {
+  it("rejects legacy connections, tabJumps, and chart keys", () => {
     const legacyChart = validConfig();
     Object.assign(legacyChart.tabs[0].rows[0].components[0], {
       autoApplyConnections: true,
@@ -414,43 +424,59 @@ describe("dashboard config validation", () => {
     );
 
     const legacyConnection = validConfig();
-    legacyConnection.connections = [
+    (legacyConnection as Record<string, unknown>).connections = [
       {
         id: "legacy",
         fromChartID: chartA,
         toChartID: chartA,
         mappings: [],
-        expectedColumns: ["region_code"],
-      } as unknown as ChartConnection,
+      },
     ];
     expect(() => validateDashboardConfig(legacyConnection)).toThrow(
-      "legacy expectedColumns",
+      'legacy "connections" is no longer supported',
+    );
+
+    const legacyJump = validConfig();
+    (legacyJump as Record<string, unknown>).tabJumps = [
+      {
+        id: "legacy-jump",
+        fromChartID: chartA,
+        targetTab: "Overview",
+        mappings: [],
+      },
+    ];
+    expect(() => validateDashboardConfig(legacyJump)).toThrow(
+      'legacy "tabJumps" is no longer supported',
     );
   });
 
-  it("rejects cyclic connection graphs", () => {
+  it("rejects cyclic action graphs", () => {
     const config = validConfig();
     config.tabs[0].rows[0].components.push({
       ...config.tabs[0].rows[0].components[0],
       chartID: chartB,
     });
-    config.connections = [
+    config.actions = [
       {
         id: "a-to-b",
         fromChartID: chartA,
-        toChartID: chartB,
+        sourceResolution: "tooltipLookup",
+        trigger: "manual",
+        target: { kind: "chart", chartID: chartB },
         mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
       },
       {
         id: "b-to-a",
         fromChartID: chartB,
-        toChartID: chartA,
+        sourceResolution: "tooltipLookup",
+        trigger: "manual",
+        target: { kind: "chart", chartID: chartA },
         mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
       },
     ];
 
     expect(() => validateDashboardConfig(config)).toThrow(
-      "Chart connection graph must be acyclic.",
+      "Chart action graph must be acyclic.",
     );
   });
 
@@ -462,11 +488,13 @@ describe("dashboard config validation", () => {
     );
 
     const badAction = validConfig();
-    badAction.tabJumps = [
+    badAction.actions = [
       {
         id: "drill|one",
         fromChartID: chartA,
-        targetTab: "Overview",
+        sourceResolution: "clientRow",
+        trigger: "manual",
+        target: { kind: "tab", tab: "Overview" },
         mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
       },
     ];
@@ -475,14 +503,16 @@ describe("dashboard config validation", () => {
     );
   });
 
-  it("rejects drilldowns that no chart on the target tab binds", () => {
+  it("rejects actions targeting a tab where no chart binds the dimension", () => {
     const config = validConfig();
     config.tabs[0].rows[0].components[0].filterBindings = { status: "status" };
-    config.tabJumps = [
+    config.actions = [
       {
         id: "drill-region",
         fromChartID: chartA,
-        targetTab: "Overview",
+        sourceResolution: "clientRow",
+        trigger: "manual",
+        target: { kind: "tab", tab: "Overview" },
         mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
       },
     ];
@@ -501,6 +531,175 @@ describe("dashboard config validation", () => {
 
     expect(() => validateDashboardConfig(config)).toThrow(
       'has a defaultValue but no control',
+    );
+  });
+
+  it("rejects duplicate action IDs", () => {
+    const config = validConfig();
+    config.actions = [
+      {
+        id: "shared-id",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "manual",
+        target: { kind: "tab", tab: "Overview" },
+        mappings: [{ sourceField: "status", targetDimensionId: "status" }],
+      },
+      {
+        id: "shared-id",
+        fromChartID: chartA,
+        sourceResolution: "tooltipLookup",
+        trigger: "manual",
+        target: { kind: "chart", chartID: chartA },
+        mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
+      },
+    ];
+
+    expect(() => validateDashboardConfig(config)).toThrow(
+      'Filter action id "shared-id" must be non-empty and unique.',
+    );
+  });
+
+  it("rejects trigger: auto with navigate and navigate on chart targets", () => {
+    const autoNav = validConfig();
+    autoNav.actions = [
+      {
+        id: "auto-nav",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "auto",
+        target: { kind: "tab", tab: "Overview" },
+        navigate: { restoreOnReturn: true },
+        mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
+      },
+    ];
+    expect(() => validateDashboardConfig(autoNav)).toThrow(
+      'Action "auto-nav" with navigate must use trigger "manual".',
+    );
+
+    const chartNav = validConfig();
+    chartNav.actions = [
+      {
+        id: "chart-nav",
+        fromChartID: chartA,
+        sourceResolution: "tooltipLookup",
+        trigger: "manual",
+        target: { kind: "chart", chartID: chartA },
+        navigate: { restoreOnReturn: true },
+        mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
+      },
+    ];
+    expect(() => validateDashboardConfig(chartNav)).toThrow(
+      'Action "chart-nav" has navigate but target kind is not "tab".',
+    );
+  });
+
+  it("rejects trigger: auto targeting non-multiselect dimension, but accepts trigger: manual", () => {
+    const autoSingle = validConfig();
+    autoSingle.tabs[0].rows[0].components.push({
+      ...autoSingle.tabs[0].rows[0].components[0],
+      chartID: chartB,
+    });
+    autoSingle.actions = [
+      {
+        id: "auto-single",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "auto",
+        target: { kind: "chart", chartID: chartB },
+        mappings: [{ sourceField: "status", targetDimensionId: "status" }], // status is select
+      },
+    ];
+    expect(() => validateDashboardConfig(autoSingle)).toThrow(
+      'Action "auto-single" with trigger "auto" must target a multiselect dimension, received "status".',
+    );
+
+    const manualSingle = validConfig();
+    manualSingle.tabs[0].rows[0].components.push({
+      ...manualSingle.tabs[0].rows[0].components[0],
+      chartID: chartB,
+    });
+    manualSingle.actions = [
+      {
+        id: "manual-single",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "manual",
+        target: { kind: "chart", chartID: chartB },
+        mappings: [{ sourceField: "status", targetDimensionId: "status" }], // status is select
+      },
+    ];
+    expect(() => validateDashboardConfig(manualSingle)).not.toThrow();
+  });
+
+  it("detects cycles in chart targets and non-navigating tab targets, but ignores navigating actions", () => {
+    const config = validConfig();
+    config.tabs[0].rows[0].components.push({
+      ...config.tabs[0].rows[0].components[0],
+      chartID: chartB,
+    });
+    // Cycle with non-navigating tab target: chartA -> chartB via tab target on Overview binding status; chartB -> chartA
+    config.actions = [
+      {
+        id: "a-to-tab",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "manual",
+        target: { kind: "tab", tab: "Overview" },
+        mappings: [{ sourceField: "status", targetDimensionId: "status" }],
+      },
+      {
+        id: "b-to-a",
+        fromChartID: chartB,
+        sourceResolution: "tooltipLookup",
+        trigger: "manual",
+        target: { kind: "chart", chartID: chartA },
+        mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
+      },
+    ];
+    expect(() => validateDashboardConfig(config)).toThrow(
+      "Chart action graph must be acyclic.",
+    );
+
+    // If a-to-tab has navigate, it is excluded from cycle graph -> valid
+    config.actions[0].navigate = { restoreOnReturn: true };
+    expect(() => validateDashboardConfig(config)).not.toThrow();
+  });
+
+  it("rejects invalid sourceResolution", () => {
+    const badResolution = validConfig();
+    badResolution.actions = [
+      {
+        id: "bad-res",
+        fromChartID: chartA,
+        sourceResolution: "invalid" as unknown as ActionSourceResolution,
+        trigger: "manual",
+        target: { kind: "tab", tab: "Overview" },
+        mappings: [{ sourceField: "status", targetDimensionId: "status" }],
+      },
+    ];
+    expect(() => validateDashboardConfig(badResolution)).toThrow(
+      'Action "bad-res" must specify sourceResolution ("clientRow" | "tooltipLookup").',
+    );
+  });
+
+  it.each([
+    ["barchartTest", barchartTest],
+    ["connectionAcceptance", connectionAcceptance],
+    ["cudoTest", cudoTest],
+    ["drillTest", drillTest],
+    ["multiselectTest", multiselectTest],
+    ["productionNumbers", productionNumbers],
+  ])("validates existing dashboard config: %s", (_name, config) => {
+    expect(() => validateDashboardConfig(config as unknown as DashboardConfig)).not.toThrow();
+  });
+
+  it.each([
+    ["blkPageConfig", blkPageConfig],
+    ["dacodaPageConfig", dacodaPageConfig],
+  ])("rejects legacy pre-v2 array-shaped config: %s", (_name, config) => {
+    expect(() => validateDashboardConfig(config as unknown as DashboardConfig)).toThrow(
+      "Dashboard config must be an object with `filters` and `tabs` arrays.",
     );
   });
 });

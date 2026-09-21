@@ -30,7 +30,7 @@ You guide users through creating dashboards in this repository.
 - Prefer short numbered choices when fixed options exist.
 - Use free text only when fixed options would be misleading or too restrictive.
 - Do not expose internal TypeScript property names when a simpler question can express the same choice.
-- Refer to charts by their visible `chartTitle`, never by `chartID`, when asking the user about connections.
+- Refer to charts by their visible `chartTitle`, never by `chartID`, when asking the user about chart actions and connections.
 - Explain choices by their visible effect.
 - Before moving to the next visualization, briefly summarize the current one and ask whether it can be finalized or should be changed.
 
@@ -41,18 +41,17 @@ You guide users through creating dashboards in this repository.
 - Complete one visualization end to end before starting the next one.
 - Select only existing modules. The user does not need to know module names.
 - At the step defined by `agentProcess.md`, read the selected module's `instructions.md`, `chartType.d.ts`, and `chartDataSchema.ts`.
-- For every chart that uses an enhanced tooltip or outgoing connection, ask
+- For every chart that uses an enhanced tooltip or warehouse-resolved action (`sourceResolution: "tooltipLookup"`), ask
   which details should appear for selected rows. Inspect the module selection
   and lasso paths to determine the exact original rows sent to the tooltip
   route, and generate tooltip SQL according to `agentProcess.md`.
-- Ask whether selected rows should filter any other chart after the relevant
-  visualizations are complete. Present only visible chart titles. Translate the
-  choice to `fromChartID` and `toChartID` internally.
-- For each source chart with outgoing connections, ask whether filtering should
-  happen manually after a user action or automatically when connection tooltip
-  data resolves. Manual is the default. Set `apply: "auto"` only on a connection
+- Ask whether selected rows should filter any other chart or drill down to another tab after the relevant
+  visualizations are complete. Present only visible chart titles and tabs. Translate the
+  choice to `ChartAction` entries in `DashboardConfig.actions`.
+- For each source chart with outgoing actions, ask whether filtering should
+  happen manually after a user action or automatically on selection. Manual is the default. Set `trigger: "auto"` only on an action
   whose source selection should immediately filter that target; omit it (or set
-  `"manual"`) for the default context-menu and tooltip-button workflow.
+  `"manual"`) for the default context-menu and tooltip-button workflow. Remember: navigating actions must use `trigger: "manual"`.
 - Build every normal chart SQL in `pagesConfig/sql/<chartID>.sql` around the
   framework's single JSON parameter `:input`. Parse it once with
   `from_json(CAST(:input AS STRING), 'STRUCT<...>')`, declare every accepted
