@@ -12,7 +12,7 @@ const TAB_PARAM = "tab";
 // Restores shareable state from a permalink token (`?s=<id>`) and keeps the
 // (small) active tab in the URL. Large filter selections are never placed in the
 // URL directly; they are persisted server-side as snapshots (see /api/filters).
-export function useFilterUrlSync(): void {
+export function useFilterUrlSync(dashboard: string): void {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -42,26 +42,16 @@ export function useFilterUrlSync(): void {
 
     void (async () => {
       try {
-        const snapshot = await apiFetch(`/api/filters/snapshot/${snapshotId}`, {
-          method: "GET",
-        });
+        const snapshot = await apiFetch(
+          `/api/filters/snapshot/${snapshotId}?dashboard=${encodeURIComponent(dashboard)}`,
+          { method: "GET" },
+        );
 
         if (cancelled) {
           return;
         }
 
-        const current = useFiltersStore.getState();
-
-        for (const [key, value] of Object.entries(snapshot.values ?? {})) {
-          current.setDraftFilter(key, value);
-        }
-
-        if (snapshot.activeTab) {
-          current.setActiveTab(snapshot.activeTab);
-        }
-
-        // Auto-apply so the recipient sees data without pressing Apply.
-        useFiltersStore.getState().applyFilters();
+        useFiltersStore.getState().hydrateSnapshot(snapshot);
       } catch {
         // Ignore snapshot load failures; the dashboard renders with defaults.
       }
@@ -70,7 +60,7 @@ export function useFilterUrlSync(): void {
     return () => {
       cancelled = true;
     };
-  }, [searchParams]);
+  }, [dashboard, searchParams]);
 
   // Keep only the active tab in the URL; drop the consumed snapshot token.
   useEffect(() => {

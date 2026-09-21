@@ -26,9 +26,9 @@ The intended end state is:
 ## Important paths
 
 - `pagesConfig/pages.json`: Registry the generator reads — maps each `dashboardName` to its config JSON. (`pagesConfig/index.ts` is legacy and not used by generation.)
-- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filters, tabs, connections?, tabJumps?  }` (see Filtering framework). Each component carries `chartID`, `chartConfig`, optional `filterBindings`, optional `enhancedTooltip`, and optional `autoApplyConnections`.
+- `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filters, tabs, connections?, tabJumps? }` (see Filtering framework). Each component carries `chartID`, `chartConfig`, optional `filterBindings`, and optional `enhancedTooltip`.
 - `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename. The framework always binds one JSON object as `:input`; chart SQL declares its accepted filter and connection fields with `from_json` and a typed `STRUCT`.
-- `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail query for selected rows. It also returns exact `expectedColumns` aliases used by outgoing chart connections.
+- `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail query for selected rows. It also returns exact `sourceField` aliases used by outgoing chart connection mappings.
 - `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
 - `scripts/pages/generateNextPage.ts`: Creates `app/Dashboards/<DashboardName>/page.tsx` from `pagesConfig/pages.json` and the referenced JSON.
 - `components/TabsWrapper/index.tsx`: Renders tab and row layout, derives a dashboard-wide `chartID` to `chartTitle` map, and passes each chart config into `ChartWrapper`.
@@ -70,13 +70,23 @@ The runtime flow is:
 
 Dashboards share a filter framework driven entirely by config:
 
-- **Dimensions** — `DashboardConfig.filters: FilterDimension[]`, each `{ id, label, type, scope, tab?, options?, defaultValue? }`.
+- **Dimensions** — `DashboardConfig.filters: FilterDimension[]`, each `{ id, label, type, control?, options?, defaultValue?, composition? }`.
   - `id` must be non-empty and unique across the complete dashboard. Do not reuse an ID between global and tab dimensions or between different tabs.
   - `type`: `"string" | "number" | "dateString" | "dateRange" | "select" | "multiselect" | "option"`. All are single-value except `multiselect`, which holds a `string[]`.
   - `select` and `multiselect` read their choices from `options`. `multiselect` renders a searchable combobox (Popover + Command) and binds to SQL as a comma-joined string.
   - `option` renders a segmented single-choice control where exactly one value is always selected (mandatory); it reads its choices from `options` and falls back to 2 default options when none are configured. It binds to SQL as a single string.
   - Options for `select` and `multiselect` may instead be loaded from the warehouse: set `optionsSource: "<id>"` on the dimension and add `pagesConfig/sql/filterOptions/<id>.sql` returning rows with a `value` column (and optional `label`; defaults to `value`). Options load eagerly on dashboard open via `GET /api/filters/options/<id>` and are **non-dependent** (the query runs with no filter parameters). Static `options` act as a fallback while loading or when no source is set.
-  - `scope`: `"global"` (every tab) or `"tab"` (requires `tab` = the tab `trigger`).
+  - `control`: `{ location: "dashboard" }` or `{ location: "tab", tab }`. Omit it for action-only dimensions.
+  - `composition`: `{ sameSourceKind?, crossSourceKind? }`, each `"intersect" | "union"`.
+    Several producers (control, tab jump, chart connections) may target the same dimension.
+    `sameSourceKind` (default `"union"`) combines contributions sharing a `source.kind`;
+    `crossSourceKind` (default `"intersect"`) combines the per-source-kind results, so a
+    drilldown narrows what the control already allows. The rules apply to `select`,
+    `multiselect`, and `option`; non-enumerable types accept multiple producers only
+    when they agree on the value. `dateRange` cannot be expressed in a single SQL
+    input field, so binding one is a config error.
+    An empty composition result marks the chart's filters as impossible: it does not query and
+    renders the conflict state instead.
 - **Bindings** — each chart maps dimensions to fields in its SQL input object via `filterBindings: Record<dimensionId, inputFieldName>`. `ChartWrapper` resolves the active value (`global:<id>` or `tab:<activeTab>:<id>`) and posts it; the chart API serializes all fields together into `:input`. A `multiselect` value is posted as a comma-joined string (empty → `null`).
 - **Layout** — Global filters render above the dashboard; `reportName` shows in the header.
 - **Applied filters** — `ActiveFilters` renders removable chips and doubles as the print/export summary (interactive controls are `print:hidden`).
@@ -112,19 +122,22 @@ separate API contract and continues to use batched data-point markers such as
 Charts never fetch on dashboard open. Filter edits go into a **draft** layer and
 only hit the warehouse when **Apply** is pressed.
 
-- The store (`stores/filterProvider.ts`) splits values into `draftValues` (edited
-  by controls via `setDraftFilter`) and `appliedValues` (drives queries + chips),
+- The store (`stores/filterProvider.ts`) splits contributions into `draftContributions` (edited
+  by controls via `setDraftFilter`) and `appliedContributions` (drives queries + chips),
   plus a `hasApplied` gate (`false` until the first `applyFilters()` or snapshot
   hydration). `resetDraft()` discards pending edits; `isDirty(state)` reports
   draft ≠ applied.
-- `ChartWrapper` reads `appliedValues`, sets `enabled: ... && hasApplied`, and
+- `ChartWrapper` resolves applicable `appliedContributions`, sets `enabled: ... && hasApplied`, and
   renders an idle prompt until the first Apply.
 - `components/FilterActions/index.tsx` renders **Apply**/**Reset** in the top filter bar.
-- **Chip removal** (`clearDimension`) and **selection application** (`applySelection`)
-  intentionally bypass the Apply gate: both write to draft _and_ applied layers and
-  re-query immediately.
+- **Chip removal** (`removeContribution`) and **action application**
+  (`applyPendingAction` / `applyActionContributions`) intentionally bypass the Apply
+  gate: all write to draft _and_ applied layers and re-query immediately.
+- **Alle zurücksetzen** (`clearAll`) returns to the seeded `defaultValue`
+  contributions and back to the idle state instead of querying every chart
+  unfiltered.
 - Shared permalinks auto-apply on hydration (`useFilterUrlSync`) so recipients see
-  data without pressing Apply; `useShareFilters` snapshots `appliedValues`.
+  data without pressing Apply; `useShareFilters` snapshots applied contributions.
 
 ### Selection, enhanced tooltips, and connections
 
@@ -186,25 +199,23 @@ disabled without outgoing connections, selected rows, or successfully resolved c
 values. Its submenu deduplicates target IDs and applies the chosen target immediately. The
 tooltip footer action applies the staged filters to all linked targets.
 
-Outgoing connections use manual application by default. Set
-`autoApplyConnections: true` on a source chart component to apply all resolved
-outgoing connection filters immediately after its tooltip query succeeds. An
+Outgoing connections use manual application by default. Set `apply: "auto"`
+on a connection to apply its resolved filters immediately after the source
+tooltip query succeeds. An
 empty selection then clears that source chart's applied connection filters
 immediately. Auto-applied filters remain staged so the source tooltip stays open
-and its all-target action remains available. Keep the property omitted or
-`false` when users should choose a target from the context menu or apply all
+and its all-target action remains available. Keep `apply` omitted or set it to
+`"manual"` when users should choose a target from the context menu or apply all
 staged targets from the tooltip.
 
-`DashboardConfig.connections` contains `{ fromChartID, toChartID, expectedColumns }`. Connection
-values are resolved from the source tooltip result. Every `expectedColumns` entry must be a real
-column in the target schema, an exact alias in the source tooltip SQL, an atomic scalar or array
-value at runtime, and a field declared with the same type in the target SQL's `:input` struct. Delimited
-strings must be normalized before they become connection arrays. `TabsWrapper` supplies target
+`DashboardConfig.connections` contains `{ id, fromChartID, toChartID, mappings, apply? }`.
+Each mapping's `sourceField` is an exact alias in source tooltip SQL and its
+`targetDimensionId` must be bound by the target chart. `TabsWrapper` supplies target
 labels from `chartTitle` across all tabs; internal chart IDs must not be shown to users, and an
 untitled target falls back to `Unbenanntes Diagramm`.
 
-`DashboardConfig.tabJumps` contains `{ fromChartID, targetTab, label?, mappings: [{ sourceField, targetDimensionId }], restoreOnReturn? }`.
-Charts with configured tab jumps show context menu item(s) to drill down into another tab. When triggered with selected rows, `executeTabJump` extracts primitive values, binds them as tab-level filters (`tab:<targetTab>:<dimId>`), atomically applies both draft and applied layers, switches the active tab, and pushes a breadcrumb. `TabBreadcrumb` renders above `TabsWrapper` with a single-click return that restores previous filter state when `restoreOnReturn !== false`. Single-select target dimensions disable the jump when multiple distinct values are selected; `dateString` and `dateRange` dimensions cannot be targeted by drills.
+`DashboardConfig.tabJumps` contains `{ id, fromChartID, targetTab, label?, mappings: [{ sourceField, targetDimensionId }], restoreOnReturn? }`.
+Charts with configured tab jumps show context menu item(s) to drill down into another tab. When triggered with selected rows, `executeTabJump` creates tab-targeted contributions, atomically applies both layers, switches tabs, and pushes a breadcrumb. `TabBreadcrumb` returns by restoring the exact contribution keys. Single-select target dimensions disable the jump when multiple distinct values are selected; `dateString` and `dateRange` dimensions cannot be targeted by drills.
 
 ### Shareable state
 
@@ -251,13 +262,13 @@ For normal dashboard work:
 3. Read the selected module's `instructions.md`, `chartType.d.ts`, and `chartDataSchema.ts`.
 4. Inspect the relevant source table schemas or existing schema exports.
 5. Write SQL that transforms the source tables into exactly the shape required by the module schema.
-6. For every enhanced tooltip or outgoing connection, write tooltip SQL and validate batched parameters plus the complete `expectedColumns` source-to-target contract.
+6. For every enhanced tooltip or outgoing connection, write tooltip SQL and validate batched parameters plus the complete source-field to target-dimension contract.
 7. Write or update dashboard JSON so the module config and connections are valid for that module's `chartType.d.ts` and the target table schemas.
 8. Keep the work declarative: JSON and SQL first, generated page second.
 
 For module-development or framework work:
 
-1. Use the `Development` agent.
+1. Use the `Development`, "Implementation Agent", "Feature Planner", "Implementation Reviewer" or "Plan Reviewer" agent.
 2. Change module implementation only when the task is explicitly about module capabilities, shared framework behavior, registry generation, validation, or infrastructure.
 3. When changing a module, keep the module contract valid before and after the edit.
 
@@ -305,15 +316,36 @@ The default Copilot agent is intentionally read-only in this repository.
 It may search, read, analyze, and explain repository contents, but it must not
 create, modify, rename, or delete files and must not execute shell commands.
 
+Write and execution capability is unlocked by a per-session permission marker.
+The following agents grant that marker automatically and may modify files and
+run commands:
+
+- `Development`
+- `Dashboard` (restricted to `pagesConfig/` by its own `PreToolUse` hook)
+- `Feature Planner`
+- `Implementation Agent`
+- `Implementation Reviewer`
+- `Plan Reviewer`
+
+`Feature Planner`, `Implementation Agent`, `Implementation Reviewer`, and
+`Plan Reviewer` grant on both `SessionStart` and `UserPromptSubmit`, so their
+capability becomes active on the first prompt after you select them — whether
+you start a fresh session or switch to them inside a running session. The marker
+persists for the rest of that session.
+
+`Development` and `Dashboard` grant only on `SessionStart`. Selecting them inside
+an existing session is not sufficient; a fresh session is required for their
+permissions to become active.
+
 For repository modifications or command execution:
 
-1. Select the `Development` agent first.
-2. Start a new chat session after selecting the `Development` agent.
-3. Perform implementation work only in that new session.
+1. Select a write-capable agent listed above.
+2. For `Development` or `Dashboard`, start a new chat session after selecting it.
+   For the four planner/implementation/reviewer agents, simply submit a prompt —
+   the marker is granted before the first tool call, even mid-session.
 
-Selecting the `Development` agent inside an existing session is not sufficient.
-A fresh session is required for the Development permissions to become active.
-
-If the `Development` agent is unexpectedly blocked by a repository permission
-hook, do not attempt to work around the hook. Select the `Development` agent
-and start a fresh chat session, then retry the operation.
+If a write-capable agent is unexpectedly blocked by a repository permission
+hook, do not attempt to work around the hook. For `Development` or `Dashboard`,
+start a fresh chat session and retry. For the four planner/implementation/
+reviewer agents, send one more prompt with that agent selected so its grant hook
+runs, then retry the operation.

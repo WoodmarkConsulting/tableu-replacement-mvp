@@ -10,5 +10,9 @@
   {
     "dashboardName": "ProductionNumbers",
     "dashboardConfigName": "productionNumbers.json"
+  },
+  {
+    "dashboardName": "ConnectionAcceptance",
+    "dashboardConfigName": "connectionAcceptance.json"
   }
 ]

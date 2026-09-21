@@ -419,7 +419,9 @@ export function FilterControl({
   };
 
   return (
-    <div className="flex min-w-60 flex-col gap-2">
+    <div
+      data-testid={`filter-${dimension.id}`}
+      className="flex min-w-60 flex-col gap-2">
       <Label>{dimension.label}</Label>
 
       {renderControl()}

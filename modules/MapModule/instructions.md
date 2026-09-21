@@ -701,5 +701,5 @@ wrapper-owned enhanced detail tooltip backed by tooltip SQL. Region and bubble c
 original rows through `onSelectionChange`; `ChartWrapper` owns the resulting `selectedRows`,
 right-click menu, enhanced tooltip, and outgoing chart connections. With selected rows,
 **Tooltip anzeigen** requires `enhancedTooltip: true`, while linked-chart actions also require
-successfully resolved `expectedColumns` values from the source tooltip SQL. Target charts are
-shown by their configured titles and a chosen target is filtered immediately.
+successfully resolved connection `sourceField` values from the source tooltip SQL. Target charts
+are shown by their configured titles and a chosen target is filtered immediately.

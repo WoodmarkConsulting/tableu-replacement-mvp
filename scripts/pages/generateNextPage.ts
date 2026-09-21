@@ -1,6 +1,6 @@
 // Generates dashboard pages from declarative configs so page implementation stays config-driven.
 import fs from "fs";
-import { validateFilterDimensions } from "../../lib/filterDimensions";
+import { validateDashboardConfig } from "../../lib/validateDashboardConfig";
 import { validateRootDirectoryAndPagesConfig } from "../utils";
 
 const generatedDashboardsDir = "app/Dashboards";
@@ -21,7 +21,7 @@ export function buildPageBoilerplate(
   dashboardName: string,
   dashboardConfig: DashboardConfig,
 ): string {
-  validateFilterDimensions(dashboardConfig.filters);
+  validateDashboardConfig(dashboardConfig);
 
   const tabsConfig = dashboardConfig.tabs;
   // React component names must be capitalized for the rules-of-hooks lint rule.

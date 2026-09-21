@@ -10,7 +10,7 @@ describe("dashboard filter dimension validation", () => {
           id: " ",
           label: "Region",
           type: "string",
-          scope: "global",
+          control: { location: "dashboard" },
         },
       ]),
     ).toThrow("Filter dimension id must be a non-empty string.");
@@ -23,14 +23,13 @@ describe("dashboard filter dimension validation", () => {
             id: "region",
             label: "Region",
             type: "string",
-            scope: "global",
+            control: { location: "dashboard" },
           },
           {
             id: "country",
             label: "Country",
             type: "string",
-            scope: "tab",
-            tab: "Details",
+            control: { location: "tab", tab: "Details" },
           },
         ]),
     ).not.toThrow();
@@ -39,12 +38,17 @@ describe("dashboard filter dimension validation", () => {
   it.each([
     [
       "global dimensions",
-      { id: "region", label: "Region", type: "string", scope: "global" },
+      {
+        id: "region",
+        label: "Region",
+        type: "string",
+        control: { location: "dashboard" },
+      },
       {
         id: "region",
         label: "Other Region",
         type: "string",
-        scope: "global",
+        control: { location: "dashboard" },
       },
     ],
     [
@@ -53,26 +57,28 @@ describe("dashboard filter dimension validation", () => {
         id: "region",
         label: "Region A",
         type: "string",
-        scope: "tab",
-        tab: "Tab A",
+        control: { location: "tab", tab: "Tab A" },
       },
       {
         id: "region",
         label: "Region B",
         type: "string",
-        scope: "tab",
-        tab: "Tab B",
+        control: { location: "tab", tab: "Tab B" },
       },
     ],
     [
       "global and tab dimensions",
-      { id: "region", label: "Region", type: "string", scope: "global" },
+      {
+        id: "region",
+        label: "Region",
+        type: "string",
+        control: { location: "dashboard" },
+      },
       {
         id: "region",
         label: "Tab Region",
         type: "string",
-        scope: "tab",
-        tab: "Details",
+        control: { location: "tab", tab: "Details" },
       },
     ],
   ])("rejects duplicate ids across %s", (_case, first, second) => {
@@ -86,26 +92,66 @@ describe("dashboard filter dimension validation", () => {
 
 describe("generateNextPage boilerplate", () => {
   it("includes connections and tabJumps in generated page boilerplate", () => {
-    const mockDashboardConfig: DashboardConfig = {
+    const sourceChartID =
+      "69e28f7b-a25a-4911-ae2c-64b3ab5ca155" as TableSchemaKey;
+    const targetChartID =
+      "8ea746c9-7d14-4e4a-b5fc-49c805430320" as TableSchemaKey;
+    const mockDashboardConfig = {
       reportName: "Battery Health",
-      filterLayout: "sidebar",
-      filters: [],
+      filters: [
+        {
+          id: "selected_vin",
+          label: "Selected VIN",
+          type: "multiselect",
+        },
+      ],
       tabs: [
         {
           trigger: "Overview",
-          rows: [],
+          rows: [
+            {
+              components: [
+                {
+                  moduleName: "TableModule",
+                  space: 12,
+                  chartID: sourceChartID,
+                  chartConfig: {},
+                },
+              ],
+            },
+          ],
+        },
+        {
+          trigger: "Details",
+          rows: [
+            {
+              components: [
+                {
+                  moduleName: "TableModule",
+                  space: 12,
+                  chartID: targetChartID,
+                  chartConfig: {},
+                  filterBindings: { selected_vin: "vin" },
+                },
+              ],
+            },
+          ],
         },
       ],
       connections: [
         {
-          fromChartID: "123456as",
-          toChartID: "123456as",
-          expectedColumns: ["vehicle_id"],
+          id: "vehicle-selection",
+          fromChartID: sourceChartID,
+          toChartID: targetChartID,
+          mappings: [
+            { sourceField: "vehicle_id", targetDimensionId: "selected_vin" },
+          ],
         },
       ],
       tabJumps: [
         {
-          fromChartID: "123456as",
+          id: "vehicle-details",
+          fromChartID: sourceChartID,
           targetTab: "Details",
           mappings: [
             {
@@ -115,12 +161,12 @@ describe("generateNextPage boilerplate", () => {
           ],
         },
       ],
-    };
+    } as unknown as DashboardConfig;
 
     const code = buildPageBoilerplate("batteryOverview", mockDashboardConfig);
 
     expect(code.includes("connections: [")).toBe(true);
-    expect(code.includes('"expectedColumns"')).toBe(true);
+    expect(code.includes('"vehicle-selection"')).toBe(true);
     expect(code.includes('"vin"')).toBe(true);
     expect(code.includes("tabJumps: [")).toBe(true);
     expect(code.includes('"targetDimensionId": "selected_vin"')).toBe(true);

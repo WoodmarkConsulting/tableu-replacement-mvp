@@ -1,0 +1,351 @@
+{
+  "reportName": "Connection Acceptance",
+  "filters": [
+    {
+      "id": "ecu_nm",
+      "label": "ECU",
+      "type": "multiselect",
+      "optionsSource": "productionEcuName",
+      "control": {
+        "location": "dashboard"
+      }
+    },
+    {
+      "id": "sales_country",
+      "label": "Verkaufsland",
+      "type": "multiselect",
+      "optionsSource": "connectionSalesCountry",
+      "control": {
+        "location": "dashboard"
+      }
+    }
+  ],
+  "tabs": [
+    {
+      "trigger": "Übersicht",
+      "rows": [
+        {
+          "height": 55,
+          "components": [
+            {
+              "moduleName": "BarChartModule",
+              "lassoEnabled": true,
+              "enhancedTooltip": true,
+              "space": 12,
+              "chartTitle": "Produktion je ECU",
+              "chartDescription": "Produzierte Fahrzeuge je Steuergerät (ECU). Ausgewählte Balken filtern die verknüpften Detailtabellen.",
+              "chartID": "3342fe24-5ed3-4560-b6e8-b6cdfcc776e1",
+              "filterBindings": {
+                "sales_country": "sales_country"
+              },
+              "chartConfig": {
+                "orientation": "horizontal",
+                "layout": "grouped",
+                "categoryAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "tickMargin": 8,
+                  "maxLabelChars": 22
+                },
+                "valueAxis": {
+                  "show": true,
+                  "tickLine": false,
+                  "axisLine": true,
+                  "format": "compact",
+                  "domain": "auto"
+                },
+                "grid": {
+                  "show": true,
+                  "horizontal": false,
+                  "vertical": true,
+                  "strokeDasharray": "3 3"
+                },
+                "tooltip": {
+                  "show": true,
+                  "cursor": true
+                },
+                "legend": {
+                  "show": false
+                },
+                "margin": {
+                  "top": 8,
+                  "right": 32,
+                  "bottom": 8,
+                  "left": 8
+                },
+                "bars": {
+                  "radius": 4,
+                  "categoryGap": "20%",
+                  "barGap": 4
+                },
+                "valueLabels": {
+                  "show": true,
+                  "format": "compact",
+                  "position": "outside"
+                },
+                "series": [
+                  {
+                    "seriesIndex": 0,
+                    "name": "Produktion",
+                    "fill": "var(--chart-1)",
+                    "fillOpacity": 1
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "height": 45,
+          "components": [
+            {
+              "moduleName": "TableModule",
+              "space": 12,
+              "chartTitle": "Details Übersicht",
+              "chartDescription": "Produzierte Fahrzeuge je ECU und Fahrzeugreihe. Wird durch die Auswahl in 'Produktion je ECU' gefiltert.",
+              "chartID": "b6875c8c-e334-4ffe-9fd0-847f038a5e65",
+              "filterBindings": {
+                "ecu_nm": "ecu_nm",
+                "sales_country": "sales_country"
+              },
+              "chartConfig": {
+                "columns": [
+                  {
+                    "id": "ecu_nm",
+                    "header": "ECU",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "ms_cd",
+                    "header": "Fahrzeugreihe",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "ms_nm",
+                    "header": "Modellreihe",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "sales_area_nm",
+                    "header": "Verkaufsland",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "plant_letter_cd",
+                    "header": "Werk",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "veh_total",
+                    "header": "Produzierte Fahrzeuge",
+                    "type": "number",
+                    "align": "right",
+                    "sortable": true,
+                    "footerAggregate": "sum",
+                    "format": {
+                      "maxFractionDigits": 0,
+                      "notation": "number"
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#2563eb",
+                      "showValue": true
+                    }
+                  }
+                ],
+                "hierarchy": {
+                  "enabled": false,
+                  "defaultExpandedDepth": 0,
+                  "indentSize": 16
+                },
+                "columnMenu": {
+                  "show": true,
+                  "label": "Spalten"
+                },
+                "sorting": {
+                  "enabled": true,
+                  "defaultSort": {
+                    "columnId": "veh_total",
+                    "direction": "desc"
+                  }
+                },
+                "filtering": {
+                  "globalSearch": true,
+                  "perColumn": true,
+                  "searchPlaceholder": "Suche..."
+                },
+                "footer": {
+                  "show": true,
+                  "label": "Summe"
+                },
+                "pagination": {
+                  "enabled": true,
+                  "pageSize": 25
+                },
+                "appearance": {
+                  "density": "comfortable",
+                  "stickyHeader": true,
+                  "stickyFirstColumn": true,
+                  "zebraStripes": true,
+                  "emptyPlaceholder": "-"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "trigger": "Detail",
+      "rows": [
+        {
+          "height": 100,
+          "components": [
+            {
+              "moduleName": "TableModule",
+              "space": 12,
+              "chartTitle": "Details Fahrzeugreihe",
+              "chartDescription": "Produzierte Fahrzeuge je Fahrzeugreihe und ECU. Wird automatisch durch die Auswahl in 'Produktion je ECU' gefiltert.",
+              "chartID": "c15177ce-4ac1-415a-8504-50c4ab244950",
+              "filterBindings": {
+                "ecu_nm": "ecu_nm",
+                "sales_country": "sales_country"
+              },
+              "chartConfig": {
+                "columns": [
+                  {
+                    "id": "ms_cd",
+                    "header": "Fahrzeugreihe",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "ms_nm",
+                    "header": "Modellreihe",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "ecu_nm",
+                    "header": "ECU",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "sales_area_nm",
+                    "header": "Verkaufsland",
+                    "type": "string",
+                    "align": "left",
+                    "sortable": true,
+                    "filterable": true
+                  },
+                  {
+                    "id": "veh_total",
+                    "header": "Produzierte Fahrzeuge",
+                    "type": "number",
+                    "align": "right",
+                    "sortable": true,
+                    "footerAggregate": "sum",
+                    "format": {
+                      "maxFractionDigits": 0,
+                      "notation": "number"
+                    },
+                    "dataBar": {
+                      "enabled": true,
+                      "positiveColor": "#2563eb",
+                      "showValue": true
+                    }
+                  }
+                ],
+                "hierarchy": {
+                  "enabled": false,
+                  "defaultExpandedDepth": 0,
+                  "indentSize": 16
+                },
+                "columnMenu": {
+                  "show": true,
+                  "label": "Spalten"
+                },
+                "sorting": {
+                  "enabled": true,
+                  "defaultSort": {
+                    "columnId": "veh_total",
+                    "direction": "desc"
+                  }
+                },
+                "filtering": {
+                  "globalSearch": true,
+                  "perColumn": true,
+                  "searchPlaceholder": "Suche..."
+                },
+                "footer": {
+                  "show": true,
+                  "label": "Summe"
+                },
+                "pagination": {
+                  "enabled": true,
+                  "pageSize": 25
+                },
+                "appearance": {
+                  "density": "comfortable",
+                  "stickyHeader": true,
+                  "stickyFirstColumn": true,
+                  "zebraStripes": true,
+                  "emptyPlaceholder": "-"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "ecu-to-details-uebersicht",
+      "fromChartID": "3342fe24-5ed3-4560-b6e8-b6cdfcc776e1",
+      "toChartID": "b6875c8c-e334-4ffe-9fd0-847f038a5e65",
+      "apply": "manual",
+      "mappings": [
+        {
+          "sourceField": "ECU",
+          "targetDimensionId": "ecu_nm"
+        }
+      ]
+    },
+    {
+      "id": "ecu-to-details-fahrzeugreihe",
+      "fromChartID": "3342fe24-5ed3-4560-b6e8-b6cdfcc776e1",
+      "toChartID": "c15177ce-4ac1-415a-8504-50c4ab244950",
+      "apply": "manual",
+      "mappings": [
+        {
+          "sourceField": "ECU",
+          "targetDimensionId": "ecu_nm"
+        }
+      ]
+    }
+  ]
+}

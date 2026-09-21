@@ -6,16 +6,20 @@ import {
   SidebarGroupLabel,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import useFilterStore, { tabKey } from "@/stores/filterProvider";
+import useFilterStore, {
+  controlContributionKey,
+} from "@/stores/filterProvider";
 
 export function TabFilters() {
   const dimensions = useFilterStore((state) => state.dimensions);
   const activeTab = useFilterStore((state) => state.activeTab);
-  const values = useFilterStore((state) => state.draftValues);
+  const contributions = useFilterStore((state) => state.draftContributions);
   const setDraftFilter = useFilterStore((state) => state.setDraftFilter);
 
   const tabDimensions = dimensions.filter(
-    (dimension) => dimension.scope === "tab" && dimension.tab === activeTab,
+    (dimension) =>
+      dimension.control?.location === "tab" &&
+      dimension.control.tab === activeTab,
   );
 
   if (tabDimensions.length === 0) {
@@ -30,14 +34,16 @@ export function TabFilters() {
         <SidebarGroupLabel>Filter für &quot;{activeTab}&quot;</SidebarGroupLabel>
 
         {tabDimensions.map((dimension) => {
-          const key = tabKey(activeTab, dimension.id);
+          const key = controlContributionKey(dimension);
 
           return (
             <FilterControl
               key={dimension.id}
               dimension={dimension}
-              value={values[key]}
-              onChange={(value: FilterValue) => setDraftFilter(key, value)}
+              value={key ? contributions[key]?.value : undefined}
+              onChange={(value: FilterValue) =>
+                setDraftFilter(dimension.id, value)
+              }
             />
           );
         })}

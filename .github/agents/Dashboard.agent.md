@@ -50,9 +50,9 @@ You guide users through creating dashboards in this repository.
   choice to `fromChartID` and `toChartID` internally.
 - For each source chart with outgoing connections, ask whether filtering should
   happen manually after a user action or automatically when connection tooltip
-  data resolves. Manual is the default. Set `autoApplyConnections: true` only
-  on a source chart whose selection should immediately filter all linked
-  targets; omit it for the default context-menu and tooltip-button workflow.
+  data resolves. Manual is the default. Set `apply: "auto"` only on a connection
+  whose source selection should immediately filter that target; omit it (or set
+  `"manual"`) for the default context-menu and tooltip-button workflow.
 - Build every normal chart SQL in `pagesConfig/sql/<chartID>.sql` around the
   framework's single JSON parameter `:input`. Parse it once with
   `from_json(CAST(:input AS STRING), 'STRUCT<...>')`, declare every accepted
@@ -85,12 +85,12 @@ You guide users through creating dashboards in this repository.
 - Never pass a nested CSV shape such as `["car-1,car-2", "car-3"]` to a target
   query that compares one ID at a time. The required shape is
   `["car-1", "car-2", "car-3"]`.
-- For every connection, verify that each `expectedColumns` name is returned by
+- For every connection, verify that each mapping's `sourceField` is returned by
   the source tooltip SQL with that exact alias, that its runtime JSON value is
-  scalar or an array of atomic values as intended, and that the target SQL
-  declares and compares the same type in its `:input` struct. Walk one
-  representative source value through the complete contract and confirm it can
-  match the target column.
+  scalar or an array of atomic values as intended, and that the mapping's
+  `targetDimensionId` is a `multiselect` dimension bound by the target chart's
+  `filterBindings`. Walk one representative source value through the complete
+  contract and confirm it can match the target column.
 - Never issue one tooltip request per selected row. Each tooltip or connection
   request must send all selected data points in one batch. A visible enhanced
   tooltip and connection resolution may be separate requests, but neither may
@@ -104,8 +104,8 @@ You guide users through creating dashboards in this repository.
   a module or dashboard page.
 - A specific target selected in the context submenu is filtered immediately.
   The tooltip footer action applies the staged values to all linked targets.
-- `autoApplyConnections: true` on a source chart immediately applies all
-  resolved target filters after a successful connection tooltip query. Keep
+- `apply: "auto"` on a connection immediately applies its resolved target
+  filters after a successful connection tooltip query. Keep
   the same filters staged so the tooltip stays open and its all-target button
   remains available. Clearing the selection immediately clears those source
   filters as well.

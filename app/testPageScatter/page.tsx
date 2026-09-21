@@ -164,7 +164,6 @@ export default function TestPageScatter() {
     initFilterStore({
       dimensions: [],
       initialActiveTab: INITIAL_TAB,
-      initialValues: {},
     });
 
     return resetFilterStore;

@@ -16,6 +16,9 @@
     "lint": "eslint . && npm run module:validate",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
     "verify:typescript": "tsc --noEmit",
     "pageConfig:generatePage": "npx tsx scripts/pages/generateNextPage.ts",
     "pageConfig:generateId": "npx tsx scripts/modules/generateDashboardID.ts",
@@ -71,6 +74,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/adm-zip": "^0.5.8",
     "@types/d3-geo": "^3.1.1",

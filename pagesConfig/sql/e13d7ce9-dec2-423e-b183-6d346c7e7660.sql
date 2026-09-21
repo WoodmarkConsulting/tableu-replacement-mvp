@@ -11,12 +11,12 @@
 --   Drilldown from "Zentrale Filterseite" (all optional, multi-value comma-joined string when set):
 --   :drill_ecu_nm, :drill_engine_series, :drill_battery, :drill_trans_md_cd, :drill_ms_cd, :drill_country
 -- Incoming chart connection:
---   :Batterie (ARRAY<STRING>) from Battery table
+--   Battery table -> drill_battery
 
 WITH chart_input AS (
   SELECT from_json(
     CAST(:input AS STRING),
-    'STRUCT<ms_nm: STRING, ecu_fault_nm: STRING, engine_md_cd: STRING, trans_md_cd: STRING, ms_cd: STRING, md_cd: STRING, plant_letter_cd: STRING, ecu_nm: STRING, drill_ecu_nm: STRING, drill_engine_series: STRING, drill_battery: STRING, drill_trans_md_cd: STRING, drill_ms_cd: STRING, drill_country: STRING, Batterie: ARRAY<STRING>>'
+    'STRUCT<ms_nm: STRING, ecu_fault_nm: STRING, engine_md_cd: STRING, trans_md_cd: STRING, ms_cd: STRING, md_cd: STRING, plant_letter_cd: STRING, ecu_nm: STRING, drill_ecu_nm: STRING, drill_engine_series: STRING, drill_battery: STRING, drill_trans_md_cd: STRING, drill_ms_cd: STRING, drill_country: STRING>'
   ) AS params
 ),
 agg AS (
@@ -42,7 +42,6 @@ agg AS (
     AND (COALESCE(chart_input.params.drill_trans_md_cd, '') = '' OR array_contains(split(chart_input.params.drill_trans_md_cd, ','), trans_md_cd))
     AND (COALESCE(chart_input.params.drill_ms_cd, '') = '' OR array_contains(split(chart_input.params.drill_ms_cd, ','), ms_cd))
     AND (COALESCE(chart_input.params.drill_country, '') = '' OR array_contains(split(chart_input.params.drill_country, ','), codelandiso1366_2))
-    AND (chart_input.params.Batterie IS NULL OR array_contains(chart_input.params.Batterie, Batterie))
   GROUP BY ecu_fault_nm
 )
 SELECT

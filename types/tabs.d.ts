@@ -16,8 +16,6 @@ type TabsComponentConfig = {
   selfFetching?: boolean;
   // Maps a filter dimension id to a field in this chart's JSON SQL input.
   filterBindings?: Record<string, string>;
-  // Applies every outgoing chart connection as soon as its tooltip data resolves.
-  autoApplyConnections: boolean;
 } & BaseChartProps;
 
 type TabsConfig = {
@@ -28,15 +26,7 @@ type TabsConfig = {
   }[];
 };
 
-type ChartConnection<Tconf extends TabsConfig[] = TabsConfig[]> = {
-  [ToChartID in TableSchemaKey]: {
-    fromChartID: Tconf[number]["rows"][number]["components"][number]["chartID"];
-    toChartID: ToChartID;
-    expectedColumns: TableColumnNames<ToChartID>[];
-  };
-}[TableSchemaKey];
-
-type TabJumpMapping = {
+type FilterActionMapping = {
   // Column from selected chart data (client-side selectedRows).
   // Must resolve to a primitive (string | number | boolean) on every selected row.
   sourceField: string;
@@ -45,13 +35,22 @@ type TabJumpMapping = {
 };
 
 type TabJumpConfig<Tconf extends TabsConfig[] = TabsConfig[]> = {
+  id: string;
   fromChartID: Tconf[number]["rows"][number]["components"][number]["chartID"];
   targetTab: Tconf[number]["trigger"];
   label?: string; // Optional context menu label, e.g. "Details in [Tab] ansehen"
-  mappings: TabJumpMapping[];
+  mappings: FilterActionMapping[];
   // If true (default), restores the target tab's previous filter values when
   // returning via the breadcrumb. Named for what it does: restore, not clear.
   restoreOnReturn?: boolean;
+};
+
+type ChartConnection<Tconf extends TabsConfig[] = TabsConfig[]> = {
+  id: string;
+  fromChartID: Tconf[number]["rows"][number]["components"][number]["chartID"];
+  toChartID: Tconf[number]["rows"][number]["components"][number]["chartID"];
+  mappings: FilterActionMapping[];
+  apply?: "manual" | "auto";
 };
 
 type DashboardConfig<T extends TabsConfig[] = TabsConfig[]> = {

@@ -25,7 +25,6 @@ const TestPage = () => {
           components: [
             {
               moduleName: "LineChartModule",
-              autoApplyConnections: false,
               space: 6,
               chartID: "active-users-over-time",
               chartTitle: "Aktive Nutzer über Zeit",
@@ -99,9 +98,11 @@ const TestPage = () => {
             },
             {
               moduleName: "LineChartModule",
-              autoApplyConnections: false,
               space: 6,
               chartID: "cumulative-fleets",
+              filterBindings: {
+                selected_fleet_creation_date: "fleet_creation_date",
+              },
               chartTitle: "Kumulierte Anzahl Fleets",
               chartDescription: "Wie wächst der Bestand über die Zeit?",
               enhancedTooltip: true,
@@ -176,9 +177,9 @@ const TestPage = () => {
           components: [
             {
               moduleName: "LineChartModule",
-              autoApplyConnections: true,
               space: 12,
               chartID: "dtc-table",
+              filterBindings: { selected_car: "CarName" },
               chartTitle: "Aktive und gespeicherte DTCs über Zeit",
               chartDescription:
                 "Wie entwickeln sich aktive und gespeicherte DTC-Einträge pro Tag?",
@@ -281,9 +282,9 @@ const TestPage = () => {
           components: [
             {
               moduleName: "ScatterPlotModule",
-              autoApplyConnections: false,
               space: 12,
               chartID: "dtc-scatter",
+              filterBindings: { selected_last_update: "LastUpdate" },
               chartTitle: "DTC-Verteilung – Standard",
               chartDescription:
                 "Standarddarstellung mit automatischen Ticks, Grid, Hover und Legende.",
@@ -324,26 +325,39 @@ const TestPage = () => {
       {
         id: "exampleGLOBALDimension",
         label: "Example GLOBAL Filter",
-        scope: "global",
+        control: { location: "dashboard" },
         type: "dateString",
         defaultValue: "",
       },
       {
         id: "exampleFilterDimension",
         label: "Example Filter Dimension",
-        scope: "tab",
+        control: { location: "tab", tab: "Overview" },
         type: "dateString",
         defaultValue: "",
-        tab: "Overview",
+      },
+      {
+        id: "selected_fleet_creation_date",
+        label: "Selected Fleet Creation Date",
+        type: "multiselect",
+      },
+      {
+        id: "selected_car",
+        label: "Selected Car",
+        type: "multiselect",
+      },
+      {
+        id: "selected_last_update",
+        label: "Selected Last Update",
+        type: "multiselect",
       },
 
       // {
       //   id: "exampleFilterDimensionAnalytics",
       //   label: "Example Filter Dimension Analytics",
-      //   scope: "tab",
+      //   control: { location: "tab", tab: "Analytics" },
       //   type: "dateString",
       //   defaultValue: "",
-      //   tab: "Analytics",
       // },
     ],
 
@@ -352,49 +366,45 @@ const TestPage = () => {
 
     connections: [
       {
+        id: "active-users-to-fleets",
         fromChartID: "active-users-over-time",
         toChartID: "cumulative-fleets",
-        expectedColumns: ["fleet_creation_date"],
+        mappings: [
+          {
+            sourceField: "fleet_creation_date",
+            targetDimensionId: "selected_fleet_creation_date",
+          },
+        ],
+        apply: "manual",
       },
       {
+        id: "active-users-to-cars",
         fromChartID: "active-users-over-time",
         toChartID: "dtc-table",
-        expectedColumns: ["CarName"],
+        mappings: [
+          { sourceField: "CarName", targetDimensionId: "selected_car" },
+        ],
+        apply: "auto",
       },
       {
+        id: "cars-to-scatter",
         fromChartID: "dtc-table",
         toChartID: "dtc-scatter",
-        expectedColumns: ["LastUpdate"],
+        mappings: [
+          {
+            sourceField: "LastUpdate",
+            targetDimensionId: "selected_last_update",
+          },
+        ],
+        apply: "manual",
       },
     ],
   };
-
-  const globalFilters: PagesConfig["globalFilters"] = [
-    {
-      key: "exampleFilterFrom",
-      label: "Example Filter From",
-      type: "dateString",
-      value: "",
-    },
-    {
-      key: "exampleFilterTo",
-      label: "Example Filter To",
-      type: "dateString",
-      value: "",
-    },
-  ];
 
   useLayoutEffect(() => {
     initFilterStore({
       dimensions: dashboardConfig.filters,
       initialActiveTab: dashboardConfig.tabs[0]?.trigger ?? "",
-      initialValues: globalFilters.reduce(
-        (acc, filter) => {
-          acc[filter.key] = filter.value;
-          return acc;
-        },
-        {} as Record<string, FilterValue>,
-      ),
     });
 
     return () => {

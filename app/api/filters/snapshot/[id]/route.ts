@@ -7,7 +7,7 @@ import { APIEndpoint, SnapshotIdPath } from "@/app/api/utils/types";
 type Response = APIEndpoint<SnapshotIdPath>["GET"]["response"];
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: RouteContext<"/api/filters/snapshot/[id]">,
 ) {
   const { id } = await ctx.params;
@@ -19,10 +19,10 @@ export async function GET(
     });
   }
 
-  let snapshot;
+  let storedSnapshot;
 
   try {
-    snapshot = await loadSnapshot(id);
+    storedSnapshot = await loadSnapshot(id);
   } catch (error) {
     console.error(`Failed to load filter snapshot "${id}":`, error);
 
@@ -32,12 +32,20 @@ export async function GET(
     });
   }
 
-  if (!snapshot) {
+  if (!storedSnapshot) {
     return buildErrorMessage({
       message: "Filter snapshot not found",
       httpStatus: 404,
     });
   }
 
-  return Response.json(snapshot satisfies Response);
+  const dashboard = req.nextUrl.searchParams.get("dashboard");
+  if (!dashboard || dashboard !== storedSnapshot.dashboard) {
+    return buildErrorMessage({
+      message: "Filter snapshot belongs to another dashboard",
+      httpStatus: 403,
+    });
+  }
+
+  return Response.json(storedSnapshot.snapshot satisfies Response);
 }

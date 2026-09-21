@@ -8,15 +8,19 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import useFiltersStore, { globalKey } from "@/stores/filterProvider";
+import useFiltersStore, {
+  controlContributionKey,
+} from "@/stores/filterProvider";
 import { FilterControl } from "../FilterControl";
 import { FilterActions } from "../FilterActions";
 import { QueryTimer } from "../QueryTimer";
 import { TabFilters } from "../TabFilters";
 
 export function AppSidebar() {
-  const { dimensions, draftValues, setDraftFilter } = useFiltersStore();
-  const globalFilters = dimensions.filter((dim) => dim.scope === "global");
+  const { dimensions, draftContributions, setDraftFilter } = useFiltersStore();
+  const globalFilters = dimensions.filter(
+    (dimension) => dimension.control?.location === "dashboard",
+  );
 
   return (
     <Sidebar>
@@ -27,14 +31,16 @@ export function AppSidebar() {
             <SidebarGroupLabel>Globale Filter</SidebarGroupLabel>
 
             {globalFilters.map((dimension) => {
-              const key = globalKey(dimension.id);
+              const key = controlContributionKey(dimension);
 
               return (
                 <FilterControl
                   key={dimension.id}
                   dimension={dimension}
-                  value={draftValues[key]}
-                  onChange={(value: FilterValue) => setDraftFilter(key, value)}
+                  value={key ? draftContributions[key]?.value : undefined}
+                  onChange={(value: FilterValue) =>
+                    setDraftFilter(dimension.id, value)
+                  }
                 />
               );
             })}

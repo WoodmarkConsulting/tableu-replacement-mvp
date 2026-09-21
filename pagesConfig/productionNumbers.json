@@ -1,129 +1,164 @@
 {
   "reportName": "Production numbers",
-  "filterLayout": "sidebar",
   "filters": [
     {
       "id": "ms_nm",
       "label": "Model Series",
       "type": "multiselect",
-      "scope": "global",
-      "optionsSource": "productionModelSeriesName"
+      "optionsSource": "productionModelSeriesName",
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "ecu_fault_nm",
       "label": "Fault Code",
       "type": "multiselect",
-      "scope": "global",
-      "optionsSource": "productionFaultCode"
+      "optionsSource": "productionFaultCode",
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "engine_md_cd",
       "label": "Engine Model Code",
       "type": "multiselect",
-      "scope": "global",
-      "optionsSource": "productionEngineModelCode"
+      "optionsSource": "productionEngineModelCode",
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "trans_md_cd",
       "label": "Transmission Model Code (6)",
       "type": "multiselect",
-      "scope": "global",
-      "optionsSource": "productionTransModelCode"
+      "optionsSource": "productionTransModelCode",
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "ms_cd",
       "label": "Vehicle Series",
       "type": "multiselect",
-      "scope": "global",
-      "optionsSource": "productionVehicleSeries"
+      "optionsSource": "productionVehicleSeries",
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "md_cd",
       "label": "Vehicle Model Code",
       "type": "multiselect",
-      "scope": "global",
-      "optionsSource": "productionVehicleModelCode"
+      "optionsSource": "productionVehicleModelCode",
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "plant_letter_cd",
       "label": "Plant",
       "type": "multiselect",
-      "scope": "global",
-      "optionsSource": "productionPlant"
+      "optionsSource": "productionPlant",
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "ecu_nm",
       "label": "ECU",
       "type": "multiselect",
-      "scope": "global",
-      "optionsSource": "productionEcuName"
+      "optionsSource": "productionEcuName",
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "prod_from",
       "label": "Production Date From",
       "type": "dateString",
-      "scope": "global"
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "prod_to",
       "label": "Production Date To",
       "type": "dateString",
-      "scope": "global"
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "diag_from",
       "label": "Diagnosis Date From",
       "type": "dateString",
-      "scope": "global",
-      "defaultValue": "-3 months"
+      "defaultValue": "-3 months",
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "diag_to",
       "label": "Diagnosis Date To",
       "type": "dateString",
-      "scope": "global"
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "drill_ecu_nm",
       "label": "ECU (Drilldown)",
       "type": "multiselect",
-      "scope": "tab",
-      "tab": "Production Numbers 2"
+      "control": {
+        "location": "tab",
+        "tab": "Production Numbers 2"
+      }
     },
     {
       "id": "drill_engine_series",
       "label": "Engine Series (Drilldown)",
       "type": "multiselect",
-      "scope": "tab",
-      "tab": "Production Numbers 2"
+      "control": {
+        "location": "tab",
+        "tab": "Production Numbers 2"
+      }
     },
     {
       "id": "drill_battery",
       "label": "Battery (Drilldown)",
       "type": "multiselect",
-      "scope": "tab",
-      "tab": "Production Numbers 2"
+      "control": {
+        "location": "tab",
+        "tab": "Production Numbers 2"
+      }
     },
     {
       "id": "drill_trans_md_cd",
       "label": "Transmission Model Code (Drilldown)",
       "type": "multiselect",
-      "scope": "tab",
-      "tab": "Production Numbers 2"
+      "control": {
+        "location": "tab",
+        "tab": "Production Numbers 2"
+      }
     },
     {
       "id": "drill_ms_cd",
       "label": "Vehicle Series (Drilldown)",
       "type": "multiselect",
-      "scope": "tab",
-      "tab": "Production Numbers 2"
+      "control": {
+        "location": "tab",
+        "tab": "Production Numbers 2"
+      }
     },
     {
       "id": "drill_country",
       "label": "Sales Country (Drilldown)",
       "type": "multiselect",
-      "scope": "tab",
-      "tab": "Production Numbers 2"
+      "control": {
+        "location": "tab",
+        "tab": "Production Numbers 2"
+      }
     }
   ],
   "tabs": [
@@ -661,7 +696,10 @@
               "chartConfig": {
                 "projection": {
                   "type": "geoNaturalEarth1",
-                  "center": [0, 20],
+                  "center": [
+                    0,
+                    20
+                  ],
                   "scale": 150
                 },
                 "zoom": {
@@ -838,7 +876,10 @@
                   "tickLine": false,
                   "axisLine": true,
                   "format": "percent",
-                  "domain": [0, 100]
+                  "domain": [
+                    0,
+                    100
+                  ]
                 },
                 "grid": {
                   "show": true,
@@ -927,7 +968,10 @@
                   "tickLine": false,
                   "axisLine": true,
                   "format": "percent",
-                  "domain": [0, 100]
+                  "domain": [
+                    0,
+                    100
+                  ]
                 },
                 "grid": {
                   "show": true,
@@ -1418,7 +1462,6 @@
             {
               "moduleName": "TableModule",
               "enhancedTooltip": true,
-              "autoApplyConnections": false,
               "space": 12,
               "chartTitle": "Battery",
               "chartDescription": "Error quota and vehicle count per battery.",
@@ -1533,44 +1576,87 @@
       "fromChartID": "8ea746c9-7d14-4e4a-b5fc-49c805430320",
       "targetTab": "Production Numbers 2",
       "label": "Details in \"Production Numbers 2\" ansehen",
-      "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_ecu_nm" }]
+      "mappings": [
+        {
+          "sourceField": "category",
+          "targetDimensionId": "drill_ecu_nm"
+        }
+      ],
+      "id": "tab-jump-1"
     },
     {
       "fromChartID": "25513e97-5ec5-46af-a4ec-811371529031",
       "targetTab": "Production Numbers 2",
       "label": "Details in \"Production Numbers 2\" ansehen",
-      "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_engine_series" }]
+      "mappings": [
+        {
+          "sourceField": "category",
+          "targetDimensionId": "drill_engine_series"
+        }
+      ],
+      "id": "tab-jump-2"
     },
     {
       "fromChartID": "162a6014-4a1e-44c6-9b9d-e24d9a62dce6",
       "targetTab": "Production Numbers 2",
       "label": "Details in \"Production Numbers 2\" ansehen",
-      "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_battery" }]
+      "mappings": [
+        {
+          "sourceField": "category",
+          "targetDimensionId": "drill_battery"
+        }
+      ],
+      "id": "tab-jump-3"
     },
     {
       "fromChartID": "c46a43c9-68f3-4c05-b052-f8e6102f0a7d",
       "targetTab": "Production Numbers 2",
       "label": "Details in \"Production Numbers 2\" ansehen",
-      "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_trans_md_cd" }]
+      "mappings": [
+        {
+          "sourceField": "category",
+          "targetDimensionId": "drill_trans_md_cd"
+        }
+      ],
+      "id": "tab-jump-4"
     },
     {
       "fromChartID": "892c68b8-4972-4d4d-9c5c-911a2dd2549e",
       "targetTab": "Production Numbers 2",
       "label": "Details in \"Production Numbers 2\" ansehen",
-      "mappings": [{ "sourceField": "regionCode", "targetDimensionId": "drill_country" }]
+      "mappings": [
+        {
+          "sourceField": "regionCode",
+          "targetDimensionId": "drill_country"
+        }
+      ],
+      "id": "tab-jump-5"
     },
     {
       "fromChartID": "fe6156a0-778e-4e29-9dfd-b63a4df8929f",
       "targetTab": "Production Numbers 2",
       "label": "Details in \"Production Numbers 2\" ansehen",
-      "mappings": [{ "sourceField": "category", "targetDimensionId": "drill_ms_cd" }]
+      "mappings": [
+        {
+          "sourceField": "category",
+          "targetDimensionId": "drill_ms_cd"
+        }
+      ],
+      "id": "tab-jump-6"
     }
   ],
   "connections": [
     {
+      "id": "battery-to-ecu-errors",
       "fromChartID": "72a22d66-9e60-4d69-8354-a38c070ea2fd",
       "toChartID": "e13d7ce9-dec2-423e-b183-6d346c7e7660",
-      "expectedColumns": ["Batterie"]
+      "mappings": [
+        {
+          "sourceField": "Batterie",
+          "targetDimensionId": "drill_battery"
+        }
+      ],
+      "apply": "manual"
     }
   ]
 }

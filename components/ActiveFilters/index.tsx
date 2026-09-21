@@ -1,29 +1,19 @@
 "use client";
 
+import { useMemo } from "react";
 import { XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import useFilterStore, { globalKey, tabKey } from "@/stores/filterProvider";
+import {
+  contributionAppliesTo,
+  isEmptyFilterValue,
+} from "@/lib/filters/contributions";
+import useFilterStore from "@/stores/filterProvider";
 
 type ActiveFiltersProps = {
   dimensions: FilterDimension[];
+  tabs: TabsConfig[];
 };
-
-function isEmpty(value: FilterValue | undefined): boolean {
-  if (value === null || value === undefined || value === "") {
-    return true;
-  }
-
-  if (Array.isArray(value)) {
-    return value.length === 0;
-  }
-
-  if (typeof value === "object") {
-    return !value.from && !value.to;
-  }
-
-  return false;
-}
 
 function formatValue(dimension: FilterDimension, value: FilterValue): string {
   if (dimension.type === "multiselect" && Array.isArray(value)) {
@@ -56,27 +46,47 @@ function formatValue(dimension: FilterDimension, value: FilterValue): string {
   return String(value);
 }
 
-export function ActiveFilters({ dimensions }: ActiveFiltersProps) {
-  const values = useFilterStore((state) => state.appliedValues);
+export function ActiveFilters({ dimensions, tabs }: ActiveFiltersProps) {
+  const contributions = useFilterStore(
+    (state) => state.appliedContributions,
+  );
   const activeTab = useFilterStore((state) => state.activeTab);
-  const clearDimension = useFilterStore((state) => state.clearDimension);
+  const removeContribution = useFilterStore(
+    (state) => state.removeContribution,
+  );
   const clearAll = useFilterStore((state) => state.clearAll);
 
-  const active = dimensions
-    .filter(
-      (dimension) =>
-        dimension.scope === "global" ||
-        (dimension.scope === "tab" && dimension.tab === activeTab),
-    )
-    .map((dimension) => {
-      const key =
-        dimension.scope === "global"
-          ? globalKey(dimension.id)
-          : tabKey(activeTab, dimension.id);
+  const chartIDsOnActiveTab = useMemo(
+    () =>
+      new Set(
+        (tabs.find((tab) => tab.trigger === activeTab)?.rows ?? []).flatMap(
+          (row) => row.components.map((component) => component.chartID),
+        ),
+      ),
+    [tabs, activeTab],
+  );
 
-      return { dimension, key, value: values[key] };
-    })
-    .filter((entry) => !isEmpty(entry.value));
+  const dimensionsById = new Map(
+    dimensions.map((dimension) => [dimension.id, dimension]),
+  );
+  // Chips summarize the whole tab, so any chart-targeted contribution on the
+  // active tab is shown, not just the one aimed at a single chart.
+  const active = Object.values(contributions)
+    .filter((contribution) =>
+      contributionAppliesTo(contribution, {
+        tab: activeTab,
+        chartIDsOnTab: chartIDsOnActiveTab,
+      }),
+    )
+    .map((contribution) => ({
+      contribution,
+      dimension: dimensionsById.get(contribution.dimensionId),
+    }))
+    .filter(
+      (entry): entry is typeof entry & { dimension: FilterDimension } =>
+        entry.dimension !== undefined &&
+        !isEmptyFilterValue(entry.contribution.value),
+    );
 
   if (active.length === 0) {
     return null;
@@ -90,17 +100,25 @@ export function ActiveFilters({ dimensions }: ActiveFiltersProps) {
         Angewendete Filter:
       </span>
 
-      {active.map(({ dimension, key, value }) => (
+      {active.map(({ dimension, contribution }) => (
         <span
-          key={key}
+          key={contribution.key}
           className="inline-flex items-center gap-1 rounded-full border border-input bg-muted px-2 py-0.5 text-xs">
           <span className="font-medium">{dimension.label}:</span>
 
-          <span>{formatValue(dimension, value as FilterValue)}</span>
+          <span>{formatValue(dimension, contribution.value)}</span>
+
+          {contribution.source.kind !== "control" ? (
+            <span className="text-muted-foreground">
+              {contribution.source.kind === "tabJump"
+                ? "via Drilldown"
+                : "via Auswahl"}
+            </span>
+          ) : null}
 
           <button
             type="button"
-            onClick={() => clearDimension(key)}
+            onClick={() => removeContribution(contribution.key)}
             aria-label={`Filter ${dimension.label} entfernen`}
             className="ml-1 rounded-full p-0.5 hover:bg-accent print:hidden">
             <XIcon className="size-3" />

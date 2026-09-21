@@ -1,0 +1,46 @@
+{
+  "id": "c15177ce-4ac1-415a-8504-50c4ab244950",
+  "tables": [
+    {
+      "tablePath": "westeurope_extollo_2026007fielddatadev75cd75.2018001_xd_td_sofa_dev.t_xd_td_production_numbers",
+      "columns": [
+        { "name": "sales_area_nm", "type": "string" },
+        { "name": "codelandiso1366_2", "type": "string" },
+        { "name": "engine_ms_cd", "type": "string" },
+        { "name": "engine_md_cd", "type": "string" },
+        { "name": "ms_cd", "type": "string" },
+        { "name": "md_cd", "type": "string" },
+        { "name": "trans_md_cd", "type": "string" },
+        { "name": "trans_md_cd_4", "type": "string" },
+        { "name": "ms_nm", "type": "string" },
+        { "name": "plant_letter_cd", "type": "string" },
+        { "name": "prod_month", "type": "date" },
+        { "name": "Batterie", "type": "string" },
+        { "name": "Motorbaureihe", "type": "string" },
+        { "name": "Antriebstyp", "type": "string" },
+        { "name": "Antriebsart", "type": "string" },
+        { "name": "Hubraum", "type": "string" },
+        { "name": "E_Drive", "type": "string" },
+        { "name": "kw_vm_el", "type": "string" },
+        { "name": "model_year", "type": "string" },
+        { "name": "sa_ahk", "type": "boolean" },
+        { "name": "sa_handschalter", "type": "boolean" },
+        { "name": "sa_nicht_kundenfaehig", "type": "boolean" },
+        { "name": "sa_offroad_paket", "type": "boolean" },
+        { "name": "sa_rsg", "type": "boolean" },
+        { "name": "sa_standheizung", "type": "boolean" },
+        { "name": "sa_taxi", "type": "boolean" },
+        { "name": "sa_v48", "type": "boolean" },
+        { "name": "lhd", "type": "boolean" },
+        { "name": "ecu_nm", "type": "string" },
+        { "name": "vehicle_id", "type": "string" },
+        { "name": "ecu_fault_nm", "type": "string" },
+        { "name": "ecu_hw_partnumber_cd", "type": "string" },
+        { "name": "ecu_foot_print_txt", "type": "string" },
+        { "name": "max_has_occurrence", "type": "int" },
+        { "name": "ecu_foot_print_txt_veh_sw", "type": "string" },
+        { "name": "veh_total", "type": "bigint" }
+      ]
+    }
+  ]
+}

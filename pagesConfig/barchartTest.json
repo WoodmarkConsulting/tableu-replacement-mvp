@@ -1,31 +1,38 @@
 {
   "reportName": "Barchart Test with live data",
-  "filterLayout": "sidebar",
   "filters": [
     {
       "id": "from",
       "label": "Von (Diagnosedatum)",
       "type": "dateString",
-      "scope": "global"
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "to",
       "label": "Bis (Diagnosedatum)",
       "type": "dateString",
-      "scope": "global"
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "country",
       "label": "Land",
       "type": "multiselect",
-      "scope": "global",
-      "optionsSource": "ecuCountry"
+      "optionsSource": "ecuCountry",
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "minAge",
       "label": "Mindestalter Erstzulassung (Jahre)",
       "type": "number",
-      "scope": "global"
+      "control": {
+        "location": "dashboard"
+      }
     }
   ],
   "tabs": [

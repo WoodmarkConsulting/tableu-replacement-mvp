@@ -46,10 +46,10 @@ You are the main implementation agent for this repository.
 - For selection, enhanced-tooltip, lasso, or connection changes, validate
   disabled states, repeated lasso use, single tooltip ownership, target labels,
   per-target application, and all-target application as applicable.
-- For `autoApplyConnections`, validate that resolved filters are applied and
-  remain staged, the source tooltip stays open while targets refetch, and its
-  all-target button remains visible. A target interaction lock must never close
-  another chart's tooltip.
+- For connections with `apply: "auto"`, validate that resolved filters are
+  applied and remain staged, the source tooltip stays open while targets refetch,
+  and its all-target button remains visible. A target interaction lock must never
+  close another chart's tooltip.
 - Do not revert unrelated user changes.
 
 ## Dashboard SQL Input Contract

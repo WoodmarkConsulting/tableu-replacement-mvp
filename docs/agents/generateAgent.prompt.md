@@ -42,9 +42,10 @@ Der Agent soll insbesondere:
   dass Auswahl, Tooltip-Karte und Rechtsklick-Menü vom `ChartWrapper` kommen
 - nach Fertigstellung der Visualisierungen fragen, ob eine Auswahl andere Charts
   filtern soll; dabei nur sichtbare Charttitel nennen und IDs intern auflösen
-- Chart-Verbindungen als `fromChartID`, `toChartID` und `expectedColumns`
-  konfigurieren; jeden Spaltennamen als exakten Source-Tooltip-Alias und
-  passenden Target-SQL-Parameter validieren
+- Chart-Verbindungen als `id`, `fromChartID`, `toChartID` und `mappings`
+  (`sourceField`, `targetDimensionId`) konfigurieren; jeden `sourceField` als
+  exakten Source-Tooltip-Alias und jede `targetDimensionId` als gebundene
+  `multiselect`-Dimension des Ziel-Charts validieren
 - beachten, dass ein Ziel im Kontextmenü sofort gefiltert wird, während die
   Tooltip-Aktion alle verlinkten Ziele gemeinsam anwenden kann
 - sicherstellen, dass verlinkte Ziele einen aussagekräftigen `chartTitle` haben,

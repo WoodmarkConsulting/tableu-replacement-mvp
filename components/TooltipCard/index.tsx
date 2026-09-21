@@ -6,7 +6,7 @@ import type { Tooltip, TooltipPosition } from "@/stores/tooltip";
 import { Spinner } from "../ui/spinner";
 import { Button } from "../ui/button";
 import useTooltipStore from "@/stores/tooltip";
-import useChartConnectionsStore from "@/stores/chartConnectionsStore";
+import useFilterStore from "@/stores/filterProvider";
 import { ListFilter, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,11 +26,11 @@ const TooltipCard = ({
 }: Props) => {
   const isStaticTooltip = useTooltipStore((state) => state.isStaticTooltip);
   const hideTooltip = useTooltipStore((state) => state.hideTooltip);
-  const pendingSourceFilters = useChartConnectionsStore(
-    (state) => state.pendingSourceFilters,
+  const pendingAction = useFilterStore(
+    (state) => state.pendingAction,
   );
-  const applyPendingSourceFilters = useChartConnectionsStore(
-    (state) => state.applyPendingSourceFilters,
+  const applyPendingAction = useFilterStore(
+    (state) => state.applyPendingAction,
   );
 
   const ref = useRef<HTMLDivElement>(null);
@@ -160,12 +160,12 @@ const TooltipCard = ({
         ) : null}
       </div>
 
-      {isStaticTooltip && pendingSourceFilters && amountOfChartConnections ? (
+      {isStaticTooltip && pendingAction && amountOfChartConnections ? (
         <div className="flex shrink-0 border-t bg-background p-3">
           <Button
             className="ml-auto mt-3 w-fit"
             onClick={() => {
-              applyPendingSourceFilters();
+              applyPendingAction();
               hideTooltip();
             }}>
             <ListFilter data-icon="inline-start" />

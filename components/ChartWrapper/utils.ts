@@ -16,28 +16,6 @@ let lastTooltipResponse: {
 } | null = null;
 
 /**
- * Converts a dashboard filter value into a scalar value accepted by chart APIs.
- * Complex filter values return `null` until they have a dedicated binding.
- */
-export function toQueryParam(
-  value: FilterValue | undefined,
-): string | number | null {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  if (Array.isArray(value)) {
-    return value.length ? value.join(",") : null;
-  }
-
-  if (typeof value === "string" || typeof value === "number") {
-    return value;
-  }
-
-  return null;
-}
-
-/**
  * Validates optional mock rows against a module schema.
  *
  * @throws When the provided rows do not satisfy the module's data schema.

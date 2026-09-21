@@ -6,7 +6,7 @@ import type {
   TooltipPathResponse,
 } from "@/app/api/utils/types";
 import { fetchTooltipData } from "@/components/ChartWrapper/utils";
-import useChartConnectionsStore from "@/stores/chartConnectionsStore";
+import useFiltersStore from "@/stores/filterProvider";
 
 export type TooltipPosition = {
   x: number;
@@ -46,7 +46,7 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
   ) => {
     const newAbortController = new AbortController();
 
-    useChartConnectionsStore.getState().clearPendingSourceFilters();
+    useFiltersStore.getState().clearPendingAction();
 
     set(() => ({
       chartID,
@@ -148,7 +148,7 @@ const useTooltipStore = create<TooltipContext>((set, get) => {
   const hideTooltip: TooltipContext["hideTooltip"] = () => {
     // Avoid loading stale tooltip data
     debouncedFetch.cancel();
-    useChartConnectionsStore.getState().clearPendingSourceFilters();
+    useFiltersStore.getState().clearPendingAction();
 
     const tooltip = get().tooltip;
 

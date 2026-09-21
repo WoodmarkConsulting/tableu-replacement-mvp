@@ -572,7 +572,7 @@ The visible tooltip and the connection context menu are owned by `ChartWrapper`,
 module. When `enhancedTooltip: true` and rows are selected, the wrapper batches the selected
 rows to `POST /api/data/chart/tooltip`. Because a row's top-level keys are `id`, `parentId`,
 and `values`, the tooltip/connection SQL must parse `:values` (a JSON array of structs, one
-element per selected row) and emit atomic aliases for any `expectedColumns`.
+element per selected row) and emit atomic aliases for every connection `sourceField`.
 
 ---
 

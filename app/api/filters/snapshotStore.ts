@@ -44,9 +44,11 @@ export async function saveSnapshot(
   return id;
 }
 
-export async function loadSnapshot(id: string): Promise<FilterSnapshot | null> {
-  const rows = await runQuery<{ state: string }[]>(
-    `SELECT state FROM ${FQTN} WHERE id = :id LIMIT 1`,
+export async function loadSnapshot(
+  id: string,
+): Promise<{ dashboard: string; snapshot: FilterSnapshot } | null> {
+  const rows = await runQuery<{ dashboard: string; state: string }[]>(
+    `SELECT dashboard, state FROM ${FQTN} WHERE id = :id LIMIT 1`,
     { id },
   );
 
@@ -55,7 +57,10 @@ export async function loadSnapshot(id: string): Promise<FilterSnapshot | null> {
   }
 
   try {
-    return JSON.parse(rows[0].state) as FilterSnapshot;
+    return {
+      dashboard: rows[0].dashboard,
+      snapshot: JSON.parse(rows[0].state) as FilterSnapshot,
+    };
   } catch {
     return null;
   }

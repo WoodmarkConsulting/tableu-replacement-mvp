@@ -1,13 +1,13 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useMemo } from "react";
 
 import { ActiveFilters } from "@/components/ActiveFilters";
 import { ShareButton } from "@/components/ShareButton";
 import { TabBreadcrumb } from "@/components/TabBreadcrumb";
 import { TabsWrapper } from "@/components/TabsWrapper";
 import { useFilterUrlSync } from "@/hooks/useFilterUrlSync";
-import useChartConnectionsStore from "@/stores/chartConnectionsStore";
+import { validateDashboardConfig } from "@/lib/validateDashboardConfig";
 import useFilterStore from "@/stores/filterProvider";
 
 type DashboardShellProps = {
@@ -15,29 +15,26 @@ type DashboardShellProps = {
 };
 
 // useSearchParams (inside useFilterUrlSync) must sit under a Suspense boundary.
-function FilterUrlSync() {
-  useFilterUrlSync();
+function FilterUrlSync({ dashboard }: { dashboard: string }) {
+  useFilterUrlSync(dashboard);
   return null;
 }
 
 export function DashboardShell({ config }: DashboardShellProps) {
+  // The page generator validates too; this is a dev-only safety net.
+  useMemo(() => {
+    if (process.env.NODE_ENV !== "production") {
+      validateDashboardConfig(config);
+    }
+  }, [config]);
+
   const { reportName, filters, tabs, connections, tabJumps } = config;
 
   const activeTab = useFilterStore((state) => state.activeTab);
   const setActiveTab = useFilterStore((state) => state.setActiveTab);
-  const resetConnections = useChartConnectionsStore(
-    (state) => state.resetConnections,
-  );
-
-  useEffect(() => {
-    resetConnections();
-
-    return resetConnections;
-  }, [reportName, resetConnections]);
-
   const urlSync = (
     <Suspense fallback={null}>
-      <FilterUrlSync />
+      <FilterUrlSync dashboard={reportName} />
     </Suspense>
   );
 
@@ -51,7 +48,7 @@ export function DashboardShell({ config }: DashboardShellProps) {
     </div>
   );
 
-  const applied = <ActiveFilters dimensions={filters} />;
+  const applied = <ActiveFilters dimensions={filters} tabs={tabs} />;
 
   const main = (
     <div className="flex min-w-0 flex-1 flex-col gap-2">

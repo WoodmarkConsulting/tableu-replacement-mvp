@@ -1,87 +1,71 @@
-import { describe, it, beforeEach } from "vitest";
 import assert from "node:assert/strict";
-import useFiltersStore, { tabKey } from "../stores/filterProvider";
+import { beforeEach, describe, it } from "vitest";
 
-describe("stores/filterProvider dimension validation", () => {
-  it("rejects duplicate dimension ids during initialization", () => {
-    useFiltersStore.getState().resetFilterStore();
+import { contributionKey } from "../lib/filters/contributions";
+import useFiltersStore, {
+  controlContributionKey,
+} from "../stores/filterProvider";
 
-    assert.throws(() =>
-      useFiltersStore.getState().initFilterStore({
-        dimensions: [
-          {
-            id: "region",
-            label: "Global Region",
-            scope: "global",
-            type: "string",
-          },
-          {
-            id: "region",
-            label: "Tab Region",
-            scope: "tab",
-            type: "string",
-            tab: "TabB",
-          },
-        ],
-        initialActiveTab: "TabA",
-      }),
-      /Filter dimension id "region" must be unique within a dashboard\./,
-    );
-  });
+const chartA = "69e28f7b-a25a-4911-ae2c-64b3ab5ca155" as TableSchemaKey;
+const chartB = "8ea746c9-7d14-4e4a-b5fc-49c805430320" as TableSchemaKey;
+
+const dimensions: FilterDimension[] = [
+  {
+    id: "global_region",
+    label: "Global Region",
+    type: "multiselect",
+    control: { location: "dashboard" },
+  },
+  {
+    id: "region",
+    label: "Region",
+    type: "multiselect",
+    control: { location: "tab", tab: "TabB" },
+  },
+  {
+    id: "error_code",
+    label: "Error Code",
+    type: "select",
+    control: { location: "tab", tab: "TabB" },
+  },
+  {
+    id: "count",
+    label: "Count",
+    type: "number",
+    control: { location: "tab", tab: "TabB" },
+  },
+  {
+    id: "tab_c_dim",
+    label: "Tab C Dim",
+    type: "string",
+    control: { location: "tab", tab: "TabC" },
+  },
+];
+
+const jump = (
+  id: string,
+  targetTab: string,
+  sourceField: string,
+  targetDimensionId: string,
+): TabJumpConfig => ({
+  id,
+  fromChartID: chartA,
+  targetTab,
+  mappings: [{ sourceField, targetDimensionId }],
 });
 
-describe("stores/filterProvider tab jumps", () => {
-  const dimensions: FilterDimension[] = [
-    {
-      id: "region",
-      label: "Region",
-      scope: "tab",
-      type: "multiselect",
-      tab: "TabB",
-    },
-    {
-      id: "error_code",
-      label: "Error Code",
-      scope: "tab",
-      type: "select",
-      tab: "TabB",
-    },
-    {
-      id: "count",
-      label: "Count",
-      scope: "tab",
-      type: "number",
-      tab: "TabB",
-    },
-    {
-      id: "created_at",
-      label: "Created At",
-      scope: "tab",
-      type: "dateString",
-      tab: "TabB",
-      defaultValue: "-3 months",
-    },
-    {
-      id: "global_dim",
-      label: "Global Dim",
-      scope: "global",
-      type: "string",
-    },
-    {
-      id: "shadowed_dim",
-      label: "Shadowed Dim",
-      scope: "global",
-      type: "string",
-    },
-    {
-      id: "tab_c_dim",
-      label: "Tab C Dim",
-      scope: "tab",
-      type: "string",
-      tab: "TabC",
-    },
-  ];
+const jumpKey = (
+  actionId: string,
+  targetTab: string,
+  dimensionId: string,
+): string =>
+  contributionKey(
+    { kind: "tabJump", actionId, sourceChartID: chartA },
+    { kind: "tab", tab: targetTab },
+    dimensionId,
+  );
 
+describe("stores/filterProvider unified contributions", () => {
   beforeEach(() => {
     useFiltersStore.getState().resetFilterStore();
     useFiltersStore.getState().initFilterStore({
@@ -90,330 +74,404 @@ describe("stores/filterProvider tab jumps", () => {
     });
   });
 
-  it("executeTabJump writes draftValues, appliedValues, hasApplied, activeTab, and breadcrumbs in a single state update", () => {
-    let subscriberNotifications = 0;
-    const unsubscribe = useFiltersStore.subscribe(() => {
-      subscriberNotifications++;
-    });
+  it("keeps control edits in draft until apply and resets to applied", () => {
+    const key = controlContributionKey(dimensions[0])!;
 
-    const jump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      label: "Go to Tab B",
-      mappings: [
-        {
-          sourceField: "regionCode",
-          targetDimensionId: "region",
-        },
-      ],
-    };
+    useFiltersStore.getState().setDraftFilter("global_region", ["EU"]);
+    assert.deepEqual(
+      useFiltersStore.getState().draftContributions[key].value,
+      ["EU"],
+    );
+    assert.equal(useFiltersStore.getState().appliedContributions[key], undefined);
 
-    const selectedRows = [
-      { regionCode: "EU" },
-      { regionCode: "US" },
-    ];
+    useFiltersStore.getState().applyFilters();
+    useFiltersStore.getState().setDraftFilter("global_region", ["US"]);
+    useFiltersStore.getState().resetDraft();
+    assert.deepEqual(
+      useFiltersStore.getState().draftContributions[key].value,
+      ["EU"],
+    );
+  });
 
-    const success = useFiltersStore.getState().executeTabJump(jump, selectedRows, "Chart One");
+  it("applies a tab jump atomically and deduplicates multiselect values", () => {
+    let notifications = 0;
+    const unsubscribe = useFiltersStore.subscribe(() => notifications++);
+    const success = useFiltersStore
+      .getState()
+      .executeTabJump(
+        jump("region-jump", "TabB", "regionCode", "region"),
+        [{ regionCode: "EU" }, { regionCode: "US" }, { regionCode: "EU" }],
+        "Chart One",
+      );
     unsubscribe();
 
-    assert.equal(success, true);
-    assert.equal(subscriberNotifications, 1, "Expected exactly 1 subscriber notification");
-
+    const key = jumpKey("region-jump", "TabB", "region");
     const state = useFiltersStore.getState();
-    const key = tabKey("TabB", "region");
-    assert.deepEqual(state.draftValues[key], ["EU", "US"]);
-    assert.deepEqual(state.appliedValues[key], ["EU", "US"]);
-    assert.equal(state.hasApplied, true);
+    assert.equal(success, true);
+    assert.equal(notifications, 1);
+    assert.deepEqual(state.appliedContributions[key].value, ["EU", "US"]);
+    assert.deepEqual(state.draftContributions[key].value, ["EU", "US"]);
     assert.equal(state.activeTab, "TabB");
-    assert.equal(state.breadcrumbs.length, 1);
-    assert.equal(state.breadcrumbs[0].fromTab, "TabA");
-    assert.equal(state.breadcrumbs[0].targetTab, "TabB");
+    assert.equal(state.hasApplied, true);
     assert.equal(state.breadcrumbs[0].fromChartTitle, "Chart One");
   });
 
-  it("multi-value selection into a single-select target returns false and mutates nothing", () => {
-    const jump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "code",
-          targetDimensionId: "error_code",
-        },
-      ],
-    };
-
-    const selectedRows = [
-      { code: "ERR_1" },
-      { code: "ERR_2" },
-    ];
-
-    const stateBefore = { ...useFiltersStore.getState() };
-    const success = useFiltersStore.getState().executeTabJump(jump, selectedRows);
+  it("rejects multiple values for a single-value target without mutation", () => {
+    const before = useFiltersStore.getState();
+    const success = useFiltersStore
+      .getState()
+      .executeTabJump(
+        jump("error-jump", "TabB", "code", "error_code"),
+        [{ code: "A" }, { code: "B" }],
+      );
 
     assert.equal(success, false);
-    const stateAfter = useFiltersStore.getState();
-    assert.deepEqual(stateAfter.draftValues, stateBefore.draftValues);
-    assert.deepEqual(stateAfter.appliedValues, stateBefore.appliedValues);
-    assert.equal(stateAfter.activeTab, "TabA");
-    assert.equal(stateAfter.breadcrumbs.length, 0);
-  });
-
-  it("multi-value selection into a multiselect target produces a deduplicated string[]", () => {
-    const jump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "regionCode",
-          targetDimensionId: "region",
-        },
-      ],
-    };
-
-    const selectedRows = [
-      { regionCode: "EU" },
-      { regionCode: "US" },
-      { regionCode: "EU" },
-    ];
-
-    const success = useFiltersStore.getState().executeTabJump(jump, selectedRows);
-    assert.equal(success, true);
-
-    const state = useFiltersStore.getState();
-    const key = tabKey("TabB", "region");
-    assert.deepEqual(state.appliedValues[key], ["EU", "US"]);
-  });
-
-  it("non-primitive sourceField values (arrays/objects) abort the jump", () => {
-    const jump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "series",
-          targetDimensionId: "region",
-        },
-      ],
-    };
-
-    const selectedRows = [
-      { series: [1, 2, 3] },
-      { series: { a: 1 } },
-    ];
-
-    const success = useFiltersStore.getState().executeTabJump(jump, selectedRows);
-    assert.equal(success, false);
+    assert.deepEqual(
+      useFiltersStore.getState().appliedContributions,
+      before.appliedContributions,
+    );
     assert.equal(useFiltersStore.getState().breadcrumbs.length, 0);
   });
 
-  it("rejects date targets and dimensions outside the target tab", () => {
-    const dateJump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "date",
-          targetDimensionId: "created_at",
-        },
-      ],
-    };
-
-    assert.equal(useFiltersStore.getState().executeTabJump(dateJump, [{ date: "2026-01-01" }]), false);
-
-    const globalDimensionJump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "val",
-          targetDimensionId: "shadowed_dim",
-        },
-      ],
-    };
-
-    assert.equal(useFiltersStore.getState().executeTabJump(globalDimensionJump, [{ val: "val1" }]), false);
-  });
-
-  it("previousValues captures undefined for unset keys; navigateBack deletes the key rather than writing back raw defaultValue", () => {
-    const jump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "code",
-          targetDimensionId: "error_code",
-        },
-      ],
-    };
-
-    const key = tabKey("TabB", "error_code");
-    assert.equal(useFiltersStore.getState().appliedValues[key], undefined);
-
-    const success = useFiltersStore.getState().executeTabJump(jump, [{ code: "ERR_1" }]);
-    assert.equal(success, true);
-    assert.equal(useFiltersStore.getState().appliedValues[key], "ERR_1");
-
-    useFiltersStore.getState().navigateBack();
-    const stateAfterBack = useFiltersStore.getState();
-    assert.equal(stateAfterBack.activeTab, "TabA");
-    assert.equal(stateAfterBack.appliedValues[key], undefined);
-    assert.equal(stateAfterBack.draftValues[key], undefined);
-    assert.equal(Object.hasOwn(stateAfterBack.appliedValues, key), false);
-    assert.equal(stateAfterBack.breadcrumbs.length, 0);
-  });
-
-  it("navigateBack restores a pre-existing value and returns to fromTab", () => {
-    const key = tabKey("TabB", "error_code");
-    useFiltersStore.getState().setDraftFilter(key, "OLD_VAL");
+  it("keeps control and tab-jump contributions distinct and rolls back exactly", () => {
+    const controlKey = controlContributionKey(dimensions[2])!;
+    useFiltersStore.getState().setDraftFilter("error_code", "OLD");
     useFiltersStore.getState().applyFilters();
-    assert.equal(useFiltersStore.getState().appliedValues[key], "OLD_VAL");
 
-    const jump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "code",
-          targetDimensionId: "error_code",
-        },
-      ],
-    };
+    const config = jump("error-jump", "TabB", "code", "error_code");
+    assert.equal(
+      useFiltersStore.getState().executeTabJump(config, [{ code: "NEW" }]),
+      true,
+    );
 
-    useFiltersStore.getState().executeTabJump(jump, [{ code: "NEW_VAL" }]);
-    assert.equal(useFiltersStore.getState().appliedValues[key], "NEW_VAL");
+    const actionKey = jumpKey("error-jump", "TabB", "error_code");
+    assert.equal(
+      useFiltersStore.getState().appliedContributions[controlKey].value,
+      "OLD",
+    );
+    assert.equal(
+      useFiltersStore.getState().appliedContributions[actionKey].value,
+      "NEW",
+    );
 
     useFiltersStore.getState().navigateBack();
-    const stateAfterBack = useFiltersStore.getState();
-    assert.equal(stateAfterBack.activeTab, "TabA");
-    assert.equal(stateAfterBack.appliedValues[key], "OLD_VAL");
-    assert.equal(stateAfterBack.draftValues[key], "OLD_VAL");
-    assert.equal(stateAfterBack.breadcrumbs.length, 0);
+    assert.equal(
+      useFiltersStore.getState().appliedContributions[controlKey].value,
+      "OLD",
+    );
+    assert.equal(
+      useFiltersStore.getState().appliedContributions[actionKey],
+      undefined,
+    );
+    assert.equal(useFiltersStore.getState().activeTab, "TabA");
   });
 
-  it("nested A->B->C: two pops restore each level in order", () => {
-    const jump1: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "code",
-          targetDimensionId: "error_code",
-        },
-      ],
-    };
+  it("rolls nested tab jumps back one contribution set at a time", () => {
+    useFiltersStore
+      .getState()
+      .executeTabJump(
+        jump("to-b", "TabB", "code", "error_code"),
+        [{ code: "B" }],
+      );
+    useFiltersStore
+      .getState()
+      .executeTabJump(
+        jump("to-c", "TabC", "value", "tab_c_dim"),
+        [{ value: "C" }],
+      );
 
-    const jump2: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabC",
-      mappings: [
-        {
-          sourceField: "cVal",
-          targetDimensionId: "tab_c_dim",
-        },
-      ],
-    };
-
-    // Tab A -> Tab B
-    useFiltersStore.getState().executeTabJump(jump1, [{ code: "ERR_TAB_B" }]);
-    assert.equal(useFiltersStore.getState().activeTab, "TabB");
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 1);
-
-    // Tab B -> Tab C
-    useFiltersStore.getState().executeTabJump(jump2, [{ cVal: "VAL_TAB_C" }]);
-    assert.equal(useFiltersStore.getState().activeTab, "TabC");
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 2);
-
-    const keyB = tabKey("TabB", "error_code");
-    const keyC = tabKey("TabC", "tab_c_dim");
-    assert.equal(useFiltersStore.getState().appliedValues[keyB], "ERR_TAB_B");
-    assert.equal(useFiltersStore.getState().appliedValues[keyC], "VAL_TAB_C");
-
-    // Pop 1: C -> B
     useFiltersStore.getState().navigateBack();
     assert.equal(useFiltersStore.getState().activeTab, "TabB");
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 1);
-    assert.equal(useFiltersStore.getState().appliedValues[keyB], "ERR_TAB_B");
-    assert.equal(useFiltersStore.getState().appliedValues[keyC], undefined);
+    assert.equal(
+      useFiltersStore.getState().appliedContributions[
+        jumpKey("to-c", "TabC", "tab_c_dim")
+      ],
+      undefined,
+    );
 
-    // Pop 2: B -> A
     useFiltersStore.getState().navigateBack();
     assert.equal(useFiltersStore.getState().activeTab, "TabA");
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 0);
-    assert.equal(useFiltersStore.getState().appliedValues[keyB], undefined);
+    assert.equal(
+      useFiltersStore.getState().appliedContributions[
+        jumpKey("to-b", "TabB", "error_code")
+      ],
+      undefined,
+    );
   });
 
-  it("setActiveTab to an unrelated tab clears the stack; executeTabJump and navigateBack do not", () => {
-    const jump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "code",
-          targetDimensionId: "error_code",
-        },
-      ],
+  it("stages one chart action and applies it without dropping controls", () => {
+    useFiltersStore.getState().setDraftFilter("global_region", ["EU", "US"]);
+    useFiltersStore.getState().applyFilters();
+    const source: FilterSource = {
+      kind: "chartSelection",
+      actionId: "filter-b",
+      sourceChartID: chartA,
+    };
+    const target: FilterTarget = { kind: "chart", chartID: chartB };
+    const key = contributionKey(source, target, "region");
+    const contribution: FilterContribution = {
+      key,
+      dimensionId: "region",
+      source,
+      target,
+      value: ["EU"],
     };
 
-    useFiltersStore.getState().executeTabJump(jump, [{ code: "ERR_1" }]);
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 1);
+    useFiltersStore.getState().stagePendingAction(chartA, [contribution]);
+    assert.equal(useFiltersStore.getState().appliedContributions[key], undefined);
+    useFiltersStore.getState().applyPendingAction();
 
-    // setActiveTab to same tab (TabB) does not clear
-    useFiltersStore.getState().setActiveTab("TabB");
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 1);
-
-    // setActiveTab to unrelated tab (TabA) clears stack
-    useFiltersStore.getState().setActiveTab("TabA");
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 0);
+    assert.deepEqual(
+      useFiltersStore.getState().appliedContributions[key].value,
+      ["EU"],
+    );
+    assert.equal(useFiltersStore.getState().pendingAction, null);
+    assert.ok(
+      useFiltersStore.getState().appliedContributions[
+        controlContributionKey(dimensions[0])!
+      ],
+    );
   });
 
-  it("clearDimension on the last remaining appliedKey dismisses the breadcrumb", () => {
-    const jump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "code",
-          targetDimensionId: "error_code",
-        },
-        {
-          sourceField: "regionCode",
-          targetDimensionId: "region",
-        },
-      ],
+  it("hydrates V1 scoped values and V2 contributions", () => {
+    useFiltersStore.getState().hydrateSnapshot({
+      values: { "global:global_region": ["EU"] },
+      activeTab: "TabB",
+    });
+    const controlKey = controlContributionKey(dimensions[0])!;
+    assert.deepEqual(
+      useFiltersStore.getState().appliedContributions[controlKey].value,
+      ["EU"],
+    );
+
+    const source: FilterSource = {
+      kind: "chartSelection",
+      actionId: "filter-b",
+      sourceChartID: chartA,
     };
-
-    useFiltersStore.getState().executeTabJump(jump, [{ code: "ERR_1", regionCode: "EU" }]);
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 1);
-
-    const key1 = tabKey("TabB", "error_code");
-    const key2 = tabKey("TabB", "region");
-
-    // Clearing one key leaves the breadcrumb active
-    useFiltersStore.getState().clearDimension(key1);
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 1);
-
-    // Clearing the last key dismisses the breadcrumb
-    useFiltersStore.getState().clearDimension(key2);
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 0);
+    const target: FilterTarget = { kind: "chart", chartID: chartB };
+    const key = contributionKey(source, target, "region");
+    const contribution: FilterContribution = {
+      key,
+      dimensionId: "region",
+      source,
+      target,
+      value: ["US"],
+    };
+    useFiltersStore.getState().hydrateSnapshot({
+      version: 2,
+      contributions: { [key]: contribution },
+      activeTab: "TabA",
+    });
+    assert.deepEqual(useFiltersStore.getState().appliedContributions, {
+      [key]: contribution,
+    });
   });
 
-  it("resetFilterStore empties breadcrumbs", () => {
-    const jump: TabJumpConfig = {
-      fromChartID: "123456as",
-      targetTab: "TabB",
-      mappings: [
-        {
-          sourceField: "code",
-          targetDimensionId: "error_code",
-        },
-      ],
-    };
+  it("clearAll returns to the seeded defaults and the idle state", () => {
+    useFiltersStore.getState().setDraftFilter("global_region", ["EU"]);
+    useFiltersStore.getState().applyFilters();
+    useFiltersStore
+      .getState()
+      .executeTabJump(
+        jump("to-b", "TabB", "code", "error_code"),
+        [{ code: "A" }],
+      );
+    useFiltersStore.getState().stagePendingAction(chartA, []);
+    useFiltersStore.getState().clearAll();
 
-    useFiltersStore.getState().executeTabJump(jump, [{ code: "ERR_1" }]);
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 1);
+    const state = useFiltersStore.getState();
+    assert.deepEqual(state.draftContributions, {});
+    assert.deepEqual(state.appliedContributions, {});
+    assert.equal(state.pendingAction, null);
+    assert.deepEqual(state.breadcrumbs, []);
+    assert.equal(state.hasApplied, false);
 
     useFiltersStore.getState().resetFilterStore();
-    assert.equal(useFiltersStore.getState().breadcrumbs.length, 0);
+    useFiltersStore.getState().initFilterStore({
+      dimensions: [
+        { ...dimensions[0], defaultValue: ["EU"] },
+        ...dimensions.slice(1),
+      ],
+      initialActiveTab: "TabA",
+    });
+    const defaultKey = controlContributionKey(dimensions[0])!;
+    useFiltersStore.getState().setDraftFilter("global_region", ["US"]);
+    useFiltersStore.getState().applyFilters();
+    useFiltersStore.getState().clearAll();
+
+    assert.deepEqual(
+      useFiltersStore.getState().appliedContributions[defaultKey].value,
+      ["EU"],
+    );
+  });
+
+  it("stages one action at a time", () => {
+    const stage = (actionId: string, value: string[]): FilterContribution => {
+      const source: FilterSource = {
+        kind: "chartSelection",
+        actionId,
+        sourceChartID: chartA,
+      };
+      const target: FilterTarget = { kind: "chart", chartID: chartB };
+
+      return {
+        key: contributionKey(source, target, "region"),
+        dimensionId: "region",
+        source,
+        target,
+        value,
+      };
+    };
+
+    useFiltersStore.getState().stagePendingAction(chartA, [stage("one", ["EU"])]);
+    useFiltersStore.getState().stagePendingAction(chartB, [stage("two", ["US"])]);
+
+    const pending = useFiltersStore.getState().pendingAction!;
+    assert.equal(pending.sourceChartID, chartB);
+    assert.deepEqual(pending.contributions[0].value, ["US"]);
+  });
+
+  it("clears action contributions per action and per source", () => {
+    const action = (actionId: string, value: string[]): FilterContribution => {
+      const source: FilterSource = {
+        kind: "chartSelection",
+        actionId,
+        sourceChartID: chartA,
+      };
+      const target: FilterTarget = { kind: "chart", chartID: chartB };
+
+      return {
+        key: contributionKey(source, target, "region"),
+        dimensionId: "region",
+        source,
+        target,
+        value,
+      };
+    };
+    const one = action("one", ["EU"]);
+    const two = action("two", ["US"]);
+
+    useFiltersStore.getState().applyActionContributions(chartA, [one, two]);
+    useFiltersStore
+      .getState()
+      .executeTabJump(
+        jump("to-b", "TabB", "code", "error_code"),
+        [{ code: "A" }],
+      );
+
+    useFiltersStore.getState().clearActionSource(chartA, ["one"]);
+    assert.equal(
+      useFiltersStore.getState().appliedContributions[one.key],
+      undefined,
+    );
+    assert.ok(useFiltersStore.getState().appliedContributions[two.key]);
+
+    useFiltersStore.getState().clearActionSource(chartA);
+    assert.equal(
+      useFiltersStore.getState().appliedContributions[two.key],
+      undefined,
+    );
+    // Tab-jump contributions belong to a different lifecycle.
+    assert.ok(
+      useFiltersStore.getState().appliedContributions[
+        jumpKey("to-b", "TabB", "error_code")
+      ],
+    );
+  });
+
+  it("clears a staged action only for the named source chart", () => {
+    const source: FilterSource = {
+      kind: "chartSelection",
+      actionId: "one",
+      sourceChartID: chartA,
+    };
+    const target: FilterTarget = { kind: "chart", chartID: chartB };
+    const contribution: FilterContribution = {
+      key: contributionKey(source, target, "region"),
+      dimensionId: "region",
+      source,
+      target,
+      value: ["EU"],
+    };
+
+    useFiltersStore.getState().stagePendingAction(chartA, [contribution]);
+    useFiltersStore.getState().clearPendingAction(chartB);
+    assert.equal(
+      useFiltersStore.getState().pendingAction?.sourceChartID,
+      chartA,
+    );
+
+    useFiltersStore.getState().clearPendingAction(chartA);
+    assert.equal(useFiltersStore.getState().pendingAction, null);
+  });
+
+  it("ignores a V1 snapshot without values instead of throwing", () => {
+    useFiltersStore.getState().setDraftFilter("global_region", ["EU"]);
+    useFiltersStore.getState().applyFilters();
+    const before = useFiltersStore.getState().appliedContributions;
+
+    useFiltersStore.getState().hydrateSnapshot({
+      activeTab: "TabB",
+    } as unknown as FilterSnapshot);
+
+    assert.deepEqual(
+      useFiltersStore.getState().appliedContributions,
+      before,
+    );
+    assert.equal(useFiltersStore.getState().activeTab, "TabA");
+  });
+
+  it("rejects a tampered V2 snapshot without partially applying it", () => {
+    useFiltersStore.getState().setDraftFilter("global_region", ["EU"]);
+    useFiltersStore.getState().applyFilters();
+    const before = useFiltersStore.getState().appliedContributions;
+
+    const source: FilterSource = {
+      kind: "chartSelection",
+      actionId: "filter-b",
+      sourceChartID: chartA,
+    };
+    const target: FilterTarget = { kind: "chart", chartID: chartB };
+    const key = contributionKey(source, target, "region");
+    const valid: FilterContribution = {
+      key,
+      dimensionId: "region",
+      source,
+      target,
+      value: ["US"],
+    };
+
+    useFiltersStore.getState().hydrateSnapshot({
+      version: 2,
+      contributions: { "control|forged|dashboard||region": valid },
+      activeTab: "TabA",
+    });
+    assert.deepEqual(useFiltersStore.getState().appliedContributions, before);
+
+    useFiltersStore.getState().hydrateSnapshot({
+      version: 2,
+      contributions: {
+        [key]: { ...valid, value: "US" as unknown as string[] },
+      },
+      activeTab: "TabA",
+    });
+    assert.deepEqual(useFiltersStore.getState().appliedContributions, before);
+
+    useFiltersStore.getState().hydrateSnapshot({
+      version: 2,
+      contributions: {
+        [key]: valid,
+        "control|ghost|dashboard||ghost": {
+          key: "control|ghost|dashboard||ghost",
+          dimensionId: "ghost",
+          source: { kind: "control", dimensionId: "ghost" },
+          target: { kind: "dashboard" },
+          value: "x",
+        },
+      },
+      activeTab: "TabA",
+    });
+    assert.deepEqual(useFiltersStore.getState().appliedContributions, before);
   });
 });

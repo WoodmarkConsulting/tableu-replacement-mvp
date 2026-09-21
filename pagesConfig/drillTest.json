@@ -1,19 +1,22 @@
 {
   "reportName": "Drill Test",
-  "filterLayout": "top",
   "filters": [
     {
       "id": "ecu_fault_nm",
       "label": "ECU Fault",
       "type": "string",
-      "scope": "global"
+      "control": {
+        "location": "dashboard"
+      }
     },
     {
       "id": "country",
       "label": "Country",
       "type": "string",
-      "scope": "tab",
-      "tab": "Details"
+      "control": {
+        "location": "tab",
+        "tab": "Details"
+      }
     }
   ],
   "tabs": [
@@ -42,7 +45,10 @@
               "chartConfig": {
                 "projection": {
                   "type": "geoNaturalEarth1",
-                  "center": [0, 20],
+                  "center": [
+                    0,
+                    20
+                  ],
                   "scale": 150
                 },
                 "zoom": {

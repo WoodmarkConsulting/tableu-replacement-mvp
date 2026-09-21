@@ -392,7 +392,7 @@ const TestPage = () => {
               moduleName: "MapModule",
               space: 12,
               chartID: "dummy-map-linked",
-              autoApplyConnections: false,
+              filterBindings: { selected_region: "regionCode" },
               chartTitle: "Linked regions",
               chartDescription:
                 "Filtered by the regions selected on 'Regional coverage'. Right-click that map and choose 'Verlinktes Diagramm filtern'.",
@@ -470,7 +470,6 @@ const TestPage = () => {
               chartTitle: "Revenue share",
               chartDescription:
                 "Full pie without center KPI, using category color overrides.",
-              autoApplyConnections: false,
               mockData: [
                 { name: "Enterprise", value: 46 },
                 { name: "Mid-market", value: 29 },
@@ -532,7 +531,6 @@ const TestPage = () => {
               chartTitle: "Orders by channel",
               chartDescription:
                 "Donut with selected-value KPI and grouped long-tail channels.",
-              autoApplyConnections: false,
               mockData: [
                 { name: "Direct", value: 380 },
                 { name: "Partner", value: 270 },
@@ -608,9 +606,14 @@ const TestPage = () => {
       {
         id: "exampleFilterDimension",
         label: "Example Filter Dimension",
-        scope: "global",
+        control: { location: "dashboard" },
         type: "dateString",
         defaultValue: "",
+      },
+      {
+        id: "selected_region",
+        label: "Selected Region",
+        type: "multiselect",
       },
     ],
 
@@ -619,9 +622,13 @@ const TestPage = () => {
 
     connections: [
       {
+        id: "map-regions",
         fromChartID: "dummy-map-chart",
         toChartID: "dummy-map-linked",
-        expectedColumns: ["regionCode"],
+        mappings: [
+          { sourceField: "regionCode", targetDimensionId: "selected_region" },
+        ],
+        apply: "manual",
       },
     ],
   };

@@ -83,15 +83,16 @@ In practice that means:
 Charts do **not** fetch on dashboard open. Editing a filter updates a _draft_
 layer only; queries fire when the user presses **Apply**.
 
-- The filter store (`stores/filterProvider.ts`) keeps two layers: `draftValues`
-  (edited by controls) and `appliedValues` (drives queries + chips), plus a
-  `hasApplied` gate that is `false` until the first Apply.
+- The filter store (`stores/filterProvider.ts`) keeps `draftContributions`
+  (edited by controls) and `appliedContributions` (drives queries + chips), plus
+  a `hasApplied` gate that is `false` until the first Apply.
 - `components/FilterActions/index.tsx` renders **Apply**/**Reset**; Reset discards
   pending draft edits. A dirty indicator shows when draft ≠ applied.
-- `ChartWrapper` reads `appliedValues`, gates `useQuery` on `hasApplied`, and shows
-  an idle prompt until the first Apply.
-- **Chip removal** (`clearDimension`) and **selection application** (`applySelection`) bypass the
-  gate on purpose: they write to both layers and re-query immediately.
+- `ChartWrapper` resolves applicable dashboard, tab, and chart contributions,
+  gates `useQuery` on `hasApplied`, and shows an idle prompt until the first Apply.
+- Chip removal and applied actions write to both layers and re-query immediately.
+- "Alle zurücksetzen" restores the seeded default filters and returns to the idle
+  state rather than querying every chart unfiltered.
 - A shared permalink (`?s=<id>`) auto-applies on hydration so recipients see data
   without pressing Apply.
 
@@ -105,7 +106,9 @@ renders a segmented single-choice control where exactly one value is always
 selected (mandatory); it reads its choices from `options`, falls back to 2
 default options when none are configured, and binds to SQL as a single string.
 Every dimension `id` must be non-empty and unique across the complete dashboard,
-including dimensions assigned to different tabs or scopes.
+including hidden action-only dimensions. Controls declare either
+`{ location: "dashboard" }` or `{ location: "tab", tab }`; omitting `control`
+makes a dimension action-only.
 
 A `multiselect` value binds to SQL as a comma-joined string. Charts must expand
 it with `split` and treat an unset (`NULL`) value as "no filter":
@@ -113,6 +116,26 @@ it with `split` and treat an unset (`NULL`) value as "no filter":
 ```sql
 (:region IS NULL OR array_contains(split(:region, ','), region_col))
 ```
+
+## Composing multiple contributions
+
+A dimension can receive values from several producers at once (a control, a tab
+jump, one or more chart connections). `resolveChartFilters` composes them per
+chart with the optional `composition` rules on the dimension:
+
+- `sameSourceKind` — combines contributions that share a `source.kind`.
+  Default `"union"`: two chart selections targeting the same dimension widen it.
+- `crossSourceKind` — combines the per-source-kind results.
+  Default `"intersect"`: a drilldown narrows what the control already allows.
+
+Both accept `"intersect"` or `"union"` and apply to the enumerable types
+(`select`, `multiselect`, `option`). `dateRange` always intersects (latest
+`from`, earliest `to`). Non-enumerable types accept multiple producers only when
+they agree on the value.
+
+When composition leaves no possible value, the chart does not query; it renders
+the "Widersprüchliche Filter" state listing the affected dimension labels and
+offers to remove the conflicting contributions.
 
 ## Selection, tooltips, and chart connections
 
@@ -139,14 +162,15 @@ Right-clicking a rendered chart opens a shared context menu:
 - A target entry applies filters immediately to that one chart.
 - The tooltip footer button applies the staged values to all linked target charts.
 - **Auf Tab springen** / **Details in "[Tab]" ansehen** appears when `tabJumps` are configured for the chart. Selecting data points and clicking this action drills into the target tab, sets the target tab's filter dimensions, applies them immediately, switches tabs, and displays a return breadcrumb (`TabBreadcrumb`).
-- Source charts may set `autoApplyConnections: true` to apply all resolved
-  outgoing filters immediately; the default remains manual application. The
+- Connections may set `apply: "auto"` to apply resolved outgoing filters
+  immediately; the default remains manual application. The
   source tooltip stays open and keeps its all-target button after auto-apply.
 
-Connections are declared in `DashboardConfig.connections` with `fromChartID`, `toChartID`, and
-`expectedColumns`. Every `expectedColumns` value is an end-to-end contract: it must be a real
-target-table column, an exact alias returned by the source tooltip SQL, and a field in the
-target chart SQL's typed `:input` struct. `TabsWrapper` derives target labels from `chartTitle` across all
+Connections are declared in `DashboardConfig.connections` with `id`,
+`fromChartID`, `toChartID`, and dimension `mappings`. Each `sourceField` is an
+exact alias returned by the source tooltip SQL; the target chart's
+`filterBindings` maps `targetDimensionId` to its typed SQL input field.
+`TabsWrapper` derives target labels from `chartTitle` across all
 tabs, so users see chart names rather than internal IDs; untitled targets display
 `Unbenanntes Diagramm`.
 
@@ -165,7 +189,7 @@ At a high level, each JSON file contains:
 - `components` entries
 - one `moduleName` per chart entry
 - chart metadata such as `chartID`, `chartTitle`, `chartDescription`, `chartConfig`, and per-chart `filterBindings` (dimension id → SQL parameter)
-- optional `enhancedTooltip` and `autoApplyConnections` per chart, plus dashboard-level `connections` between source and target charts
+- optional `enhancedTooltip` per chart, plus dashboard-level dimension-mapped `connections` between source and target charts
 
 The row layout uses a 12-column grid. If a row uses less than 12 columns, `TabsWrapper` assigns the remaining width to the last component in that row.
 

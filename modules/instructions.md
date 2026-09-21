@@ -29,9 +29,10 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 - Tooltip and connection requests batch all selected rows. Every data-point property reaches
   tooltip SQL as a JSON array parameter; SQL must parse scalar and nested-array shapes with the
   correct Databricks type.
-- Outgoing chart connections are resolved from source tooltip SQL. Each `expectedColumns` name
-  must be an exact result alias, contain atomic values, exist in the target table schema, and be
-  parsed by the target chart SQL under the same named parameter.
+- Outgoing chart connections are resolved from source tooltip SQL. Each mapping's `sourceField`
+  must be an exact result alias containing atomic values, and its `targetDimensionId` must name a
+  `multiselect` dimension that the target chart binds in `filterBindings` and parses from its
+  `:input` struct.
 - `TabsWrapper` maps every configured `chartID` to its `chartTitle` across tabs so the context
   menu shows user-facing target names. Connected charts should always have useful titles;
   untitled targets display `Unbenanntes Diagramm` rather than an internal ID.

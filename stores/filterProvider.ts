@@ -1,21 +1,22 @@
 import { create } from "zustand";
 
+import {
+  contributionKey,
+  createControlContribution,
+  getControlTarget,
+  isEmptyFilterValue,
+  isFilterContributionShape,
+  matchesDimensionType,
+} from "@/lib/filters/contributions";
+import { resolveTabJumpContributions } from "@/lib/filters/tabJump";
 import { validateFilterDimensions } from "@/lib/filterDimensions";
 
 type CreateFilterStoreArgs = {
   dimensions: FilterDimension[];
   initialActiveTab: string;
-  initialValues?: Record<string, FilterValue>;
+  initialContributions?: Record<string, FilterContribution>;
 };
 
-export const globalKey = (dimensionId: string) => `global:${dimensionId}`;
-
-export const tabKey = (tabId: string, dimensionId: string) =>
-  `tab:${tabId}:${dimensionId}`;
-
-// Relative date tokens usable as `defaultValue` for `dateString`/`dateRange`
-// filters, e.g. "today", "-3 months", "+1 week". Resolved to a concrete
-// YYYY-MM-DD at store init so downstream code keeps handling ISO date strings.
 const RELATIVE_DATE_PATTERN = /^([+-]?\d+)\s*(day|week|month|year)s?$/i;
 
 const toIsoDate = (date: Date): string => {
@@ -26,8 +27,6 @@ const toIsoDate = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-// Returns the resolved ISO date for a relative token, or null when the string
-// is not a relative token (e.g. an explicit "2026-01-01" date literal).
 export const resolveRelativeDate = (
   token: string,
   now: Date = new Date(),
@@ -39,7 +38,6 @@ export const resolveRelativeDate = (
   }
 
   const match = RELATIVE_DATE_PATTERN.exec(trimmed);
-
   if (!match) {
     return null;
   }
@@ -69,8 +67,6 @@ export const resolveRelativeDate = (
 const resolveDateToken = (value: string): string =>
   resolveRelativeDate(value) ?? value;
 
-// Resolves relative date tokens in a dimension's default value. Non-date types
-// and explicit date literals pass through unchanged.
 const resolveDefaultValue = (dimension: FilterDimension): FilterValue => {
   const { type, defaultValue } = dimension;
 
@@ -99,29 +95,66 @@ const resolveDefaultValue = (dimension: FilterDimension): FilterValue => {
   return defaultValue as FilterValue;
 };
 
-const buildDefaultValues = (
+const buildDefaultContributions = (
   dimensions: FilterDimension[],
-): Record<string, FilterValue> => {
-  const values: Record<string, FilterValue> = {};
+): Record<string, FilterContribution> => {
+  const contributions: Record<string, FilterContribution> = {};
 
   for (const dimension of dimensions) {
     if (dimension.defaultValue === undefined) {
       continue;
     }
 
-    const key =
-      dimension.scope === "global"
-        ? globalKey(dimension.id)
-        : dimension.tab
-          ? tabKey(dimension.tab, dimension.id)
-          : null;
-
-    if (key) {
-      values[key] = resolveDefaultValue(dimension);
+    const contribution = createControlContribution(
+      dimension,
+      resolveDefaultValue(dimension),
+    );
+    if (contribution) {
+      contributions[contribution.key] = contribution;
     }
   }
 
-  return values;
+  return contributions;
+};
+
+const indexContributions = (
+  contributions: FilterContribution[],
+): Record<string, FilterContribution> =>
+  Object.fromEntries(
+    contributions
+      .filter((contribution) => !isEmptyFilterValue(contribution.value))
+      .map((contribution) => [contribution.key, contribution]),
+  );
+
+const removeSourceContributions = (
+  contributions: Record<string, FilterContribution>,
+  sourceChartID: string,
+  actionIds?: Set<string>,
+): Record<string, FilterContribution> =>
+  Object.fromEntries(
+    Object.entries(contributions).filter(
+      ([, contribution]) =>
+        contribution.source.kind !== "chartSelection" ||
+        contribution.source.sourceChartID !== sourceChartID ||
+        (actionIds !== undefined &&
+          !actionIds.has(contribution.source.actionId)),
+    ),
+  );
+
+export const controlContributionKey = (
+  dimension: FilterDimension,
+): string | null => {
+  const target = getControlTarget(dimension);
+
+  if (!target) {
+    return null;
+  }
+
+  return contributionKey(
+    { kind: "control", dimensionId: dimension.id },
+    target,
+    dimension.id,
+  );
 };
 
 export type TabJumpBreadcrumb = {
@@ -129,38 +162,45 @@ export type TabJumpBreadcrumb = {
   fromChartID: string;
   fromChartTitle?: string;
   targetTab: string;
-  appliedKeys: string[]; // List of tab:<tab>:<dimId> keys injected by the drill
-  previousValues: Record<string, FilterValue | undefined>; // Snapshot of values prior to drill for clean rollback
+  appliedKeys: string[];
+  previousContributions: Record<string, FilterContribution | undefined>;
   restoreOnReturn: boolean;
 };
 
-const isPrimitive = (v: unknown): v is string | number | boolean =>
-  typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+export type PendingFilterAction = {
+  sourceChartID: string;
+  contributions: FilterContribution[];
+};
 
 export type FilterStoreState = {
-  // initialisation
   _isInit: boolean;
-
-  // Static dimension definitions for this dashboard.
   dimensions: FilterDimension[];
-  // Draft layer: edited by controls, not yet committed to queries.
-  // Keyed by `global:<dimId>` or `tab:<tabId>:<dimId>`.
-  draftValues: Record<string, FilterValue>;
-  // Applied layer: drives queries + chips. Committed via applyFilters().
-  appliedValues: Record<string, FilterValue>;
-  // Gate: false until the first Apply (or snapshot hydration). Blocks fetching.
+  draftContributions: Record<string, FilterContribution>;
+  appliedContributions: Record<string, FilterContribution>;
+  pendingAction: PendingFilterAction | null;
   hasApplied: boolean;
   activeTab: string;
   breadcrumbs: TabJumpBreadcrumb[];
-  setDraftFilter: (key: string, value: FilterValue) => void;
+  setDraftFilter: (dimensionId: string, value: FilterValue) => void;
   applyFilters: () => void;
   resetDraft: () => void;
-  clearDimension: (key: string) => void;
+  removeContribution: (key: string) => void;
   clearAll: () => void;
-  applySelection: (
-    entries: Record<string, FilterValue>,
-    navigateTo?: string,
+  stagePendingAction: (
+    sourceChartID: string,
+    contributions: FilterContribution[],
   ) => void;
+  applyPendingAction: () => void;
+  applyActionContributions: (
+    sourceChartID: string,
+    contributions: FilterContribution[],
+    actionIds?: string[],
+  ) => void;
+  // Without `sourceChartID` any staged action is dropped; with it only the
+  // named chart's staging is dropped, so unmounting a chart cannot discard
+  // another chart's staged action.
+  clearPendingAction: (sourceChartID?: string) => void;
+  clearActionSource: (sourceChartID: string, actionIds?: string[]) => void;
   executeTabJump: (
     jump: TabJumpConfig,
     selectedRows: Record<string, unknown>[],
@@ -169,296 +209,421 @@ export type FilterStoreState = {
   navigateBack: () => void;
   clearBreadcrumbs: () => void;
   setActiveTab: (tab: string) => void;
+  hydrateSnapshot: (snapshot: FilterSnapshot) => void;
   initFilterStore: (args: CreateFilterStoreArgs) => void;
   resetFilterStore: () => void;
 };
 
-// Shallow inequality of draft vs applied — true when there are pending edits.
 export const isDirty = (state: FilterStoreState): boolean => {
-  const { draftValues, appliedValues } = state;
-  const keys = new Set([
-    ...Object.keys(draftValues),
-    ...Object.keys(appliedValues),
-  ]);
-
-  for (const key of keys) {
-    if (draftValues[key] !== appliedValues[key]) {
-      return true;
-    }
+  const draftKeys = Object.keys(state.draftContributions).sort();
+  const appliedKeys = Object.keys(state.appliedContributions).sort();
+  if (draftKeys.length !== appliedKeys.length) {
+    return true;
   }
 
-  return false;
+  return draftKeys.some(
+    (key, index) =>
+      key !== appliedKeys[index] ||
+      JSON.stringify(state.draftContributions[key]) !==
+        JSON.stringify(state.appliedContributions[key]),
+  );
 };
 
-const commitSelectionMerge = (
-  state: FilterStoreState,
-  entries: Record<string, FilterValue>,
-  navigateTo?: string,
-  extra?: Partial<FilterStoreState>,
-): Partial<FilterStoreState> => {
-  const nextDraft = { ...state.draftValues, ...entries };
-  const nextApplied = { ...state.appliedValues, ...entries };
+const useFiltersStore = create<FilterStoreState>((set, get) => ({
+  _isInit: false,
+  dimensions: [],
+  draftContributions: {},
+  appliedContributions: {},
+  pendingAction: null,
+  hasApplied: false,
+  activeTab: "",
+  breadcrumbs: [],
 
-  return {
-    draftValues: nextDraft,
-    appliedValues: nextApplied,
-    hasApplied: true,
-    ...(navigateTo ? { activeTab: navigateTo } : {}),
-    ...extra,
-  };
-};
+  setDraftFilter: (dimensionId, value) =>
+    set((state) => {
+      const dimension = state.dimensions.find(
+        (candidate) => candidate.id === dimensionId,
+      );
+      if (!dimension) {
+        return state;
+      }
 
-const useFiltersStore = create<FilterStoreState>((set, get) => {
-  const initFilterStore: FilterStoreState["initFilterStore"] = ({
+      const key = controlContributionKey(dimension);
+      if (!key) {
+        return state;
+      }
+
+      const draftContributions = { ...state.draftContributions };
+      const contribution = createControlContribution(dimension, value);
+      if (contribution) {
+        draftContributions[key] = contribution;
+      } else {
+        delete draftContributions[key];
+      }
+
+      return { draftContributions };
+    }),
+
+  applyFilters: () =>
+    set((state) => ({
+      appliedContributions: { ...state.draftContributions },
+      hasApplied: true,
+    })),
+
+  resetDraft: () =>
+    set((state) => ({
+      draftContributions: { ...state.appliedContributions },
+    })),
+
+  removeContribution: (key) =>
+    set((state) => {
+      const draftContributions = { ...state.draftContributions };
+      const appliedContributions = { ...state.appliedContributions };
+      delete draftContributions[key];
+      delete appliedContributions[key];
+
+      let breadcrumbs = state.breadcrumbs;
+      const top = breadcrumbs.at(-1);
+      if (
+        top &&
+        !top.appliedKeys.some((appliedKey) =>
+          Object.hasOwn(appliedContributions, appliedKey),
+        )
+      ) {
+        breadcrumbs = breadcrumbs.slice(0, -1);
+      }
+
+      return { draftContributions, appliedContributions, breadcrumbs };
+    }),
+
+  // Returns to the seeded defaults and the idle state instead of querying every
+  // chart unfiltered.
+  clearAll: () =>
+    set((state) => {
+      const seeded = buildDefaultContributions(state.dimensions);
+
+      return {
+        draftContributions: seeded,
+        appliedContributions: seeded,
+        pendingAction: null,
+        hasApplied: false,
+        breadcrumbs: [],
+      };
+    }),
+
+  stagePendingAction: (sourceChartID, contributions) =>
+    set({ pendingAction: { sourceChartID, contributions } }),
+
+  applyPendingAction: () =>
+    set((state) => {
+      if (!state.pendingAction) {
+        return state;
+      }
+
+      const { sourceChartID, contributions } = state.pendingAction;
+      const next = indexContributions(contributions);
+      const actionIds = new Set(
+        contributions.flatMap((contribution) =>
+          "actionId" in contribution.source
+            ? [contribution.source.actionId]
+            : [],
+        ),
+      );
+      return {
+        draftContributions: {
+          ...removeSourceContributions(
+            state.draftContributions,
+            sourceChartID,
+            actionIds,
+          ),
+          ...next,
+        },
+        appliedContributions: {
+          ...removeSourceContributions(
+            state.appliedContributions,
+            sourceChartID,
+            actionIds,
+          ),
+          ...next,
+        },
+        pendingAction: null,
+        hasApplied: true,
+      };
+    }),
+
+  applyActionContributions: (
+    sourceChartID,
+    contributions,
+    explicitActionIds,
+  ) =>
+    set((state) => {
+      const next = indexContributions(contributions);
+      const actionIds = new Set(
+        explicitActionIds ??
+          contributions.flatMap((contribution) =>
+            "actionId" in contribution.source
+              ? [contribution.source.actionId]
+              : [],
+          ),
+      );
+      return {
+        draftContributions: {
+          ...removeSourceContributions(
+            state.draftContributions,
+            sourceChartID,
+            actionIds,
+          ),
+          ...next,
+        },
+        appliedContributions: {
+          ...removeSourceContributions(
+            state.appliedContributions,
+            sourceChartID,
+            actionIds,
+          ),
+          ...next,
+        },
+        pendingAction: state.pendingAction,
+        hasApplied: true,
+      };
+    }),
+
+  clearPendingAction: (sourceChartID) =>
+    set((state) =>
+      sourceChartID === undefined ||
+      state.pendingAction?.sourceChartID === sourceChartID
+        ? { pendingAction: null }
+        : state,
+    ),
+
+  clearActionSource: (sourceChartID, explicitActionIds) =>
+    set((state) => ({
+      draftContributions: removeSourceContributions(
+        state.draftContributions,
+        sourceChartID,
+        explicitActionIds ? new Set(explicitActionIds) : undefined,
+      ),
+      appliedContributions: removeSourceContributions(
+        state.appliedContributions,
+        sourceChartID,
+        explicitActionIds ? new Set(explicitActionIds) : undefined,
+      ),
+      pendingAction:
+        state.pendingAction?.sourceChartID === sourceChartID
+          ? null
+          : state.pendingAction,
+    })),
+
+  executeTabJump: (jump, selectedRows, fromChartTitle) => {
+    const state = get();
+    const nextContributions = resolveTabJumpContributions(
+      state.dimensions,
+      jump,
+      selectedRows,
+    );
+
+    if (!nextContributions) {
+      return false;
+    }
+
+    const previousContributions: Record<
+      string,
+      FilterContribution | undefined
+    > = {};
+    for (const contribution of nextContributions) {
+      previousContributions[contribution.key] =
+        state.appliedContributions[contribution.key];
+    }
+
+    const indexed = indexContributions(nextContributions);
+    const breadcrumb: TabJumpBreadcrumb = {
+      fromTab: state.activeTab,
+      fromChartID: jump.fromChartID,
+      fromChartTitle,
+      targetTab: jump.targetTab,
+      appliedKeys: Object.keys(indexed),
+      previousContributions,
+      restoreOnReturn: jump.restoreOnReturn ?? true,
+    };
+
+    set((current) => ({
+      draftContributions: { ...current.draftContributions, ...indexed },
+      appliedContributions: { ...current.appliedContributions, ...indexed },
+      activeTab: jump.targetTab,
+      hasApplied: true,
+      breadcrumbs: [...current.breadcrumbs, breadcrumb],
+    }));
+    return true;
+  },
+
+  navigateBack: () =>
+    set((state) => {
+      const breadcrumb = state.breadcrumbs.at(-1);
+      if (!breadcrumb) {
+        return state;
+      }
+
+      const draftContributions = { ...state.draftContributions };
+      const appliedContributions = { ...state.appliedContributions };
+      if (breadcrumb.restoreOnReturn) {
+        for (const key of breadcrumb.appliedKeys) {
+          const previous = breadcrumb.previousContributions[key];
+          if (previous) {
+            draftContributions[key] = previous;
+            appliedContributions[key] = previous;
+          } else {
+            delete draftContributions[key];
+            delete appliedContributions[key];
+          }
+        }
+      }
+
+      return {
+        draftContributions,
+        appliedContributions,
+        activeTab: breadcrumb.fromTab,
+        breadcrumbs: state.breadcrumbs.slice(0, -1),
+      };
+    }),
+
+  clearBreadcrumbs: () => set({ breadcrumbs: [] }),
+
+  setActiveTab: (tab) =>
+    set((state) => {
+      const breadcrumb = state.breadcrumbs.at(-1);
+      return {
+        activeTab: tab,
+        ...(breadcrumb && tab !== breadcrumb.targetTab
+          ? { breadcrumbs: [] }
+          : {}),
+      };
+    }),
+
+  hydrateSnapshot: (snapshot) =>
+    set((state) => {
+      const dimensionsById = new Map(
+        state.dimensions.map((dimension) => [dimension.id, dimension]),
+      );
+      const contributions: Record<string, FilterContribution> = {};
+
+      if (snapshot.version === 2) {
+        if (
+          !snapshot.contributions ||
+          typeof snapshot.contributions !== "object" ||
+          Array.isArray(snapshot.contributions)
+        ) {
+          return state;
+        }
+
+        for (const [entryKey, entry] of Object.entries(
+          snapshot.contributions,
+        )) {
+          if (isEmptyFilterValue((entry as FilterContribution)?.value)) {
+            continue;
+          }
+
+          const dimension = isFilterContributionShape(entry)
+            ? dimensionsById.get(entry.dimensionId)
+            : undefined;
+
+          // One bad entry invalidates the whole snapshot: a partially applied
+          // filter set would silently show the wrong data.
+          if (
+            !dimension ||
+            entryKey !== (entry as FilterContribution).key ||
+            !matchesDimensionType(
+              dimension,
+              (entry as FilterContribution).value,
+            )
+          ) {
+            return state;
+          }
+
+          contributions[entryKey] = entry as FilterContribution;
+        }
+      } else {
+        if (
+          !snapshot.values ||
+          typeof snapshot.values !== "object" ||
+          Array.isArray(snapshot.values)
+        ) {
+          return state;
+        }
+
+        for (const [legacyKey, value] of Object.entries(snapshot.values)) {
+          const [scope, tabOrId, ...idParts] = legacyKey.split(":");
+          const dimensionId =
+            scope === "tab"
+              ? idParts.join(":")
+              : [tabOrId, ...idParts].join(":");
+          const dimension = state.dimensions.find(
+            (candidate) => candidate.id === dimensionId,
+          );
+          if (!dimension || isEmptyFilterValue(value)) {
+            continue;
+          }
+
+          const source: FilterSource = { kind: "control", dimensionId };
+          const target: FilterTarget =
+            scope === "tab"
+              ? { kind: "tab", tab: tabOrId }
+              : { kind: "dashboard" };
+          const key = contributionKey(source, target, dimensionId);
+          contributions[key] = {
+            key,
+            dimensionId,
+            source,
+            target,
+            value,
+          };
+        }
+      }
+
+      return {
+        draftContributions: contributions,
+        appliedContributions: contributions,
+        activeTab: snapshot.activeTab || state.activeTab,
+        hasApplied: true,
+      };
+    }),
+
+  initFilterStore: ({
     dimensions,
     initialActiveTab,
-    initialValues,
+    initialContributions,
   }) => {
     if (get()._isInit) {
       return;
     }
 
     validateFilterDimensions(dimensions);
-
     const seeded = {
-      ...buildDefaultValues(dimensions),
-      ...(initialValues ?? {}),
+      ...buildDefaultContributions(dimensions),
+      ...(initialContributions ?? {}),
     };
-
     set({
       _isInit: true,
       dimensions,
-      // Seed both layers, but leave hasApplied false so open != fetch.
-      draftValues: { ...seeded },
-      appliedValues: { ...seeded },
+      draftContributions: seeded,
+      appliedContributions: seeded,
+      pendingAction: null,
       hasApplied: false,
       activeTab: initialActiveTab,
       breadcrumbs: [],
     });
-  };
+  },
 
-  const setDraftFilter: FilterStoreState["setDraftFilter"] = (key, value) =>
-    set((state) => ({ draftValues: { ...state.draftValues, [key]: value } }));
-
-  const applyFilters: FilterStoreState["applyFilters"] = () =>
-    set((state) => ({
-      appliedValues: { ...state.draftValues },
-      hasApplied: true,
-    }));
-
-  const resetDraft: FilterStoreState["resetDraft"] = () =>
-    set((state) => ({ draftValues: { ...state.appliedValues } }));
-
-  const clearDimension: FilterStoreState["clearDimension"] = (key) =>
-    set((state) => {
-      const nextDraft = { ...state.draftValues };
-      const nextApplied = { ...state.appliedValues };
-      delete nextDraft[key];
-      delete nextApplied[key];
-
-      let nextBreadcrumbs = state.breadcrumbs;
-      if (state.breadcrumbs.length > 0) {
-        const topBreadcrumb = state.breadcrumbs[state.breadcrumbs.length - 1];
-        const hasRemainingKey = topBreadcrumb.appliedKeys.some(
-          (k) => nextApplied[k] !== undefined,
-        );
-        if (!hasRemainingKey) {
-          nextBreadcrumbs = state.breadcrumbs.slice(0, -1);
-        }
-      }
-
-      return {
-        draftValues: nextDraft,
-        appliedValues: nextApplied,
-        breadcrumbs: nextBreadcrumbs,
-      };
-    });
-
-  const clearAll: FilterStoreState["clearAll"] = () =>
-    // Keep hasApplied so charts show "no filters" results, not the idle prompt.
-    set(() => ({ draftValues: {}, appliedValues: {}, breadcrumbs: [] }));
-
-  const applySelection: FilterStoreState["applySelection"] = (
-    entries,
-    navigateTo,
-  ) => {
-    set((state) => commitSelectionMerge(state, entries, navigateTo));
-  };
-
-  const executeTabJump: FilterStoreState["executeTabJump"] = (
-    jump,
-    selectedRows,
-    fromChartTitle,
-  ) => {
-    if (!selectedRows || selectedRows.length === 0) {
-      return false;
-    }
-
-    const state = get();
-    const entries: Record<string, FilterValue> = {};
-    const previousValues: Record<string, FilterValue | undefined> = {};
-
-    for (const mapping of jump.mappings) {
-      const raw = selectedRows.map((r) => r[mapping.sourceField]);
-      if (raw.every((v) => v === undefined)) {
-        return false;
-      }
-      if (raw.some((v) => v != null && !isPrimitive(v))) {
-        return false;
-      }
-
-      const uniqueValues = Array.from(
-        new Set(raw.filter((v) => v != null)),
-      ) as (string | number | boolean)[];
-
-      if (uniqueValues.length === 0) {
-        return false;
-      }
-
-      const targetDim = state.dimensions.find(
-        (d) =>
-          d.id === mapping.targetDimensionId &&
-          d.scope === "tab" &&
-          d.tab === jump.targetTab,
-      );
-
-      if (!targetDim) {
-        return false;
-      }
-
-      if (targetDim.type === "dateString" || targetDim.type === "dateRange") {
-        return false;
-      }
-
-      let mappedValue: FilterValue;
-
-      if (targetDim.type === "multiselect") {
-        mappedValue = uniqueValues.map(String);
-      } else {
-        if (uniqueValues.length > 1) {
-          return false;
-        }
-
-        const singleVal = uniqueValues[0];
-        if (targetDim.type === "number") {
-          mappedValue =
-            typeof singleVal === "number" ? singleVal : Number(singleVal);
-          if (isNaN(mappedValue)) {
-            return false;
-          }
-        } else {
-          mappedValue = String(singleVal);
-        }
-      }
-
-      const key = tabKey(jump.targetTab, mapping.targetDimensionId);
-      entries[key] = mappedValue;
-      previousValues[key] = state.appliedValues[key];
-    }
-
-    const newBreadcrumb: TabJumpBreadcrumb = {
-      fromTab: state.activeTab,
-      fromChartID: jump.fromChartID,
-      fromChartTitle,
-      targetTab: jump.targetTab,
-      appliedKeys: Object.keys(entries),
-      previousValues,
-      restoreOnReturn: jump.restoreOnReturn ?? true,
-    };
-
-    set((s) =>
-      commitSelectionMerge(s, entries, jump.targetTab, {
-        breadcrumbs: [...s.breadcrumbs, newBreadcrumb],
-      }),
-    );
-
-    return true;
-  };
-
-  const navigateBack: FilterStoreState["navigateBack"] = () => {
-    set((state) => {
-      if (state.breadcrumbs.length === 0) {
-        return {};
-      }
-
-      const nextBreadcrumbs = [...state.breadcrumbs];
-      const popped = nextBreadcrumbs.pop()!;
-      const nextDraft = { ...state.draftValues };
-      const nextApplied = { ...state.appliedValues };
-
-      if (popped.restoreOnReturn !== false) {
-        for (const key of popped.appliedKeys) {
-          const prev = popped.previousValues[key];
-          if (prev !== undefined) {
-            nextDraft[key] = prev;
-            nextApplied[key] = prev;
-          } else {
-            delete nextDraft[key];
-            delete nextApplied[key];
-          }
-        }
-      }
-
-      return {
-        draftValues: nextDraft,
-        appliedValues: nextApplied,
-        activeTab: popped.fromTab,
-        breadcrumbs: nextBreadcrumbs,
-      };
-    });
-  };
-
-  const clearBreadcrumbs: FilterStoreState["clearBreadcrumbs"] = () =>
-    set(() => ({ breadcrumbs: [] }));
-
-  const setActiveTab: FilterStoreState["setActiveTab"] = (tab) =>
-    set((state) => {
-      const activeBreadcrumb =
-        state.breadcrumbs[state.breadcrumbs.length - 1];
-      const shouldClear =
-        activeBreadcrumb && tab !== activeBreadcrumb.targetTab;
-
-      return {
-        activeTab: tab,
-        ...(shouldClear ? { breadcrumbs: [] } : {}),
-      };
-    });
-
-  const resetFilterStore: FilterStoreState["resetFilterStore"] = () => {
+  resetFilterStore: () =>
     set({
       _isInit: false,
       dimensions: [],
-      draftValues: {},
-      appliedValues: {},
+      draftContributions: {},
+      appliedContributions: {},
+      pendingAction: null,
       hasApplied: false,
       activeTab: "",
       breadcrumbs: [],
-    });
-  };
-
-  return {
-    _isInit: false,
-    dimensions: [],
-    draftValues: {},
-    appliedValues: {},
-    hasApplied: false,
-    activeTab: "",
-    breadcrumbs: [],
-
-    //actions
-    setDraftFilter,
-    applyFilters,
-    resetDraft,
-    clearDimension,
-    clearAll,
-    applySelection,
-    executeTabJump,
-    navigateBack,
-    clearBreadcrumbs,
-    setActiveTab,
-    initFilterStore,
-    resetFilterStore,
-  };
-});
+    }),
+}));
 
 export default useFiltersStore;

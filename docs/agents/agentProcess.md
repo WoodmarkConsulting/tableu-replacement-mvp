@@ -388,7 +388,7 @@ Every normal chart SQL that accepts filters or incoming chart connections must
 use exactly one named parameter, `:input`. Parse it once with `from_json` and a
 typed `STRUCT` containing every accepted field, then `CROSS JOIN` that one-row
 input into the query. Never reference dynamic named markers such as `:from`,
-`:department`, or an `expectedColumns` name directly.
+`:department`, or a bound SQL field name directly.
 
 Example:
 
@@ -558,14 +558,14 @@ chart_input.params.CarName IS NULL
 OR array_contains(chart_input.params.CarName, trim(CAST(CarName AS STRING)))
 ```
 
-For chart connections, every name in `expectedColumns` must meet all of these
-conditions:
+For chart connections, every mapping must meet all of these conditions:
 
-- It is a real column in the target chart's retrieved table schema.
-- The source tooltip SQL returns it with exactly the same alias.
+- Its `sourceField` is returned by the source tooltip SQL with exactly that alias.
 - Its returned value is a scalar or an array of atomic values, never an array
   whose elements still contain delimited lists.
-- The target chart SQL declares the corresponding field in its typed `:input` struct.
+- Its `targetDimensionId` names a `multiselect` dimension in `DashboardConfig.filters`.
+- The target chart binds that dimension in `filterBindings`, and the target chart
+  SQL declares the bound SQL field in its typed `:input` struct.
 - A representative source value, after normalization, equals a representative
   target-column value under the actual comparison expression.
 
@@ -636,9 +636,8 @@ their visible titles, not their internal IDs.
 
 For each source chart with outgoing connections, also ask whether resolved
 connection filters should be applied manually or automatically. Manual is the
-default and requires no component property. For automatic application to all
-linked targets, set `autoApplyConnections: true` on the source component. Do
-not put this property on the connection object or target component. Automatic
+default and requires no property. For automatic application, set
+`apply: "auto"` on the connection object itself. Automatic
 application must keep the resolved filters staged: target refetches must not
 close the source tooltip, and its all-target button remains visible.
 
@@ -646,36 +645,53 @@ For every requested link:
 
 1. Confirm that the source module supports selection.
 2. Resolve the selected titles to `fromChartID` and `toChartID` internally.
-3. Choose one or more real target-table columns for `expectedColumns`.
-4. Return those values from the source tooltip SQL using the exact aliases.
-5. Add matching optional fields to the target chart SQL's typed `:input`
-   struct. A missing or `null` field must not restrict the target query.
-6. Normalize delimited source strings into atomic values before returning them.
-7. Verify one representative value through source row, tooltip result, API JSON,
+3. Give the connection a non-empty, dashboard-unique `id`.
+4. Add one `mappings` entry per linked value with a `sourceField` alias and a
+   `targetDimensionId` naming a `multiselect` dimension in `filters`.
+5. Return those values from the source tooltip SQL using the exact aliases.
+6. Bind the target dimension in the target chart's `filterBindings` and add the
+   matching optional field to the target chart SQL's typed `:input` struct. A
+   missing or `null` field must not restrict the target query.
+7. Normalize delimited source strings into atomic values before returning them.
+8. Verify one representative value through source row, tooltip result, API JSON,
    client filter, target SQL parser, and target column comparison.
 
 Example:
 
 ```json
 {
+  "id": "active-users-to-fleets",
   "fromChartID": "active-users-over-time",
   "toChartID": "cumulative-fleets",
-  "expectedColumns": ["fleet_creation_date"]
+  "mappings": [
+    {
+      "sourceField": "fleet_creation_date",
+      "targetDimensionId": "fleet_creation_date"
+    }
+  ]
 }
 ```
 
-The source tooltip SQL must return `fleet_creation_date`; the target SQL must
-declare `fleet_creation_date: ARRAY<...>` in its `:input` struct using the real
-element type and compare it to the target column. Multiple links from one source
-are allowed.
+The source tooltip SQL must return `fleet_creation_date`; the target chart must
+bind the `fleet_creation_date` dimension and declare that SQL field in its
+`:input` struct. A `multiselect` value arrives as a comma-joined `STRING`, so
+compare it with `array_contains(split(...), column)`. Multiple links from one
+source are allowed.
 
-Source component example with automatic application:
+Connection example with automatic application:
 
 ```json
 {
-  "chartID": "active-users-over-time",
-  "autoApplyConnections": true,
-  "chartConfig": {}
+  "id": "active-users-to-fleets",
+  "fromChartID": "active-users-over-time",
+  "toChartID": "cumulative-fleets",
+  "apply": "auto",
+  "mappings": [
+    {
+      "sourceField": "fleet_creation_date",
+      "targetDimensionId": "fleet_creation_date"
+    }
+  ]
 }
 ```
 
@@ -812,9 +828,15 @@ Example:
   ],
   "connections": [
     {
+      "id": "fleet-activity-to-cumulative",
       "fromChartID": "123456as",
       "toChartID": "789012bc",
-      "expectedColumns": ["fleet_creation_date"]
+      "mappings": [
+        {
+          "sourceField": "fleet_creation_date",
+          "targetDimensionId": "fleet_creation_date"
+        }
+      ]
     }
   ]
 }
@@ -893,8 +915,10 @@ Before generating the page, verify:
   `chartID`.
 - Every tooltip SQL uses parameters provided by the data point that its module
   sends and returns the information requested by the user with readable labels.
-- Every chart connection has matching `expectedColumns`, source tooltip aliases,
-  atomic runtime values, target `:input` struct fields, and target SQL types.
+- Every chart connection has a unique `id`, `mappings` whose `sourceField`
+  matches a source tooltip alias, atomic runtime values, a `multiselect`
+  `targetDimensionId` bound by the target chart, and matching target `:input`
+  struct fields and SQL types.
 - Every connected target has a user-facing `chartTitle`; menu labels are never
   derived from internal chart IDs.
 - When browser validation is available, each single-target action refetches only
