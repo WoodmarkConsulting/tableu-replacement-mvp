@@ -26,6 +26,73 @@ For normal dashboard work, the source of truth is config plus SQL, not page-spec
 - Recharts for chart rendering
 - Databricks SQL integration for chart queries
 
+## Requirements and prerequisites
+
+### Runtimes and package manager
+
+Defined in [package.json](package.json):
+
+- **Node.js**: `>=24.17.0 <25`
+- **npm**: `>=11.13.0 <12`
+- **pnpm**: `12.3.4` (project package manager; scripts and lifecycle hooks expect pnpm)
+
+### Environment variables (`.env`)
+
+Create a `.env` file in the root directory. The warehouse connection in [app/api/warehouse/connection/index.ts](app/api/warehouse/connection/index.ts) and runtime APIs require the following variables:
+
+#### Warehouse connection (required)
+
+- `HOSTNAME`: Databricks workspace host (e.g. `adb-<id>.<region>.azuredatabricks.net`)
+- `HTTP_PATH`: Databricks SQL Warehouse HTTP path (e.g. `/sql/1.0/warehouses/<warehouse-id>`)
+
+#### Authentication (one method required)
+
+The warehouse client checks for `DATABRICKS_TOKEN` first, falling back to OAuth M2M:
+
+- **OAuth M2M (recommended)**:
+  - `DATABRICKS_OAUTH_CLIENT_ID`: Service Principal Application / Client ID
+  - `DATABRICKS_OAUTH_CLIENT_SECRET`: Service Principal OAuth Client Secret
+- **Personal Access Token (PAT)**:
+  - `DATABRICKS_TOKEN`: Databricks personal access token (`dapi...`)
+
+#### Optional environment variables
+
+- `FILTER_SNAPSHOT_CATALOG`: Databricks catalog name for filter snapshot persistence
+- `FILTER_SNAPSHOT_SCHEMA`: Databricks schema for filter snapshot persistence (defaults to `2018001_cudo_mvp_dev`)
+- `TOOLTIP_BATCH_SIZE`: Maximum data points per batched tooltip query (defaults to `12000`)
+- `TOOLTIP_STREAM_CHUNK_SIZE`: Number of rows per streaming NDJSON chunk for tooltips (defaults to `250`)
+- `TOOLTIP_MAX_CONCURRENT_QUERIES`: Concurrency limit for tooltip warehouse queries (defaults to `5`)
+- `E2E_PORT`: Local server port for Playwright E2E tests (defaults to `3100`)
+- `E2E_VIDEO`: Video recording mode for Playwright (e.g. `retain-on-failure`)
+- `E2E_SLOWMO`: Slow-motion delay in milliseconds for Playwright test runs
+
+### Example `.env` file
+
+```bash
+# Databricks SQL Warehouse connection
+HOSTNAME=adb-<workspace-id>.<region>.azuredatabricks.net
+HTTP_PATH=/sql/1.0/warehouses/<warehouse-id>
+
+# Option A: OAuth M2M credentials (recommended)
+DATABRICKS_OAUTH_CLIENT_ID=<client-id-uuid>
+DATABRICKS_OAUTH_CLIENT_SECRET=<client-secret>
+
+# Option B: Personal Access Token
+# DATABRICKS_TOKEN=dapi...
+
+# Optional settings
+# FILTER_SNAPSHOT_SCHEMA=2018001_cudo_mvp_dev
+# TOOLTIP_BATCH_SIZE=12000
+```
+
+### Databricks CLI setup
+
+- The project-local Databricks CLI (`v1.12.1`) installs automatically into `.tools/databricks/` on `pnpm install` via the `postinstall` hook.
+- For schema introspection and table schema sync commands (`pnpm run databricks:tableSchemas`), authenticate the local CLI profile once:
+  ```bash
+  pnpm run databricks:connect https://<your-workspace>.azuredatabricks.net
+  ```
+
 ## Repository structure
 
 - `pagesConfig/pages.json`: Registry of dashboards and the JSON file each dashboard uses.
