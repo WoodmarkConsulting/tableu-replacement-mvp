@@ -46,7 +46,10 @@ import {
   contributionAppliesTo,
 } from "@/lib/filters/contributions";
 import { resolveChartFilters } from "@/lib/filters/resolveChartFilters";
-import { canExecuteAction } from "@/lib/filters/actions";
+import {
+  canExecuteAction,
+  resolveActionContributions,
+} from "@/lib/filters/actions";
 import { cn } from "@/lib/utils";
 
 import {
@@ -66,7 +69,7 @@ import {
   handleChartContextSync,
   resolveChartActions,
   shouldHideTooltipForInteractionLock,
-} from "./connectionApplication";
+} from "./chartActions";
 import LassoInteractionOverlay from "./LassoInteractionOverlay";
 import LassoToolbar from "./LassoToolbar";
 import {
@@ -125,13 +128,14 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     context: string;
     rows: DataType[];
   } | null>(null);
-  const [resolvedConnectionContributions, setResolvedConnectionContributions] = useState<{
+  const [resolvedActionContributions, setResolvedActionContributions] = useState<{
     context: string;
     contributions: FilterContribution[];
+    failed: boolean;
   } | null>(null);
   const selectionRef = useRef<typeof selection>(null);
   const contextMenuPositionRef = useRef<{ x: number; y: number } | null>(null);
-  const connectionRequestRef = useRef(0);
+  const actionRequestRef = useRef(0);
   const appliedContextRef = useRef<string | null>(null);
   const registerLassoAdapter = useCallback(
     (adapter: LassoAdapter<DataType> | null) => {
@@ -342,22 +346,28 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
   const zoomContext = `${dataUpdatedAt}:${JSON.stringify(baseProps.chartConfig)}`;
   const hasZoom = zoomedContext === zoomContext;
+  const emptySelectedRows = useMemo(() => [] as DataType[], []);
   const selectedRows =
-    selection?.context === zoomContext ? selection.rows : ([] as DataType[]);
-  const selectedConnectionContributions =
-    resolvedConnectionContributions?.context === zoomContext
-      ? resolvedConnectionContributions.contributions
+    selection?.context === zoomContext ? selection.rows : emptySelectedRows;
+  const selectedActionContributions =
+    resolvedActionContributions?.context === zoomContext &&
+    resolvedActionContributions.contributions.length > 0
+      ? resolvedActionContributions.contributions
       : null;
+  const actionResolutionFailed =
+    resolvedActionContributions?.context === zoomContext
+      ? resolvedActionContributions.failed
+      : false;
 
   // Only a genuine context change invalidates the selection. Mounting must not
   // clear it, or switching back to this chart's tab would silently drop the
-  // connection filters it applied to charts on another tab.
+  // action filters it applied to charts on another tab.
   useEffect(() => {
     handleChartContextSync({
       chartID,
       zoomContext,
       appliedContextRef,
-      connectionRequestRef,
+      actionRequestRef,
       outgoingActions,
       clearActionSource,
       onInvalidateSelection: () => {
@@ -370,7 +380,7 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   // only the in-flight request and this chart's staged action are dropped.
   useEffect(
     () => () => {
-      connectionRequestRef.current += 1;
+      actionRequestRef.current += 1;
       clearPendingAction(chartID);
     },
     [chartID, clearPendingAction],
@@ -384,8 +394,8 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
       outgoingActions,
       rows: rows as Record<string, unknown>[],
       fetchTooltip: fetchTooltipData,
-      connectionRequestRef,
-      setResolvedConnectionContributions,
+      actionRequestRef,
+      setResolvedActionContributions,
       stagePendingAction,
       clearPendingAction,
       applyActionContributions,
@@ -457,8 +467,8 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
       position: tooltipPosition,
     });
 
-    if (selectedConnectionContributions) {
-      stagePendingAction(chartID, selectedConnectionContributions);
+    if (selectedActionContributions) {
+      stagePendingAction(chartID, selectedActionContributions);
     }
   };
 
@@ -471,10 +481,23 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   };
 
   const getExecutableActionContributions = (action: ChartAction): FilterContribution[] | null => {
-    if (!selectedConnectionContributions) {
+    // clientRow needs no warehouse roundtrip, so it stays executable while a
+    // sibling tooltipLookup on the same chart is still resolving.
+    if (action.sourceResolution === "clientRow") {
+      if (selectedRows.length === 0) {
+        return null;
+      }
+      return resolveActionContributions(
+        dimensions,
+        action,
+        selectedRows as Record<string, unknown>[],
+      );
+    }
+
+    if (!selectedActionContributions) {
       return null;
     }
-    const actionContribs = selectedConnectionContributions.filter(
+    const actionContribs = selectedActionContributions.filter(
       (c) => "actionId" in c.source && c.source.actionId === action.id,
     );
     return actionContribs.length > 0 ? actionContribs : null;
@@ -505,7 +528,10 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
       return null;
     }
     // tooltipLookup
-    if (!selectedConnectionContributions) {
+    if (actionResolutionFailed) {
+      return "Fehler beim Laden der Werte";
+    }
+    if (!selectedActionContributions) {
       return "Werte werden geladen...";
     }
     const contribs = getExecutableActionContributions(action);
@@ -544,17 +570,31 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   }, [manualOutgoingActions, chartTabs, activeTab]);
 
   const executableCurrentTabActions = useMemo(() => {
-    if (!selectedConnectionContributions) {
-      return [];
-    }
-    const contributions = selectedConnectionContributions;
     return currentTabActions.filter((action) => {
-      const actionContribs = contributions.filter(
-        (c) => "actionId" in c.source && c.source.actionId === action.id,
+      if (action.sourceResolution === "clientRow") {
+        return (
+          resolveActionContributions(
+            dimensions,
+            action,
+            selectedRows as Record<string, unknown>[],
+          ) !== null
+        );
+      }
+      if (!selectedActionContributions) {
+        return false;
+      }
+      return selectedActionContributions.some(
+        (contribution) =>
+          "actionId" in contribution.source &&
+          contribution.source.actionId === action.id,
       );
-      return actionContribs.length > 0;
     });
-  }, [currentTabActions, selectedConnectionContributions]);
+  }, [
+    currentTabActions,
+    dimensions,
+    selectedActionContributions,
+    selectedRows,
+  ]);
 
   const applyAllCurrentTabActions = () => {
     if (executableCurrentTabActions.length === 0) {
@@ -774,7 +814,10 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
                   disabled={
                     manualOutgoingActions.length === 0 ||
                     selectedRows.length === 0 ||
-                    !selectedConnectionContributions
+                    (manualOutgoingActions.every(
+                      (action) => action.sourceResolution !== "clientRow",
+                    ) &&
+                      !selectedActionContributions)
                   }>
                   <ListFilter />
                   Filtern

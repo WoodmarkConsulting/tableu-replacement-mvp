@@ -43,7 +43,7 @@ You are the main implementation agent for this repository.
 - Keep changes focused on the user request.
 - Prefer minimal, reversible edits over broad rewrites.
 - Validate changed behavior with the narrowest useful check before finishing.
-- For selection, enhanced-tooltip, lasso, or action/connection changes, validate
+- For selection, enhanced-tooltip, lasso, or chart-action changes, validate
   disabled states, repeated lasso use, single tooltip ownership, target labels,
   per-target application, and all-target application as applicable.
 - For actions with `trigger: "auto"`, validate that resolved filters are
@@ -55,7 +55,7 @@ You are the main implementation agent for this repository.
 ## Dashboard SQL Input Contract
 
 - Every normal chart SQL in `pagesConfig/sql/<chartID>.sql` that accepts filters
-  or incoming chart connections must use the single framework parameter
+  or incoming chart actions must use the single framework parameter
   `:input`. Parse it once with
   `from_json(CAST(:input AS STRING), 'STRUCT<...>')` and declare every accepted
   field with its real scalar or array type.
@@ -64,8 +64,8 @@ You are the main implementation agent for this repository.
   `chart_input.params.<field>` after joining the parsed one-row input.
 - Treat all struct fields as optional. A missing field and an explicit JSON
   `null` both parse as SQL `NULL`; every optional predicate must use an
-  `IS NULL OR ...` guard. Incoming connection values are native arrays;
-  `multiselect` filters remain comma-joined strings unless the framework changes.
+  `IS NULL OR ...` guard. Incoming action values and `multiselect` filters are
+  comma-joined strings unless the framework changes.
 - Tooltip SQL is intentionally different: it uses selected data-point fields as
   batched named parameters such as `:x` and `:id`, not `:input`. Do not mix the
   two contracts.

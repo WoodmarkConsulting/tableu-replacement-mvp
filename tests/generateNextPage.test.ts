@@ -91,7 +91,7 @@ describe("dashboard filter dimension validation", () => {
 });
 
 describe("generateNextPage boilerplate", () => {
-  it("includes connections and tabJumps in generated page boilerplate", () => {
+  it("includes actions in generated page boilerplate", () => {
     const sourceChartID =
       "69e28f7b-a25a-4911-ae2c-64b3ab5ca155" as TableSchemaKey;
     const targetChartID =

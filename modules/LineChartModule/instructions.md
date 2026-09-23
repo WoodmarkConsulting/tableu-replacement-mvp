@@ -875,7 +875,7 @@ Description:
 Present when the framework enables selection. Point clicks and successful lasso selections
 send selected data rows through the same central `ChartWrapper` selection flow. Visual lasso
 zoom does not call this callback. `ChartWrapper` uses the same selected rows for enhanced
-tooltips and outgoing chart connections; the module does not fetch tooltip or target data.
+tooltips and outgoing chart actions; the module does not fetch tooltip or target data.
 
 Source:
 
@@ -1011,11 +1011,11 @@ Describe important behavior that happens inside the module.
   renders selected segments in amber.
 - The wrapper renders the right-click context menu whenever chart data is available. Tooltip
   reopening requires `enhancedTooltip` and selected rows. Linked-chart filtering additionally
-  requires outgoing connections and successfully resolved values from source tooltip SQL.
+  requires outgoing chart actions and successfully resolved values from source tooltip SQL.
 - Target entries are displayed by `chartTitle`, not `chartID`. Selecting one applies filters to
   that target immediately; the tooltip footer can apply the staged values to all linked targets.
-- A data refetch or relevant chart configuration change invalidates selection and connection
-  values. Lasso zoom does not dispatch selection.
+- A data refetch or relevant chart configuration change invalidates selection and resolved
+  action values. Lasso zoom does not dispatch selection.
 
 ---
 

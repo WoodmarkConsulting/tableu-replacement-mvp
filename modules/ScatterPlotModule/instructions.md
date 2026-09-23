@@ -225,7 +225,7 @@ For a SQL-backed example, see `app/testPageScatter/page.tsx` and
 selection. `onSelectionChange` receives clicked or lassoed original rows.
 `lasso` receives an adapter for polygon/rectangle selection and rectangle zoom.
 `height` controls the fixed chart height. Enhanced tooltip rendering and chart
-connections remain owned by `ChartWrapper`.
+actions remain owned by `ChartWrapper`.
 
 ## 11. Runtime Behavior
 
@@ -284,7 +284,7 @@ must be corrected in dashboard JSON; the renderer only clamps opacity.
 1. Read this file, `chartType.d.ts`, and `chartDataSchema.ts` before use.
 2. Keep SQL aliases exactly `id`, `x`, `y`, and optional `color`.
 3. Use `selfFetching: true` only with the scatter viewport API.
-4. Keep selection, enhanced tooltips, and connections in `ChartWrapper`.
+4. Keep selection, enhanced tooltips, and chart actions in `ChartWrapper`.
 5. Do not add page-specific behavior to the module.
 
 ## 14. Agent Workflow
@@ -292,7 +292,7 @@ must be corrected in dashboard JSON; the renderer only clamps opacity.
 1. Confirm that both axes are numeric.
 2. Create the complete configuration.
 3. Shape SQL or mock data to the documented schema.
-4. Add tooltip SQL when details or outgoing connections are required.
+4. Add tooltip SQL when details or outgoing chart actions are required.
 5. Run module validation, registry generation, and TypeScript verification.
 
 ## 15. Do Not

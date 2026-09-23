@@ -420,7 +420,7 @@ describe("dashboard config validation", () => {
       autoApplyConnections: true,
     });
     expect(() => validateDashboardConfig(legacyChart)).toThrow(
-      "legacy autoApplyConnections",
+      'set trigger "auto" on the action instead',
     );
 
     const legacyConnection = validConfig();

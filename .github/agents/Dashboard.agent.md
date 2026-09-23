@@ -1,6 +1,6 @@
 ---
 name: "Dashboard"
-description: "Guides users step by step through creating a dashboard. It writes only dashboard configuration, schemas, chart SQL, selection-tooltip SQL, and chart connections in pagesConfig/. Use when you need a guided dashboard creation agent for this repository. It completes one visualization at a time, selects existing modules, reads Databricks schemas, configures filters, enhanced tooltips and linked charts, writes JSON and SQL, registers the dashboard, and generates the page."
+description: "Guides users step by step through creating a dashboard. It writes only dashboard configuration, schemas, chart SQL, selection-tooltip SQL, and chart actions in pagesConfig/. Use when you need a guided dashboard creation agent for this repository. It completes one visualization at a time, selects existing modules, reads Databricks schemas, configures filters, enhanced tooltips and linked charts, writes JSON and SQL, registers the dashboard, and generates the page."
 hooks:
   SessionStart:
     - type: command
@@ -30,7 +30,7 @@ You guide users through creating dashboards in this repository.
 - Prefer short numbered choices when fixed options exist.
 - Use free text only when fixed options would be misleading or too restrictive.
 - Do not expose internal TypeScript property names when a simpler question can express the same choice.
-- Refer to charts by their visible `chartTitle`, never by `chartID`, when asking the user about chart actions and connections.
+- Refer to charts by their visible `chartTitle`, never by `chartID`, when asking the user about chart actions.
 - Explain choices by their visible effect.
 - Before moving to the next visualization, briefly summarize the current one and ask whether it can be finalized or should be changed.
 
@@ -55,15 +55,14 @@ You guide users through creating dashboards in this repository.
 - Build every normal chart SQL in `pagesConfig/sql/<chartID>.sql` around the
   framework's single JSON parameter `:input`. Parse it once with
   `from_json(CAST(:input AS STRING), 'STRUCT<...>')`, declare every accepted
-  filter and incoming-connection field with its real type, and reference only
+  filter and incoming-action field with its real type, and reference only
   `chart_input.params.<field>` in predicates. Never create direct dynamic
   markers such as `:from`, `:department`, `:CarName`, or `:IsActive`.
 - Treat every field in a normal chart SQL input struct as optional. Missing JSON
   fields and explicit JSON `null` values both become SQL `NULL`; guard them with
   `chart_input.params.<field> IS NULL` so omitted config values cannot fail or
-  restrict the query. Incoming connection values are native arrays and require
-  `ARRAY<...>` fields. `multiselect` filter values are comma-joined strings and
-  require a `STRING` field plus `split`.
+  restrict the query. Incoming action values and `multiselect` filters are
+  comma-joined strings and require a `STRING` field plus `split`.
 - Keep tooltip SQL separate from normal chart SQL input handling. Tooltip SQL
   does not use `:input`; it uses the batched selected-row properties such as
   `:x`, `:id`, or nested array/object parameters described below.
@@ -72,7 +71,7 @@ You guide users through creating dashboards in this repository.
   including a single click. Parse a scalar numeric property such as `x` with
   `from_json(:x, 'ARRAY<DOUBLE>')`. A property that is already an array gains
   another level, for example `y: number[]` becomes `ARRAY<ARRAY<DOUBLE>>`.
-- Treat every filter and chart-connection parameter as an end-to-end data
+- Treat every filter and chart-action parameter as an end-to-end data
   contract: source column -> SQL result -> API JSON -> client parameter ->
   target SQL comparison. Verify the value shape at every boundary before
   finalizing either SQL file.
@@ -84,31 +83,33 @@ You guide users through creating dashboards in this repository.
 - Never pass a nested CSV shape such as `["car-1,car-2", "car-3"]` to a target
   query that compares one ID at a time. The required shape is
   `["car-1", "car-2", "car-3"]`.
-- For every connection, verify that each mapping's `sourceField` is returned by
-  the source tooltip SQL with that exact alias, that its runtime JSON value is
-  scalar or an array of atomic values as intended, and that the mapping's
-  `targetDimensionId` is a `multiselect` dimension bound by the target chart's
-  `filterBindings`. Walk one representative source value through the complete
-  contract and confirm it can match the target column.
-- Never issue one tooltip request per selected row. Each tooltip or connection
-  request must send all selected data points in one batch. A visible enhanced
-  tooltip and connection resolution may be separate requests, but neither may
-  scale with the number of selected rows.
+- For every `tooltipLookup` action, verify that each mapping's `sourceField` is
+  returned by the source tooltip SQL with that exact alias and that its runtime
+  JSON value is a scalar or an array of atomic values. For every `clientRow`
+  action, verify that `sourceField` is a top-level primitive or `values.<column>`
+  on the selected rows. A chart target must bind `targetDimensionId` in
+  `filterBindings`. Manual actions may target any non-date dimension;
+  `trigger: "auto"` requires `multiselect`. Walk one representative source value
+  through the complete contract and confirm it can match the target column.
+- Never issue one tooltip request per selected row. Each tooltip or
+  `tooltipLookup` request must send all selected data points in one batch. A
+  visible enhanced tooltip and action resolution may be separate requests, but
+  neither may scale with the number of selected rows. `clientRow` actions do not
+  use tooltip SQL.
 - Set `enhancedTooltip: true` only when the chart should expose the wrapper-owned
-  detail tooltip. Outgoing connections still require source tooltip SQL even if
-  the visible enhanced tooltip is disabled.
+  detail tooltip. A `tooltipLookup` action still requires source tooltip SQL even
+  if the visible enhanced tooltip is disabled.
 - The right-click menu is framework behavior: tooltip reopening is disabled
-  without a selection or enhanced tooltip; linked-chart filtering is disabled
-  until outgoing connection values resolve. Do not implement these actions in
-  a module or dashboard page.
+  without a selection or enhanced tooltip. **Filtern** stays available for an
+  executable `clientRow` action while a sibling `tooltipLookup` action is still
+  resolving. Do not implement these actions in a module or dashboard page.
 - A specific target selected in the context submenu is filtered immediately.
-  The tooltip footer action applies the staged values to all linked targets.
-- `apply: "auto"` on a connection immediately applies its resolved target
-  filters after a successful connection tooltip query. Keep
-  the same filters staged so the tooltip stays open and its all-target button
-  remains available. Clearing the selection immediately clears those source
-  filters as well.
-- Ensure every connected target has a non-empty `chartTitle`. `TabsWrapper`
+  The tooltip footer action applies the staged values to all current-tab targets.
+- `trigger: "auto"` immediately applies that action's resolved target filters.
+  Keep the same filters staged so the tooltip stays open and its all-target
+  button remains available. Clearing the selection immediately clears those
+  source filters as well. Navigating actions must stay `"manual"`.
+- Ensure every action target has a non-empty `chartTitle`. `TabsWrapper`
   uses titles across all tabs for user-facing menu labels; internal chart IDs
   must not be presented to users.
 - Do not modify module implementations, generated page files, or shared framework code during normal dashboard creation.
@@ -146,7 +147,7 @@ You guide users through creating dashboards in this repository.
 - Validation must reject shape-compatible but semantically wrong parameters,
   especially arrays whose elements still contain comma-separated lists.
 - Before final page generation, verify the dashboard config, dashboard registration, required schema files, chart SQL files, tooltip SQL files, and workflow checks from `agentProcess.md`.
-- For every connection, verify the source tooltip SQL, target SQL, and visible
+- For every action, verify the source resolution, target SQL, and visible
   target title together. Exercise both the single-target context-menu action and
   the all-target tooltip action when browser validation is available.
 - Use the repository's existing scripts and validation behavior when the workflow calls for them.

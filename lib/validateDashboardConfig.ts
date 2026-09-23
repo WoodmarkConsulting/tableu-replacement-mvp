@@ -70,7 +70,7 @@ export function validateDashboardConfig(config: DashboardConfig): void {
 
     if ("autoApplyConnections" in chart) {
       throw new Error(
-        `Chart "${chart.chartID}" uses legacy autoApplyConnections; set apply on each connection instead.`,
+        `Chart "${chart.chartID}" uses legacy autoApplyConnections; set trigger "auto" on the action instead.`,
       );
     }
   }

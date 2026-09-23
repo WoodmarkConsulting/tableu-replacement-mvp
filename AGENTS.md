@@ -27,14 +27,14 @@ The intended end state is:
 
 - `pagesConfig/pages.json`: Registry the generator reads — maps each `dashboardName` to its config JSON. (`pagesConfig/index.ts` is legacy and not used by generation.)
 - `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filters, tabs, actions? }`. Each component carries `chartID`, `chartConfig`, optional `filterBindings`, and optional `enhancedTooltip`.
-- `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename. The framework always binds one JSON object as `:input`; chart SQL declares its accepted filter and connection fields with `from_json` and a typed `STRUCT`.
-- `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail query for selected rows. It also returns exact `sourceField` aliases used by outgoing chart connection mappings.
+- `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename. The framework always binds one JSON object as `:input`; chart SQL declares its accepted filter and action fields with `from_json` and a typed `STRUCT`.
+- `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail query for selected rows. It also returns exact `sourceField` aliases used by outgoing `tooltipLookup` action mappings.
 - `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
 - `scripts/pages/generateNextPage.ts`: Creates `app/Dashboards/<DashboardName>/page.tsx` from `pagesConfig/pages.json` and the referenced JSON.
 - `components/TabsWrapper/index.tsx`: Renders tab and row layout, derives a dashboard-wide `chartID` to `chartTitle` map, and passes each chart config into `ChartWrapper`.
 - `components/ChartWrapper/index.tsx`: Resolves the module by `moduleName`, fetches chart data from `/api/data/chart/<chartID>`, validates it with the module's Zod schema, owns selection/lasso/context-menu behavior, and injects runtime props.
 - `app/api/data/chart/[...chartIDs]/route.ts`: Loads `pagesConfig/sql/<chartID>.sql`, executes it, and returns the query result.
-- `app/api/data/chart/tooltip/route.ts`: Batches selected data points into one tooltip SQL execution and returns display and connection values.
+- `app/api/data/chart/tooltip/route.ts`: Batches selected data points into one tooltip SQL execution and returns display and `tooltipLookup` action values.
 - `modules/modulRegistry.ts`: Auto-generated registry of available modules and the union of chart config types.
 - `scripts/modules/generateModuleRegistry.ts`: Regenerates `modules/modulRegistry.ts` from module folders.
 - `scripts/modules/validateModules.ts`: Validates the required module file contract.
@@ -47,8 +47,8 @@ For normal dashboard creation and updates, the agent should modify only:
 
 - `pagesConfig/pages.json` when adding a new dashboard entry
 - `pagesConfig/*.json` for `reportName`, `filters` (dimensions), tabs, rows, module selection, chart metadata, `filterBindings`, `enhancedTooltip`, `actions`, and module configuration
-- `pagesConfig/sql/*.sql` for chart data and target-side connection parameters
-- `pagesConfig/sql/tooltipSql/*.tooltip.sql` for selected-row details and source-side connection aliases
+- `pagesConfig/sql/*.sql` for chart data and target-side action parameters
+- `pagesConfig/sql/tooltipSql/*.tooltip.sql` for selected-row details and source-side `tooltipLookup` aliases
 
 Do not implement dashboard-specific behavior in `app/` page components.
 
@@ -78,7 +78,7 @@ Dashboards share a filter framework driven entirely by config:
   - Options for `select` and `multiselect` may instead be loaded from the warehouse: set `optionsSource: "<id>"` on the dimension and add `pagesConfig/sql/filterOptions/<id>.sql` returning rows with a `value` column (and optional `label`; defaults to `value`). Options load eagerly on dashboard open via `GET /api/filters/options/<id>` and are **non-dependent** (the query runs with no filter parameters). Static `options` act as a fallback while loading or when no source is set.
   - `control`: `{ location: "dashboard" }` or `{ location: "tab", tab }`. Omit it for action-only dimensions.
   - `composition`: `{ sameSourceKind?, crossSourceKind? }`, each `"intersect" | "union"`.
-    Several producers (control, tab jump, chart connections) may target the same dimension.
+    Several producers (control, drilldown, chart selection) may target the same dimension.
     `sameSourceKind` (default `"union"`) combines contributions sharing a `source.kind`;
     `crossSourceKind` (default `"intersect"`) combines the per-source-kind results, so a
     drilldown narrows what the control already allows. The rules apply to `select`,
@@ -110,7 +110,7 @@ WHERE (
 ```
 
 Normal chart SQL must never reference dynamic markers such as `:region`,
-`:from`, or connection column names directly. It must use only the fixed
+`:from`, or action field names directly. It must use only the fixed
 `:input` marker. Missing JSON fields and explicit JSON `null` values both parse
 as SQL `NULL`, so optional guards belong on `chart_input.params.<field>`. Charts
 without runtime inputs may ignore the extra `:input` binding. Tooltip SQL is a
@@ -138,60 +138,6 @@ only hit the warehouse when **Apply** is pressed.
   unfiltered.
 - Shared permalinks auto-apply on hydration (`useFilterUrlSync`) so recipients see
   data without pressing Apply; `useShareFilters` snapshots applied contributions.
-
-### Selection, enhanced tooltips, and connections
-
-Selection-capable modules report selected data through the optional
-`onSelectionChange(rows)` callback injected by `ChartWrapper`. Selection processing is
-framework behavior and does not add module-specific fields to dashboard configuration.
-`ChartWrapper` stores the current original rows and injects them back into the module as
-read-only `selectedRows`. Click and lasso selection use this same state. Data refetches and
-relevant chart configuration changes invalidate the selection. Each module owns only the
-chart-specific visual representation of those rows.
-
-Lasso support is also framework behavior and is not configured per dashboard.
-`ChartWrapper` injects a `lasso` controller and owns the toolbar, active mode, pointer
-gesture, plot-clipped overlay, and dispatch. A module registers a runtime adapter:
-
-- `select(shape)` enables lasso selection and returns the selected original data rows.
-- `applyZoom(shape)` plus `resetZoom()` enable visual-only lasso zoom.
-- `getPlotBounds()` reports the actual plot rectangle in pixels relative to the wrapper's
-  interaction surface. Freehand selection polygons and rectangular zoom shapes use
-  plot-normalized coordinates.
-
-Selection calls the central `onSelectionChange(rows)` flow only when rows were found.
-Zoom never calls that flow. Recharts-specific scales and hit detection stay inside the
-module implementation. `LineChartModule` currently supports freehand polygon selection and
-progressive rectangular X-axis zoom; other modules need not register an adapter.
-
-Selection mode remains active after a completed gesture and supports repeated lasso draws.
-Starting a new valid lasso gesture hides the previous tooltip; a successful selection may open
-a new tooltip at the release position. The active toolbar button uses the primary color so the
-mode remains visible.
-
-When `enhancedTooltip: true`, `ChartWrapper` can open a compact, internally scrollable static
-tooltip for the current selection. All selected rows are sent together to
-`POST /api/data/chart/tooltip`. The endpoint keeps only named parameters referenced by the
-tooltip SQL, deduplicates identical parameter tuples, and splits them into batches of 12,000
-selected rows. Up to five tooltip SQL statements run concurrently across all tooltip requests
-in one server process. `TOOLTIP_BATCH_SIZE` and `TOOLTIP_MAX_CONCURRENT_QUERIES` can override
-these defaults. Successful results are streamed as NDJSON chunks of 250 rows so the frontend
-can render them progressively; `TOOLTIP_STREAM_CHUNK_SIZE` overrides that delivery size. A failed
-batch adds a partial-results warning but does not discard completed batches.
-
-Tooltip SQL must be batch-union-safe: each selected parameter tuple must produce independent
-result rows that can be appended to results from other batches. Do not use calculations across
-the complete selection or global `LIMIT`/top-N semantics in batched tooltip SQL. Local grouping
-by the selected value is supported. The API does not guarantee global ordering across batches.
-
-Every referenced data-point property becomes a JSON array parameter, even for a single row.
-SQL must parse the actual shape, for example scalar `x: number` as
-`ARRAY<DOUBLE>`, `y: (number | null)[]` as `ARRAY<ARRAY<DOUBLE>>`, and a table
-`values: Record<string, scalar>` object as an array of structs, maps, or variants matching its
-known keys. Missing optional properties become `NULL` array entries; nested arrays and objects
-are never flattened or coerced. Each request batches all selected rows; never issue one request
-per row from a module. Tooltip state records its source `chartID`, and only that wrapper renders
-the card.
 
 ### Selection, enhanced tooltips, and actions
 
@@ -318,8 +264,8 @@ For normal dashboard work:
 3. Read the selected module's `instructions.md`, `chartType.d.ts`, and `chartDataSchema.ts`.
 4. Inspect the relevant source table schemas or existing schema exports.
 5. Write SQL that transforms the source tables into exactly the shape required by the module schema.
-6. For every enhanced tooltip or outgoing connection, write tooltip SQL and validate batched parameters plus the complete source-field to target-dimension contract.
-7. Write or update dashboard JSON so the module config and connections are valid for that module's `chartType.d.ts` and the target table schemas.
+6. For every enhanced tooltip or `tooltipLookup` action, write tooltip SQL and validate batched parameters plus the complete source-field to target-dimension contract.
+7. Write or update dashboard JSON so the module config and `actions` are valid for that module's `chartType.d.ts` and the target table schemas.
 8. Keep the work declarative: JSON and SQL first, generated page second.
 
 For module-development or framework work:
@@ -361,8 +307,8 @@ For module-development or framework work:
 
 - The component is named `TabsWrapper`, but it is the tab layout renderer for dashboards.
 - `ChartWrapper` owns data fetching, empty/loading/error states, and schema validation.
-- `ChartWrapper` also owns selection, enhanced tooltip state, lasso interaction, connection resolution, and the right-click context menu.
-- `TabsWrapper` resolves user-facing connection labels from configured chart titles across all tabs.
+- `ChartWrapper` also owns selection, enhanced tooltip state, lasso interaction, action resolution, and the right-click context menu.
+- `TabsWrapper` resolves user-facing action labels from configured chart titles across all tabs.
 - `ChartConfigs` is generated as a union of module chart config types in `modules/modulRegistry.ts`.
 
 ## Agent Permissions

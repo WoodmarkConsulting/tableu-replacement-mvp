@@ -699,7 +699,7 @@ The default source geography is the bundled countries TopoJSON shipped with `wor
 The configured map tooltip is a module-local hover tooltip. It is separate from the
 wrapper-owned enhanced detail tooltip backed by tooltip SQL. Region and bubble clicks report
 original rows through `onSelectionChange`; `ChartWrapper` owns the resulting `selectedRows`,
-right-click menu, enhanced tooltip, and outgoing chart connections. With selected rows,
+right-click menu, enhanced tooltip, and outgoing chart actions. With selected rows,
 **Tooltip anzeigen** requires `enhancedTooltip: true`, while linked-chart actions also require
-successfully resolved connection `sourceField` values from the source tooltip SQL. Target charts
+successfully resolved action `sourceField` values from the source tooltip SQL. Target charts
 are shown by their configured titles and a chosen target is filtered immediately.

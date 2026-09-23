@@ -131,13 +131,25 @@ const removeSourceContributions = (
   actionIds?: Set<string>,
 ): Record<string, FilterContribution> =>
   Object.fromEntries(
-    Object.entries(contributions).filter(
-      ([, contribution]) =>
-        contribution.source.kind !== "chartSelection" ||
-        contribution.source.sourceChartID !== sourceChartID ||
-        (actionIds !== undefined &&
-          !actionIds.has(contribution.source.actionId)),
-    ),
+    Object.entries(contributions).filter(([, contribution]) => {
+      // Controls and other charts' contributions are always kept.
+      if (contribution.source.kind === "control") {
+        return true;
+      }
+      if (contribution.source.sourceChartID !== sourceChartID) {
+        return true;
+      }
+      // Navigating (tabJump) contributions follow the breadcrumb lifecycle, so a
+      // blanket clear (zoom/reselection) preserves them. They are only swept when
+      // an action explicitly re-targets them, letting a re-executed navigating
+      // action drop dimensions it no longer maps.
+      if (contribution.source.kind === "tabJump" && actionIds === undefined) {
+        return true;
+      }
+      return (
+        actionIds !== undefined && !actionIds.has(contribution.source.actionId)
+      );
+    }),
   );
 
 export const controlContributionKey = (

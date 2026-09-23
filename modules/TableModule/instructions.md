@@ -6,7 +6,7 @@
 supports in-cell databars, hide/show and fold/unfold column controls, an expandable
 parent/child row hierarchy (from a flat `id`/`parentId` adjacency list), client-side
 sorting, filtering (global search + per-column), pagination, a grand-total footer, and
-row selection with enhanced tooltip / chart connections.
+row selection with enhanced tooltip / chart actions.
 
 Use this module when:
 
@@ -566,13 +566,13 @@ Description:
 
 Injected but unused; `TableModule` registers no lasso adapter.
 
-### Enhanced tooltip / connections
+### Enhanced tooltip / actions
 
-The visible tooltip and the connection context menu are owned by `ChartWrapper`, not the
+The visible tooltip and the action context menu are owned by `ChartWrapper`, not the
 module. When `enhancedTooltip: true` and rows are selected, the wrapper batches the selected
 rows to `POST /api/data/chart/tooltip`. Because a row's top-level keys are `id`, `parentId`,
-and `values`, the tooltip/connection SQL must parse `:values` (a JSON array of structs, one
-element per selected row) and emit atomic aliases for every connection `sourceField`.
+and `values`, the tooltip/action SQL must parse `:values` (a JSON array of structs, one
+element per selected row) and emit atomic aliases for every action `sourceField`.
 
 ---
 
@@ -636,7 +636,7 @@ Emit numeric values for databar columns; the empty placeholder renders for missi
 11. Do not change `index.tsx`, `chartDataSchema.ts`, or `chartType.d.ts` unless the user
     explicitly requests a module change.
 12. If the requested visualization cannot be represented, report the limitation.
-13. Keep enhanced tooltip, context-menu, and connection behavior in `ChartWrapper`.
+13. Keep enhanced tooltip, context-menu, and action behavior in `ChartWrapper`.
 
 ---
 

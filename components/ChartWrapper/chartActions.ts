@@ -16,7 +16,7 @@ export function handleChartContextSync(params: {
   chartID: string;
   zoomContext: string;
   appliedContextRef: { current: string | null };
-  connectionRequestRef: { current: number };
+  actionRequestRef: { current: number };
   outgoingActions: ChartAction[];
   clearActionSource: (chartID: string) => void;
   onInvalidateSelection?: () => void;
@@ -32,7 +32,7 @@ export function handleChartContextSync(params: {
     return false;
   }
 
-  params.connectionRequestRef.current += 1;
+  params.actionRequestRef.current += 1;
   params.onInvalidateSelection?.();
 
   if (params.outgoingActions.length > 0) {
@@ -51,9 +51,13 @@ export interface ResolveChartActionsParams<T = Record<string, unknown>> {
     chartID: string,
     dataPoints: TooltipDataPoint[],
   ) => Promise<TooltipPathResponse>;
-  connectionRequestRef: { current: number };
-  setResolvedConnectionContributions: (
-    val: { context: string; contributions: FilterContribution[] } | null,
+  actionRequestRef: { current: number };
+  setResolvedActionContributions: (
+    val: {
+      context: string;
+      contributions: FilterContribution[];
+      failed: boolean;
+    } | null,
   ) => void;
   stagePendingAction: (
     chartID: string,
@@ -75,22 +79,22 @@ export async function resolveChartActions<T = Record<string, unknown>>({
   outgoingActions,
   rows,
   fetchTooltip,
-  connectionRequestRef,
-  setResolvedConnectionContributions,
+  actionRequestRef,
+  setResolvedActionContributions,
   stagePendingAction,
   clearPendingAction,
   applyActionContributions,
   clearActionSource,
 }: ResolveChartActionsParams<T>): Promise<void> {
   if (outgoingActions.length === 0) {
-    setResolvedConnectionContributions(null);
+    setResolvedActionContributions(null);
     return;
   }
 
-  const requestID = ++connectionRequestRef.current;
+  const requestID = ++actionRequestRef.current;
 
   if (rows.length === 0) {
-    setResolvedConnectionContributions(null);
+    setResolvedActionContributions(null);
     clearPendingAction(chartID);
     const autoActionIds = outgoingActions
       .filter((action) => action.trigger === "auto")
@@ -101,10 +105,12 @@ export async function resolveChartActions<T = Record<string, unknown>>({
     return;
   }
 
-  setResolvedConnectionContributions(null);
+  setResolvedActionContributions(null);
   clearPendingAction(chartID);
 
-  // 1. Resolve clientRow actions synchronously
+  // 1. Resolve clientRow actions synchronously and publish them before the
+  // tooltip roundtrip. A sibling tooltipLookup must not block the menu or the
+  // tooltip footer from applying an already-known in-memory action.
   const clientActions = outgoingActions.filter(
     (action) => action.sourceResolution === "clientRow",
   );
@@ -125,13 +131,38 @@ export async function resolveChartActions<T = Record<string, unknown>>({
     }
   }
 
+  if (clientContributions.length > 0) {
+    setResolvedActionContributions({
+      context: zoomContext,
+      contributions: clientContributions,
+      failed: false,
+    });
+    stagePendingAction(chartID, clientContributions);
+
+    // Apply auto clientRow actions immediately: a sibling tooltipLookup must not
+    // gate an already-known in-memory action on the warehouse roundtrip.
+    if (autoClientActionIds.length > 0) {
+      const autoClientSet = new Set(autoClientActionIds);
+      applyActionContributions(
+        chartID,
+        clientContributions.filter(
+          (contribution) =>
+            "actionId" in contribution.source &&
+            autoClientSet.has(contribution.source.actionId),
+        ),
+        autoClientActionIds,
+      );
+    }
+  }
+
   // 2. Resolve tooltipLookup actions asynchronously
   const tooltipActions = outgoingActions.filter(
     (action) => action.sourceResolution === "tooltipLookup",
   );
 
   const allNextContributions = [...clientContributions];
-  const autoActionIds = [...autoClientActionIds];
+  const tooltipAutoActionIds: string[] = [];
+  let resolutionFailed = false;
 
   if (tooltipActions.length > 0) {
     try {
@@ -140,7 +171,7 @@ export async function resolveChartActions<T = Record<string, unknown>>({
         rows as TooltipDataPoint[],
       );
 
-      if (requestID !== connectionRequestRef.current) {
+      if (requestID !== actionRequestRef.current) {
         return;
       }
 
@@ -153,42 +184,50 @@ export async function resolveChartActions<T = Record<string, unknown>>({
         if (contribs) {
           allNextContributions.push(...contribs);
           if (action.trigger === "auto") {
-            autoActionIds.push(action.id);
+            tooltipAutoActionIds.push(action.id);
           }
         }
       }
-    } catch (connectionError) {
-      if (requestID !== connectionRequestRef.current) {
+    } catch (actionError) {
+      if (requestID !== actionRequestRef.current) {
         return;
       }
+      resolutionFailed = true;
       console.error(
         `Failed to resolve chart actions for "${chartID}":`,
-        connectionError,
+        actionError,
       );
     }
   }
 
-  if (requestID !== connectionRequestRef.current) {
+  if (requestID !== actionRequestRef.current) {
     return;
   }
 
-  if (allNextContributions.length > 0) {
-    setResolvedConnectionContributions({
+  // Record the final resolution state whenever tooltipLookup work added
+  // contributions or failed, so a failed roundtrip is distinguishable from an
+  // in-progress one instead of leaving the menu stuck on "loading".
+  if (allNextContributions.length > clientContributions.length || resolutionFailed) {
+    setResolvedActionContributions({
       context: zoomContext,
       contributions: allNextContributions,
+      failed: resolutionFailed,
     });
-    stagePendingAction(chartID, allNextContributions);
 
-    if (autoActionIds.length > 0) {
-      const autoActionSet = new Set(autoActionIds);
+    if (allNextContributions.length > 0) {
+      stagePendingAction(chartID, allNextContributions);
+    }
+
+    if (tooltipAutoActionIds.length > 0) {
+      const tooltipAutoSet = new Set(tooltipAutoActionIds);
       applyActionContributions(
         chartID,
         allNextContributions.filter(
           (contribution) =>
             "actionId" in contribution.source &&
-            autoActionSet.has(contribution.source.actionId),
+            tooltipAutoSet.has(contribution.source.actionId),
         ),
-        autoActionIds,
+        tooltipAutoActionIds,
       );
     }
   }

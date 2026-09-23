@@ -395,7 +395,7 @@ const TestPage = () => {
               filterBindings: { selected_region: "regionCode" },
               chartTitle: "Linked regions",
               chartDescription:
-                "Filtered by the regions selected on 'Regional coverage'. Right-click that map and choose 'Verlinktes Diagramm filtern'.",
+                "Filtered by the regions selected on 'Regional coverage'. Right-click that map and choose 'Filtern'.",
               chartConfig: {
                 projection: {
                   type: "geoMercator",
@@ -620,15 +620,16 @@ const TestPage = () => {
     tabs: tabsConfig,
     reportName: "Example Report",
 
-    connections: [
+    actions: [
       {
         id: "map-regions",
         fromChartID: "dummy-map-chart",
-        toChartID: "dummy-map-linked",
+        target: { kind: "chart", chartID: "dummy-map-linked" },
+        sourceResolution: "tooltipLookup",
+        trigger: "manual",
         mappings: [
           { sourceField: "regionCode", targetDimensionId: "selected_region" },
         ],
-        apply: "manual",
       },
     ],
   };

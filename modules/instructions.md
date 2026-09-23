@@ -23,18 +23,26 @@ This folder contains reusable dashboard modules that can be referenced from `pag
   Registering `select` enables selection; registering `applyZoom` and `resetZoom` enables
   visual zoom. `LineChartModule` currently supports both. This is framework/module behavior,
   not dashboard configuration.
-- Enhanced tooltip and chart-connection UI belongs to `ChartWrapper`, not to modules. With
+- Enhanced tooltip and chart-action UI belongs to `ChartWrapper`, not to modules. With
   `enhancedTooltip: true`, selected rows can open a static detail tooltip and reopen it from
   the wrapper-owned right-click menu. The menu disables unavailable actions automatically.
-- Tooltip and connection requests batch all selected rows. Every data-point property reaches
+- Tooltip requests batch all selected rows. Every data-point property reaches
   tooltip SQL as a JSON array parameter; SQL must parse scalar and nested-array shapes with the
   correct Databricks type.
-- Outgoing chart connections are resolved from source tooltip SQL. Each mapping's `sourceField`
-  must be an exact result alias containing atomic values, and its `targetDimensionId` must name a
-  `multiselect` dimension that the target chart binds in `filterBindings` and parses from its
-  `:input` struct.
+- Outgoing filtering is declared as `DashboardConfig.actions`. Each action chooses
+  `sourceResolution`:
+  - `"clientRow"` reads `sourceField` from the selected rows in memory (a top-level key or
+    `values.<column>`). Every present value must be a primitive. No tooltip SQL is required.
+  - `"tooltipLookup"` reads `sourceField` as an exact alias from the source `.tooltip.sql`.
+    The alias must contain a primitive or an array of primitives.
+  `target` is `{ kind: "chart", chartID }` or `{ kind: "tab", tab }`. `trigger` is `"manual"`
+  (default; context menu and tooltip button) or `"auto"` (apply on selection). `navigate` is
+  valid only on tab targets with `trigger: "manual"` and switches tabs. A chart target must
+  bind `targetDimensionId` in `filterBindings`. Manual actions may target any non-date
+  dimension; `trigger: "auto"` still requires `multiselect`. Distinct values are capped
+  (`maxDistinctValues`, default 500).
 - `TabsWrapper` maps every configured `chartID` to its `chartTitle` across tabs so the context
-  menu shows user-facing target names. Connected charts should always have useful titles;
+  menu shows user-facing target names. Action targets should always have useful titles;
   untitled targets display `Unbenanntes Diagramm` rather than an internal ID.
 
 ## Modules currently available
@@ -110,7 +118,7 @@ For module-specific details, read `modules/MapModule/instructions.md`.
 - Purpose: Tabular display of (optionally hierarchical) data with in-cell databars and hide/fold column controls.
 - Best use: Detailed row-level reporting, expandable rollup tables, and KPI grids where exact values and in-cell databars aid scanning.
 - Input: Receives `chartData` (`TableRowData[]`, a flat `id`/`parentId` adjacency list with a per-row `values` map) and a `TableChartConfig` through `ChartWrapperInjectedProps`.
-- Notes: Columns are config-authored (not data-inferred); hierarchy is transported as a flat `id`/`parentId` list and assembled into a tree client-side. Supports databars (positive and diverging), column hide/show and fold/unfold groups, client-side sorting, global + per-column filtering, top-level pagination, a grand-total footer, sticky header/first column, and row-click selection with a primary-tinted row highlight plus enhanced tooltip / connections. `values` is emitted from SQL as `to_json(named_struct(...))`. This differs from the chart modules (exact values + hierarchy vs. visual trend/shape) and from `MapModule` (non-geographic).
+- Notes: Columns are config-authored (not data-inferred); hierarchy is transported as a flat `id`/`parentId` list and assembled into a tree client-side. Supports databars (positive and diverging), column hide/show and fold/unfold groups, client-side sorting, global + per-column filtering, top-level pagination, a grand-total footer, sticky header/first column, and row-click selection with a primary-tinted row highlight plus enhanced tooltip / chart actions. `values` is emitted from SQL as `to_json(named_struct(...))`. This differs from the chart modules (exact values + hierarchy vs. visual trend/shape) and from `MapModule` (non-geographic).
 
 For module-specific details, read `modules/TableModule/instructions.md`.
 
@@ -119,6 +127,6 @@ For module-specific details, read `modules/TableModule/instructions.md`.
 - Purpose: Renders a single key figure as a text label and one formatted number.
 - Best use: Highlighting one aggregate figure (total, average, count, ratio) with a short caption.
 - Input: Receives `chartData` (`CardData[]`, uses only the first row `{ label, value }`) and a `CardChartConfig` through `ChartWrapperInjectedProps`.
-- Notes: Supports number/compact/percent/currency formatting, configurable decimals, locale, currency, prefix/suffix, label override, and alignment. Does not support selection, lasso, enhanced tooltips, or connections. Use a chart or `TableModule` when comparing multiple values.
+- Notes: Supports number/compact/percent/currency formatting, configurable decimals, locale, currency, prefix/suffix, label override, and alignment. Does not support selection, lasso, enhanced tooltips, or chart actions. Use a chart or `TableModule` when comparing multiple values.
 
 For module-specific details, read `modules/CardModule/instructions.md`.

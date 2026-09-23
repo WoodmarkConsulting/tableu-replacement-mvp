@@ -364,39 +364,42 @@ const TestPage = () => {
     tabs: tabsConfig,
     reportName: "Example Report",
 
-    connections: [
+    actions: [
       {
         id: "active-users-to-fleets",
         fromChartID: "active-users-over-time",
-        toChartID: "cumulative-fleets",
+        target: { kind: "chart", chartID: "cumulative-fleets" },
+        sourceResolution: "tooltipLookup",
+        trigger: "manual",
         mappings: [
           {
             sourceField: "fleet_creation_date",
             targetDimensionId: "selected_fleet_creation_date",
           },
         ],
-        apply: "manual",
       },
       {
         id: "active-users-to-cars",
         fromChartID: "active-users-over-time",
-        toChartID: "dtc-table",
+        target: { kind: "chart", chartID: "dtc-table" },
+        sourceResolution: "tooltipLookup",
+        trigger: "auto",
         mappings: [
           { sourceField: "CarName", targetDimensionId: "selected_car" },
         ],
-        apply: "auto",
       },
       {
         id: "cars-to-scatter",
         fromChartID: "dtc-table",
-        toChartID: "dtc-scatter",
+        target: { kind: "chart", chartID: "dtc-scatter" },
+        sourceResolution: "tooltipLookup",
+        trigger: "manual",
         mappings: [
           {
             sourceField: "LastUpdate",
             targetDimensionId: "selected_last_update",
           },
         ],
-        apply: "manual",
       },
     ],
   };

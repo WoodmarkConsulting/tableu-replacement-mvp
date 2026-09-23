@@ -27,10 +27,15 @@ type TabsConfig = {
 };
 
 type FilterActionMapping = {
-  // Column from selected chart data (client-side selectedRows).
-  // Must resolve to a primitive (string | number | boolean) on every selected row.
+  // Where the mapped value is read from. Meaning depends on the action's
+  // sourceResolution:
+  // - "clientRow": a field on each selected row. Top-level keys and
+  //   `values.<column>` are both accepted. Every present value must be a
+  //   primitive (string | number | boolean).
+  // - "tooltipLookup": an exact column alias returned by the source
+  //   `.tooltip.sql`. The alias may be a primitive or an array of primitives.
   sourceField: string;
-  // Target filter dimension ID on the target tab
+  // Target filter dimension ID on the target chart or tab.
   targetDimensionId: string;
 };
 

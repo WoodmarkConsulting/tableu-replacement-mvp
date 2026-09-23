@@ -4,7 +4,7 @@ import type { TooltipDataPoint, TooltipPathResponse } from "../app/api/utils/typ
 import {
   handleChartContextSync,
   resolveChartActions,
-} from "../components/ChartWrapper/connectionApplication";
+} from "../components/ChartWrapper/chartActions";
 import { contributionKey } from "../lib/filters/contributions";
 import useFiltersStore from "../stores/filterProvider";
 
@@ -38,7 +38,7 @@ describe("behaviors B1-B8 regression tests", () => {
   it("B1: A stale async resolution must never overwrite a newer selection", async () => {
     vi.useFakeTimers();
     try {
-      const connectionRequestRef = { current: 0 };
+      const actionRequestRef = { current: 0 };
       let resolvedContributions: {
         context: string;
         contributions: FilterContribution[];
@@ -77,8 +77,8 @@ describe("behaviors B1-B8 regression tests", () => {
         outgoingActions: [action],
         rows: [{ val: "stale" }],
         fetchTooltip: fetchTooltipMock,
-        connectionRequestRef,
-        setResolvedConnectionContributions: (val) => {
+        actionRequestRef,
+        setResolvedActionContributions: (val) => {
           resolvedContributions = val;
         },
         stagePendingAction: (cId, c) =>
@@ -99,8 +99,8 @@ describe("behaviors B1-B8 regression tests", () => {
         outgoingActions: [action],
         rows: [{ val: "fresh" }],
         fetchTooltip: fetchTooltipMock,
-        connectionRequestRef,
-        setResolvedConnectionContributions: (val) => {
+        actionRequestRef,
+        setResolvedActionContributions: (val) => {
           resolvedContributions = val;
         },
         stagePendingAction: (cId, c) =>
@@ -170,7 +170,7 @@ describe("behaviors B1-B8 regression tests", () => {
 
     // Chart A mounts: appliedContextRef is initially null
     const appliedContextRef = { current: null as string | null };
-    const connectionRequestRef = { current: 0 };
+    const actionRequestRef = { current: 0 };
     let selectionInvalidated = false;
 
     // First run (mount) of handleChartContextSync with zoomContext "ctx-1"
@@ -178,7 +178,7 @@ describe("behaviors B1-B8 regression tests", () => {
       chartID: chartA,
       zoomContext: "ctx-1",
       appliedContextRef,
-      connectionRequestRef,
+      actionRequestRef,
       outgoingActions: [action],
       clearActionSource: (id) => useFiltersStore.getState().clearActionSource(id),
       onInvalidateSelection: () => {
@@ -190,7 +190,7 @@ describe("behaviors B1-B8 regression tests", () => {
     expect(changedOnMount).toBe(false);
     expect(selectionInvalidated).toBe(false);
     expect(appliedContextRef.current).toBe("ctx-1");
-    expect(connectionRequestRef.current).toBe(0);
+    expect(actionRequestRef.current).toBe(0);
     expect(useFiltersStore.getState().appliedContributions[contrib.key]).toBeDefined();
 
     // Chart A unmounts (e.g. user switched tabs)
@@ -204,7 +204,7 @@ describe("behaviors B1-B8 regression tests", () => {
       chartID: chartA,
       zoomContext: "ctx-1",
       appliedContextRef: remountAppliedContextRef,
-      connectionRequestRef,
+      actionRequestRef,
       outgoingActions: [action],
       clearActionSource: (id) => useFiltersStore.getState().clearActionSource(id),
       onInvalidateSelection: () => {
@@ -219,7 +219,7 @@ describe("behaviors B1-B8 regression tests", () => {
   });
 
   it("failed tooltipLookup does not discard synchronously resolved clientRow contributions", async () => {
-    const connectionRequestRef = { current: 0 };
+    const actionRequestRef = { current: 0 };
     let resolvedContributions: {
       context: string;
       contributions: FilterContribution[];
@@ -253,8 +253,8 @@ describe("behaviors B1-B8 regression tests", () => {
       outgoingActions: [clientAction, tooltipAction],
       rows: [{ region: "EU" }],
       fetchTooltip: failingFetchTooltip,
-      connectionRequestRef,
-      setResolvedConnectionContributions: (val) => {
+      actionRequestRef,
+      setResolvedActionContributions: (val) => {
         resolvedContributions = val;
       },
       stagePendingAction: (cId, c) =>
@@ -288,6 +288,90 @@ describe("behaviors B1-B8 regression tests", () => {
       (resolvedContributions as { contributions: FilterContribution[] } | null)
         ?.contributions[0]?.dimensionId,
     ).toBe("region");
+    // The failed roundtrip is recorded so the menu can show an error instead of
+    // staying stuck on "loading".
+    expect(
+      (resolvedContributions as { failed: boolean } | null)?.failed,
+    ).toBe(true);
+  });
+
+  it("publishes clientRow contributions before a sibling tooltipLookup resolves", async () => {
+    vi.useFakeTimers();
+    try {
+      const actionRequestRef = { current: 0 };
+      const published: Array<{
+        context: string;
+        contributions: FilterContribution[];
+      } | null> = [];
+
+      const clientAction: ChartAction = {
+        id: "act-client-early",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "manual",
+        target: { kind: "chart", chartID: chartB },
+        mappings: [{ sourceField: "region", targetDimensionId: "region" }],
+      };
+      const tooltipAction: ChartAction = {
+        id: "act-tooltip-late",
+        fromChartID: chartA,
+        sourceResolution: "tooltipLookup",
+        trigger: "manual",
+        target: { kind: "chart", chartID: chartB },
+        mappings: [{ sourceField: "status", targetDimensionId: "status" }],
+      };
+
+      const pending = resolveChartActions({
+        chartID: chartA,
+        zoomContext: "ctx-early",
+        dimensions,
+        outgoingActions: [clientAction, tooltipAction],
+        rows: [{ region: "EU" }],
+        fetchTooltip: () =>
+          new Promise((resolve) => {
+            setTimeout(
+              () =>
+                resolve({
+                  dataPoint: [{ status: "open" }],
+                  failedBatches: 0,
+                }),
+              50,
+            );
+          }),
+        actionRequestRef,
+        setResolvedActionContributions: (val) => {
+          published.push(val);
+        },
+        stagePendingAction: (cId, c) =>
+          useFiltersStore.getState().stagePendingAction(cId, c),
+        clearPendingAction: (cId) =>
+          useFiltersStore.getState().clearPendingAction(cId),
+        applyActionContributions: (cId, c, aIds) =>
+          useFiltersStore.getState().applyActionContributions(cId, c, aIds),
+        clearActionSource: (cId, aIds) =>
+          useFiltersStore.getState().clearActionSource(cId, aIds),
+      });
+
+      await Promise.resolve();
+
+      const early = published.find((entry) => entry !== null);
+      expect(early?.contributions).toHaveLength(1);
+      expect(early?.contributions[0]?.dimensionId).toBe("region");
+      expect(early?.contributions[0]?.value).toEqual(["EU"]);
+      expect(
+        useFiltersStore.getState().pendingAction?.contributions,
+      ).toHaveLength(1);
+
+      await vi.advanceTimersByTimeAsync(50);
+      await pending;
+
+      expect(published.at(-1)?.contributions.map((c) => c.dimensionId)).toEqual([
+        "region",
+        "status",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("B3: A genuine zoomContext change invalidates selection and clears this chart's action source", () => {
@@ -469,5 +553,145 @@ describe("behaviors B1-B8 regression tests", () => {
     // act-1 is updated, act-2 remains untouched
     expect(useFiltersStore.getState().appliedContributions[act1.key].value).toEqual(["US"]);
     expect(useFiltersStore.getState().appliedContributions[act2.key].value).toEqual(["APAC"]);
+  });
+
+  it("applies an auto clientRow action before a sibling tooltipLookup resolves", async () => {
+    vi.useFakeTimers();
+    try {
+      const actionRequestRef = { current: 0 };
+      const clientAction: ChartAction = {
+        id: "act-auto-client",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "auto",
+        target: { kind: "chart", chartID: chartB },
+        mappings: [{ sourceField: "region", targetDimensionId: "region" }],
+      };
+      const tooltipAction: ChartAction = {
+        id: "act-slow-tooltip",
+        fromChartID: chartA,
+        sourceResolution: "tooltipLookup",
+        trigger: "auto",
+        target: { kind: "chart", chartID: chartB },
+        mappings: [{ sourceField: "status", targetDimensionId: "status" }],
+      };
+
+      const pending = resolveChartActions({
+        chartID: chartA,
+        zoomContext: "ctx-auto",
+        dimensions,
+        outgoingActions: [clientAction, tooltipAction],
+        rows: [{ region: "EU" }],
+        fetchTooltip: () =>
+          new Promise((resolve) => {
+            setTimeout(
+              () =>
+                resolve({ dataPoint: [{ status: "open" }], failedBatches: 0 }),
+              100,
+            );
+          }),
+        actionRequestRef,
+        setResolvedActionContributions: () => {},
+        stagePendingAction: (cId, c) =>
+          useFiltersStore.getState().stagePendingAction(cId, c),
+        clearPendingAction: (cId) =>
+          useFiltersStore.getState().clearPendingAction(cId),
+        applyActionContributions: (cId, c, aIds) =>
+          useFiltersStore.getState().applyActionContributions(cId, c, aIds),
+        clearActionSource: (cId, aIds) =>
+          useFiltersStore.getState().clearActionSource(cId, aIds),
+      });
+
+      // Let the synchronous step-1 client application settle.
+      await Promise.resolve();
+
+      const clientKey = contributionKey(
+        {
+          kind: "chartSelection",
+          actionId: clientAction.id,
+          sourceChartID: chartA,
+        },
+        { kind: "chart", chartID: chartB },
+        "region",
+      );
+      const tooltipKey = contributionKey(
+        {
+          kind: "chartSelection",
+          actionId: tooltipAction.id,
+          sourceChartID: chartA,
+        },
+        { kind: "chart", chartID: chartB },
+        "status",
+      );
+
+      // The auto clientRow action is applied without waiting for the 100ms roundtrip.
+      expect(
+        useFiltersStore.getState().appliedContributions[clientKey]?.value,
+      ).toEqual(["EU"]);
+      // The tooltipLookup action is still pending until its roundtrip resolves.
+      expect(
+        useFiltersStore.getState().appliedContributions[tooltipKey],
+      ).toBeUndefined();
+
+      await vi.advanceTimersByTimeAsync(100);
+      await pending;
+
+      expect(
+        useFiltersStore.getState().appliedContributions[tooltipKey]?.value,
+      ).toBe("open");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("re-executing a navigating (tabJump) action removes its stale dimension contributions", () => {
+    const navAction: ChartAction = {
+      id: "act-nav",
+      fromChartID: chartA,
+      sourceResolution: "clientRow",
+      trigger: "manual",
+      target: { kind: "tab", tab: "Overview" },
+      navigate: { restoreOnReturn: true },
+      mappings: [{ sourceField: "region", targetDimensionId: "region" }],
+    };
+
+    const regionContrib: FilterContribution = {
+      key: contributionKey(
+        { kind: "tabJump", actionId: navAction.id, sourceChartID: chartA },
+        { kind: "tab", tab: "Overview" },
+        "region",
+      ),
+      dimensionId: "region",
+      source: { kind: "tabJump", actionId: navAction.id, sourceChartID: chartA },
+      target: { kind: "tab", tab: "Overview" },
+      value: ["EU"],
+    };
+
+    useFiltersStore.getState().executeAction(navAction, [regionContrib]);
+    expect(
+      useFiltersStore.getState().appliedContributions[regionContrib.key]?.value,
+    ).toEqual(["EU"]);
+
+    // Re-execute the same navigating action, now resolving a different dimension.
+    const statusContrib: FilterContribution = {
+      key: contributionKey(
+        { kind: "tabJump", actionId: navAction.id, sourceChartID: chartA },
+        { kind: "tab", tab: "Overview" },
+        "status",
+      ),
+      dimensionId: "status",
+      source: { kind: "tabJump", actionId: navAction.id, sourceChartID: chartA },
+      target: { kind: "tab", tab: "Overview" },
+      value: "open",
+    };
+    useFiltersStore.getState().executeAction(navAction, [statusContrib]);
+
+    // The stale region contribution from the prior tabJump must be swept.
+    expect(
+      useFiltersStore.getState().appliedContributions[regionContrib.key],
+    ).toBeUndefined();
+    expect(
+      useFiltersStore.getState().appliedContributions[statusContrib.key]?.value,
+    ).toBe("open");
   });
 });

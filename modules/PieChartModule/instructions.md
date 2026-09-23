@@ -969,7 +969,7 @@ Source: `configuration`
 Type: `boolean | undefined`
 
 Description: Enables wrapper-owned static tooltip loading on source-slice
-click. The visible tooltip and connection context menu belong to
+click. The visible tooltip and action context menu belong to
 `ChartWrapper`.
 
 Source: `configuration`
@@ -1073,7 +1073,7 @@ visible while the center label is silently skipped.
 6. Return only unique, pre-aggregated `name`/`value` rows.
 7. Keep values finite and non-negative.
 8. Use `groupOthers` and `maxSlices` intentionally for wide data.
-9. Keep enhanced tooltip, connections, and context menus in `ChartWrapper`.
+9. Keep enhanced tooltip, chart actions, and context menus in `ChartWrapper`.
 10. Parse tooltip `name` and `value` as arrays in tooltip SQL.
 11. Do not make the synthetic slice selectable.
 12. Use another module when the requested visualization exceeds these limits.
@@ -1087,7 +1087,7 @@ visible while the center label is silently skipped.
 3. Aggregate source rows to unique names in SQL.
 4. Choose pie or donut geometry.
 5. Configure grouping, labels, legend, and slice guard.
-6. Add tooltip SQL only when enhanced details or connections are required.
+6. Add tooltip SQL only when enhanced details or chart actions are required.
 7. Verify every config key against `PieChartConfig`.
 8. Verify SQL output against `PieChartData`.
 9. Generate the dashboard page and run repository validation.
@@ -1100,11 +1100,11 @@ Do not:
 
 - Send negative, null, or precomputed percentage fields.
 - Expect duplicate names to be merged or rejected.
-- Select or connect from the synthetic grouped slice.
+- Select or use the synthetic grouped slice as an action source.
 - Add lasso, zoom, nested rings, gauges, or radial selection offsets through
   page configuration.
 - Modify the module for a page-specific palette or label preference.
-- Put enhanced tooltip or connection behavior inside the module.
+- Put enhanced tooltip or action behavior inside the module.
 
 ---
 

@@ -356,7 +356,7 @@ its `:input` struct:
 Only add filters that are actually needed.
 
 Filters must also be considered when generating SQL (Step 12). The framework
-collects every bound value and connection value into one JSON object and always
+collects every bound value and incoming action value into one JSON object and always
 binds that object as `:input`. A field can be missing entirely or explicitly
 `null`; both must behave as an unset filter.
 
@@ -384,7 +384,7 @@ Do not modify the module data schema to make the SQL easier.
 
 Adapt the SQL to the existing module contract.
 
-Every normal chart SQL that accepts filters or incoming chart connections must
+Every normal chart SQL that accepts filters or incoming chart actions must
 use exactly one named parameter, `:input`. Parse it once with `from_json` and a
 typed `STRUCT` containing every accepted field, then `CROSS JOIN` that one-row
 input into the query. Never reference dynamic named markers such as `:from`,
@@ -396,7 +396,7 @@ Example:
 WITH chart_input AS (
   SELECT from_json(
     CAST(:input AS STRING),
-    'STRUCT<`from`: STRING, department: STRING, CarName: ARRAY<STRING>>'
+    'STRUCT<`from`: STRING, department: STRING, CarName: STRING>'
   ) AS params
 )
 SELECT ...
@@ -408,17 +408,16 @@ WHERE (
 )
 AND (
   chart_input.params.CarName IS NULL
-  OR array_contains(chart_input.params.CarName, source.CarName)
+  OR array_contains(split(chart_input.params.CarName, ','), source.CarName)
 )
 ```
 
 Choose each struct type from the actual client value shape. Filter values are
-normally scalar; `multiselect` currently arrives as a comma-joined `STRING` and
-must be expanded with `split`. Incoming connection values arrive as native JSON
-arrays and must be declared as `ARRAY<...>`. Missing fields and explicit JSON
-`null` both become SQL `NULL`, so guard every optional field with
+normally scalar; `multiselect` filters and incoming action values arrive as a
+comma-joined `STRING` and must be expanded with `split`. Missing fields and
+explicit JSON `null` both become SQL `NULL`, so guard every optional field with
 `chart_input.params.<field> IS NULL`. A chart without filters or incoming
-connections may ignore the framework's unused `:input` parameter.
+actions may ignore the framework's unused `:input` parameter.
 
 This rule applies only to normal chart SQL in `pagesConfig/sql/<chartID>.sql`.
 Tooltip SQL uses the separate batched data-point contract in Step 13.
@@ -439,10 +438,10 @@ pagesConfig/sql/123456as.sql
 
 ## 13. Configure the Selection Tooltip
 
-Every visualization that enables `enhancedTooltip` or acts as the source of a
-chart connection requires a tooltip query. The same endpoint supports a clicked
-point, a lasso selection, reopening details from the right-click menu, and
-resolving outgoing connection values.
+Every visualization that enables `enhancedTooltip` or is the source of a
+`tooltipLookup` action requires a tooltip query. The same endpoint supports a
+clicked point, a lasso selection, reopening details from the right-click menu,
+and resolving `tooltipLookup` action values. A `clientRow` action does not.
 
 Ask the user which information should be shown for selected rows when the
 detail tooltip opens after a click, lasso selection, or context-menu action.
@@ -480,7 +479,7 @@ Each tooltip endpoint invocation batches every selected data point into one
 request and one Databricks query. It groups properties by name and serializes
 every group as a JSON array. This applies to a single click as well as lasso or
 multi-selection. Tooltip SQL must therefore parse every used parameter with
-`from_json`. A visible enhanced tooltip and connection resolution can invoke
+`from_json`. A visible enhanced tooltip and `tooltipLookup` resolution can invoke
 the endpoint separately, but neither may issue one query per selected row.
 
 Derive the element type from `chartDataSchema.ts` and the actual `dataPoint`:
@@ -501,7 +500,7 @@ Never generate one tooltip request or one SQL query per selected row.
 
 ### Parameter Shape Contract
 
-For every filter or chart connection, trace one representative value through
+For every filter or chart action, trace one representative value through
 the complete path before finalizing SQL:
 
 ```text
@@ -550,24 +549,29 @@ The resulting API value must have this shape:
 }
 ```
 
-When the client applies that connection, the array becomes a field of the
-target chart's JSON `:input`. Target SQL must declare the same element type:
+When the client applies that action, the distinct values become a comma-joined
+string field of the target chart's JSON `:input`. Target SQL must expand it:
 
 ```sql
 chart_input.params.CarName IS NULL
-OR array_contains(chart_input.params.CarName, trim(CAST(CarName AS STRING)))
+OR array_contains(split(chart_input.params.CarName, ','), trim(CAST(CarName AS STRING)))
 ```
 
-For chart connections, every mapping must meet all of these conditions:
+For a `tooltipLookup` action, every mapping must meet all of these conditions:
 
 - Its `sourceField` is returned by the source tooltip SQL with exactly that alias.
 - Its returned value is a scalar or an array of atomic values, never an array
   whose elements still contain delimited lists.
-- Its `targetDimensionId` names a `multiselect` dimension in `DashboardConfig.filters`.
-- The target chart binds that dimension in `filterBindings`, and the target chart
+- Its `targetDimensionId` names a dimension in `DashboardConfig.filters`.
+  `trigger: "auto"` requires `multiselect`; a manual action may target any
+  non-date dimension.
+- A chart target binds that dimension in `filterBindings`, and the target chart
   SQL declares the bound SQL field in its typed `:input` struct.
 - A representative source value, after normalization, equals a representative
   target-column value under the actual comparison expression.
+
+A `clientRow` mapping instead reads `sourceField` from the selected rows. It
+does not require a tooltip alias.
 
 Do not consider the SQL complete until this end-to-end example succeeds by
 inspection or, when query execution is available, with actual query results.
@@ -611,7 +615,7 @@ The tooltip SQL filename must use the same `chartID` as the visualization.
 
 ### Runtime behavior supplied by `ChartWrapper`
 
-Do not implement tooltip, lasso, or connection-menu UI in a dashboard page or
+Do not implement tooltip, lasso, or action-menu UI in a dashboard page or
 module. `ChartWrapper` provides it consistently:
 
 - `enhancedTooltip: true` enables the selected-row detail tooltip.
@@ -619,16 +623,17 @@ module. `ChartWrapper` provides it consistently:
   for another gesture. Starting a new valid gesture closes the previous tooltip.
 - Right-click **Tooltip anzeigen** reopens details for the current selection and
   is disabled without selected rows or when `enhancedTooltip` is false.
-- Right-click **Verlinktes Diagramm filtern** is disabled until outgoing
-  connection values resolve. Choosing one target applies that target immediately.
-- The tooltip footer button applies the staged values to all linked targets.
+- Right-click **Filtern** stays available for an executable `clientRow` action
+  while a sibling `tooltipLookup` action is still resolving. Choosing one target
+  applies that target immediately.
+- The tooltip footer button applies the staged values to all current-tab targets.
 - Tooltip state belongs to its source `chartID`; only that wrapper renders the card.
 - Target menu labels come from `chartTitle` across all configured tabs. Require a
-  useful title for connected targets; never expose `chartID` as user-facing text.
+  useful title for action targets; never expose `chartID` as user-facing text.
 
 ---
 
-## 14. Configure Chart Actions and Connections
+## 14. Configure Chart Actions
 
 After the relevant visualizations are complete, ask whether selecting data in
 one chart should filter another chart or drill down to another tab. Present source and target choices using
@@ -659,7 +664,9 @@ Example:
 {
   "id": "active-users-to-fleets",
   "fromChartID": "active-users-over-time",
-  "toChartID": "cumulative-fleets",
+  "target": { "kind": "chart", "chartID": "cumulative-fleets" },
+  "sourceResolution": "tooltipLookup",
+  "trigger": "manual",
   "mappings": [
     {
       "sourceField": "fleet_creation_date",
@@ -669,20 +676,23 @@ Example:
 }
 ```
 
-The source tooltip SQL must return `fleet_creation_date`; the target chart must
-bind the `fleet_creation_date` dimension and declare that SQL field in its
+For `tooltipLookup`, the source tooltip SQL must return `fleet_creation_date`.
+The target chart must bind that dimension and declare the SQL field in its
 `:input` struct. A `multiselect` value arrives as a comma-joined `STRING`, so
-compare it with `array_contains(split(...), column)`. Multiple links from one
-source are allowed.
+compare it with `array_contains(split(...), column)`. Multiple actions from one
+source are allowed. `navigate` is valid only on a tab target and requires
+`trigger: "manual"`. Distinct values are capped at 500 unless `maxDistinctValues`
+is set.
 
-Connection example with automatic application:
+Automatic application uses `trigger: "auto"` and must target `multiselect`:
 
 ```json
 {
   "id": "active-users-to-fleets",
   "fromChartID": "active-users-over-time",
-  "toChartID": "cumulative-fleets",
-  "apply": "auto",
+  "target": { "kind": "chart", "chartID": "cumulative-fleets" },
+  "sourceResolution": "tooltipLookup",
+  "trigger": "auto",
   "mappings": [
     {
       "sourceField": "fleet_creation_date",
@@ -741,8 +751,8 @@ Before continuing with the next visualization, verify:
 - SQL uses only valid tables and columns from the retrieved schemas.
 - SQL returns exactly the structure required by `chartDataSchema.ts`.
 - Filters are reflected correctly in the SQL where required.
-- When `enhancedTooltip` or an outgoing connection is used, the user selected
-  the tooltip contents and the required connection values are included.
+- When `enhancedTooltip` or a `tooltipLookup` action is used, the user selected
+  the tooltip contents and the required action aliases are included.
 - The sent tooltip `dataPoint` and its available parameter names were verified
   in the selected module implementation.
 - `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql` exists, uses only available
@@ -752,10 +762,10 @@ Before continuing with the next visualization, verify:
   that match the module's data schema.
 - Tooltip SQL treats every input parameter as a batched JSON array, including
   single-click requests, and does not execute once per selected row.
-- Every connection parameter passed an end-to-end shape check from source value
+- Every action mapping passed an end-to-end shape check from source value
   through target comparison.
-- Connected targets have useful `chartTitle` values for the context menu.
-- A connection target is listed once even when multiple columns bind to it.
+- Action targets have useful `chartTitle` values for the context menu.
+- An action target is listed once even when multiple columns bind to it.
 - Delimited source strings were normalized before array serialization; no
   request array contains elements that are themselves comma-separated lists.
 - Layout values are valid.
@@ -780,7 +790,7 @@ Repeat the complete visualization workflow:
 8. Configure filters.
 9. Generate SQL.
 10. Configure the selection tooltip and generate its SQL when required.
-11. Configure chart connections when requested.
+11. Configure chart actions when requested.
 12. Configure layout.
 13. Validate the visualization.
 
@@ -792,7 +802,7 @@ Do not mix unfinished visualizations.
 
 After all visualizations are complete, build the full dashboard configuration.
 
-The configuration must conform to the repository's `DashboardConfig` type: a top-level object with `reportName`, `filters`, `tabs`, and optional `connections`.
+The configuration must conform to the repository's `DashboardConfig` type: a top-level object with `reportName`, `filters`, `tabs`, and optional `actions`.
 
 Example:
 
@@ -823,11 +833,13 @@ Example:
       ]
     }
   ],
-  "connections": [
+  "actions": [
     {
       "id": "fleet-activity-to-cumulative",
       "fromChartID": "123456as",
-      "toChartID": "789012bc",
+      "target": { "kind": "chart", "chartID": "789012bc" },
+      "sourceResolution": "tooltipLookup",
+      "trigger": "manual",
       "mappings": [
         {
           "sourceField": "fleet_creation_date",
@@ -839,7 +851,7 @@ Example:
 }
 ```
 
-One trigger may contain multiple rows and multiple modules. Omit `filterBindings` for charts without filters and `connections` when no chart links are configured.
+One trigger may contain multiple rows and multiple modules. Omit `filterBindings` for charts without filters and `actions` when no chart links are configured.
 
 ---
 
@@ -912,15 +924,17 @@ Before generating the page, verify:
   `chartID`.
 - Every tooltip SQL uses parameters provided by the data point that its module
   sends and returns the information requested by the user with readable labels.
-- Every chart connection has a unique `id`, `mappings` whose `sourceField`
-  matches a source tooltip alias, atomic runtime values, a `multiselect`
-  `targetDimensionId` bound by the target chart, and matching target `:input`
-  struct fields and SQL types.
-- Every connected target has a user-facing `chartTitle`; menu labels are never
+- Every chart action has a unique `id`, a `sourceResolution`, a `target`, and
+  `mappings`. A `tooltipLookup` `sourceField` matches a source tooltip alias; a
+  `clientRow` `sourceField` is present on the selected rows. Runtime values are
+  atomic. A chart target binds `targetDimensionId` and declares the matching
+  `:input` field. `trigger: "auto"` targets `multiselect`; `navigate` is only
+  used on manual tab targets.
+- Every action target has a user-facing `chartTitle`; menu labels are never
   derived from internal chart IDs.
 - When browser validation is available, each single-target action refetches only
-  the chosen chart with connection parameters and the tooltip footer applies all
-  staged targets.
+  the chosen chart with action parameters and the tooltip footer applies all
+  staged current-tab targets.
 - Every module configuration is valid.
 - The dashboard config is valid JSON.
 - The dashboard config conforms to `DashboardConfig`.

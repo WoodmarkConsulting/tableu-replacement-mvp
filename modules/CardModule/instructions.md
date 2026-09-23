@@ -11,7 +11,7 @@ Use this module when a dashboard needs to highlight one aggregate figure
 Do not use this module when you need to compare multiple values or show a
 distribution; use `BarChartModule`, `LineChartModule`, or `TableModule`
 instead. `CardModule` does not support selection, lasso, enhanced tooltips, or
-outgoing connections.
+outgoing chart actions.
 
 ---
 

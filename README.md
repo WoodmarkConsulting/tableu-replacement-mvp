@@ -98,7 +98,7 @@ DATABRICKS_OAUTH_CLIENT_SECRET=<client-secret>
 - `pagesConfig/pages.json`: Registry of dashboards and the JSON file each dashboard uses.
 - `pagesConfig/*.json`: Declarative dashboard definitions with tabs, rows, chart metadata, filters, and module config.
 - `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. The `chartID` maps directly to the SQL filename.
-- `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail and connection query for selected chart rows.
+- `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail and `tooltipLookup` query for selected chart rows.
 - `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router pages for dashboards.
 - `components/TabsWrapper/index.tsx`: Renders tabs and rows and passes each chart entry into `ChartWrapper`.
 - `components/ChartWrapper/index.tsx`: Resolves the selected module, fetches chart data, validates it against the module schema, and injects runtime props.
@@ -186,8 +186,8 @@ it with `split` and treat an unset (`NULL`) value as "no filter":
 
 ## Composing multiple contributions
 
-A dimension can receive values from several producers at once (a control, a tab
-jump, one or more chart connections). `resolveChartFilters` composes them per
+A dimension can receive values from several producers at once (a control, a
+drilldown, one or more chart selections). `resolveChartFilters` composes them per
 chart with the optional `composition` rules on the dimension:
 
 - `sameSourceKind` — combines contributions that share a `source.kind`.
@@ -245,7 +245,7 @@ At a high level, each JSON file contains:
 - `components` entries
 - one `moduleName` per chart entry
 - chart metadata such as `chartID`, `chartTitle`, `chartDescription`, `chartConfig`, and per-chart `filterBindings` (dimension id → SQL parameter)
-- optional `enhancedTooltip` per chart, plus dashboard-level dimension-mapped `connections` between source and target charts
+- optional `enhancedTooltip` per chart, plus dashboard-level `actions` that filter a chart or tab from a selection
 
 The row layout uses a 12-column grid. If a row uses less than 12 columns, `TabsWrapper` assigns the remaining width to the last component in that row.
 
