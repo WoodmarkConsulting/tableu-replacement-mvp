@@ -46,19 +46,20 @@ export function TabsWrapper({
   const chartTabs = Object.fromEntries(
     tabsConfig.flatMap((tab) =>
       tab.rows.flatMap((row) =>
-        row.components.map((component) => [
-          component.chartID,
-          tab.trigger,
-        ]),
+        row.components.map((component) => [component.chartID, tab.trigger]),
       ),
     ),
   ) as Partial<Record<TableSchemaKey, string>>;
+
+  console.log("tabsConfig", tabsConfig);
 
   return (
     <Tabs
       value={value}
       onValueChange={onValueChange}
-      defaultValue={value === undefined ? tabsConfig[0]?.trigger : undefined}>
+      defaultValue={value === undefined ? tabsConfig[1]?.trigger : undefined}
+      // defaultValue={null}
+    >
       <TabsList>
         {tabsConfig.map((tab) => (
           <TabsTrigger key={tab.trigger} value={tab.trigger}>

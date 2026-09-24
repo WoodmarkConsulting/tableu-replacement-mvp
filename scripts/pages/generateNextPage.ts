@@ -5,6 +5,66 @@ import { validateRootDirectoryAndPagesConfig } from "../utils";
 
 const generatedDashboardsDir = "app/Dashboards";
 
+const createPageConfiguration = (
+  configTemplate: string,
+  dashboardConfig: DashboardConfig,
+) => {
+  const tabsConfig = dashboardConfig.tabs;
+  const INITIAL_TAB = dashboardConfig.tabs[0]?.trigger ?? "";
+
+  const dashboardConfigSections = configTemplate.split(
+    "---- Dashboard Configuration Template ----",
+  );
+  const trimmedConfigSections = dashboardConfigSections[1]
+    .replaceAll("\n", "")
+    .trim()
+    .split(";");
+
+  const tabsConfigUpdateStatement = trimmedConfigSections[0].replace(
+    "__TABS_CONFIG__",
+    `${JSON.stringify(tabsConfig, null, 2)}`,
+  );
+
+  const dashboardConfigUpdateStatement = trimmedConfigSections[1].replace(
+    "__DASHBOARD_CONFIG__",
+    `${JSON.stringify(dashboardConfig, null, 2)}`,
+  );
+
+  const INITIAL_TAB_UPDATE_STATEMENT = trimmedConfigSections[2].replace(
+    "__INITIAL_TAB__",
+    `${JSON.stringify(INITIAL_TAB)}`,
+  );
+
+  const CONFIG_STATEMENTS = `
+    ${tabsConfigUpdateStatement}
+    ${dashboardConfigUpdateStatement}
+    ${INITIAL_TAB_UPDATE_STATEMENT}
+  `;
+
+  return CONFIG_STATEMENTS;
+};
+
+const readTemplatesAndGeneratePage = (dashboardConfig: DashboardConfig) => {
+  const pageTemplatePath = "app/DEV/template/page.template.tsx";
+  const configTemplatePath = "app/DEV/template/dashboardConfig.ts";
+
+  if (!fs.existsSync(pageTemplatePath) || !fs.existsSync(configTemplatePath)) {
+    throw new Error("Template files are missing.");
+  }
+
+  const pageTemplate = fs
+    .readFileSync(pageTemplatePath, "utf-8")
+    .split("---- Page Template ----")[1];
+  const configTemplate = fs.readFileSync(configTemplatePath, "utf-8");
+
+  const configStatements = createPageConfiguration(
+    configTemplate,
+    dashboardConfig,
+  );
+
+  return { pageTemplate, configStatements };
+};
+
 const readPagesConfig = () => {
   const pagesConfigPath = "pagesConfig/pages.json";
 
@@ -17,69 +77,11 @@ const readPagesConfig = () => {
   return JSON.parse(content) as PagesConfig[];
 };
 
-export function buildPageBoilerplate(
-  dashboardName: string,
-  dashboardConfig: DashboardConfig,
-): string {
-  validateDashboardConfig(dashboardConfig);
-
-  const tabsConfig = dashboardConfig.tabs;
-  // React component names must be capitalized for the rules-of-hooks lint rule.
-  const componentName =
-    dashboardName.charAt(0).toUpperCase() + dashboardName.slice(1);
-
-  return `
-          "use client";
-
-          import ChartPageWrapper from "@/components/ChartPageWrapper";
-          import { useShallow } from "zustand/shallow";
-
-          import { useLayoutEffect } from "react";
-          import useFiltersStore from "@/stores/filterProvider";
-          import { DashboardShell } from "@/components/DashboardShell";
-
-          export default function ${componentName}() {
-            const { initFilterStore, resetFilterStore } = useFiltersStore(
-              useShallow((s) => ({
-                initFilterStore: s.initFilterStore,
-                resetFilterStore: s.resetFilterStore,
-              })),
-            );
-
-            const tabsConfig = ${JSON.stringify(tabsConfig, null, 2)} as const satisfies TabsConfig[];
-            const dashboardConfig: DashboardConfig<typeof tabsConfig> = {
-              reportName: ${JSON.stringify(dashboardConfig.reportName)},
-              filters: ${JSON.stringify(dashboardConfig.filters, null, 2)},
-              tabs: tabsConfig,
-              actions: ${JSON.stringify(dashboardConfig.actions ?? [], null, 2)},
-            };
-
-
-            useLayoutEffect(() => {
-              initFilterStore({
-                dimensions: dashboardConfig.filters,
-                initialActiveTab: dashboardConfig.tabs[0]?.trigger ?? "",
-              });
-
-              return () => {
-                resetFilterStore();
-              };
-
-              //eslint-disable-next-line react-hooks/exhaustive-deps
-            }, []);
-
-            return (
-              <ChartPageWrapper>
-                <DashboardShell config={dashboardConfig} />
-              </ChartPageWrapper>
-            );
-          }
-        `.trim();
-}
-
 // Parses a "-d <config>" flag that forces regeneration of a single dashboard.
 function parseDashboardArg(argv: string[]): string | undefined {
-  const flagIndex = argv.findIndex((arg) => arg === "-d" || arg === "--dashboard");
+  const flagIndex = argv.findIndex(
+    (arg) => arg === "-d" || arg === "--dashboard",
+  );
 
   if (flagIndex === -1) {
     return undefined;
@@ -114,6 +116,7 @@ function generatePageForDashboard(dashboard: PagesConfig, force: boolean) {
 
   const pageFolderPath = `${generatedDashboardsDir}/${dashboardName}`;
   const pageFilePath = `${pageFolderPath}/page.tsx`;
+  const pageConfigPath = `${pageFolderPath}/dashboardConfig.ts`;
   const dashboardConfigPath = `pagesConfig/${dashboardConfigName}`;
 
   // Validate the configuration before creating anything.
@@ -141,11 +144,14 @@ function generatePageForDashboard(dashboard: PagesConfig, force: boolean) {
     const configContent = fs.readFileSync(dashboardConfigPath, "utf-8");
 
     const dashboardConfig = JSON.parse(configContent) as DashboardConfig;
+    validateDashboardConfig(dashboardConfig);
 
-    // Generate the Next.js page.
-    const boilerplateCode = buildPageBoilerplate(dashboardName, dashboardConfig);
+    // Generate the Next.js page along with its configuration.
+    const { pageTemplate, configStatements } =
+      readTemplatesAndGeneratePage(dashboardConfig);
 
-    fs.writeFileSync(pageFilePath, boilerplateCode.trim());
+    fs.writeFileSync(pageFilePath, pageTemplate.trim());
+    fs.writeFileSync(pageConfigPath, configStatements.trim());
 
     pageCreatedSuccessfully = true;
 
@@ -156,7 +162,11 @@ function generatePageForDashboard(dashboard: PagesConfig, force: boolean) {
     console.error(`Failed to create page "${dashboardName}":`, error);
   } finally {
     // Remove a freshly created directory if anything failed after it was created.
-    if (!pageCreatedSuccessfully && !pageAlreadyExists && fs.existsSync(pageFolderPath)) {
+    if (
+      !pageCreatedSuccessfully &&
+      !pageAlreadyExists &&
+      fs.existsSync(pageFolderPath)
+    ) {
       try {
         fs.rmSync(pageFolderPath, {
           recursive: true,
@@ -184,9 +194,7 @@ function generateNextPage() {
     );
 
     if (!target) {
-      throw new Error(
-        `No dashboard in pages.json matches "${dashboardArg}".`,
-      );
+      throw new Error(`No dashboard in pages.json matches "${dashboardArg}".`);
     }
 
     // Force regeneration for the explicitly requested dashboard.

@@ -10,8 +10,12 @@ import { useFilterUrlSync } from "@/hooks/useFilterUrlSync";
 import { validateDashboardConfig } from "@/lib/validateDashboardConfig";
 import useFilterStore from "@/stores/filterProvider";
 
+import { useLayoutEffect } from "react";
+import { useShallow } from "zustand/shallow";
+
 type DashboardShellProps = {
   config: DashboardConfig;
+  initialTab: string;
 };
 
 // useSearchParams (inside useFilterUrlSync) must sit under a Suspense boundary.
@@ -20,7 +24,14 @@ function FilterUrlSync({ dashboard }: { dashboard: string }) {
   return null;
 }
 
-export function DashboardShell({ config }: DashboardShellProps) {
+export function DashboardShell({ config, initialTab }: DashboardShellProps) {
+  const { initFilterStore, resetFilterStore } = useFilterStore(
+    useShallow((state) => ({
+      initFilterStore: state.initFilterStore,
+      resetFilterStore: state.resetFilterStore,
+    })),
+  );
+
   // The page generator validates too; this is a dev-only safety net.
   useMemo(() => {
     if (process.env.NODE_ENV !== "production") {
@@ -62,6 +73,15 @@ export function DashboardShell({ config }: DashboardShellProps) {
       />
     </div>
   );
+
+  useLayoutEffect(() => {
+    initFilterStore({
+      dimensions: [],
+      initialActiveTab: initialTab,
+    });
+
+    return resetFilterStore;
+  }, [initFilterStore, resetFilterStore, initialTab]);
 
   return (
     <div className="flex flex-col gap-2">
