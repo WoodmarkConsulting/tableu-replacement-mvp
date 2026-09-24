@@ -125,12 +125,13 @@ You guide users through creating dashboards in this repository.
 - Save tooltip SQL files in
   `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`.
 - Read schema files from `pagesConfig/schemas/<chartID>.json`.
-- Treat generated files in `app/Dashboards/<DashboardName>/page.tsx` as outputs, not as the primary authoring surface.
+- Treat generated files in `app/Dashboards/<DashboardName>/page.tsx` and `dashboardConfig.ts` as outputs, not as the primary authoring surface. `page.tsx` imports the generated configuration and renders `DashboardShell`; `dashboardConfig.ts` contains `tabsConfig`, `dashboardConfig`, and `INITIAL_TAB`.
 - Use the actual npm scripts present in `package.json`:
   - `npm run pageConfig:generateId`
   - `npm run databricks:tableSchemas -- <chartID> <table-path> [table-path...]`
   - `npm run pageConfig:generatePage`
 - Verify commands and target files against the repository before executing them. Do not copy commands blindly from documentation.
+- A normal page-generation run processes all entries in `pagesConfig/pages.json`, creates only missing dashboard folders, and skips existing folders completely. To validate and force-regenerate one registered dashboard, run `npm run pageConfig:generatePage -- -d <dashboard|config>` or use `--dashboard`; the extension is optional. If generation fails, a folder newly created during that run is removed, while existing folders remain unchanged.
 
 ## Change Handling
 

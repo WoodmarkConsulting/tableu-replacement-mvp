@@ -5,7 +5,7 @@ This folder contains reusable dashboard modules that can be referenced from `pag
 ## How modules are used
 
 1. A dashboard JSON file references a module through the `moduleName` field on a component, for example `"moduleName": "LineChartModule"`. The value must match a key in `modules/modulRegistry.ts`.
-2. `scripts/pages/generateNextPage.ts` embeds the dashboard JSON into the generated page; it does not import modules directly.
+2. `scripts/pages/generateNextPage.ts` validates the dashboard JSON and generates `page.tsx` plus `dashboardConfig.ts`; it does not import modules directly.
 3. At runtime, `TabsWrapper` renders a `ChartWrapper` for each configured component.
 4. `ChartWrapper` resolves the module from `modules/modulRegistry.ts` via `moduleName` (a dynamic import), fetches `/api/data/chart/<chartID>`, validates the result against the module's Zod schema, and injects props including `height`, `chartData`, selection/lasso controls, and loading/error state.
 

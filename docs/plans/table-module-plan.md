@@ -573,7 +573,7 @@ Helper extraction (keeps `index.tsx` readable; not required by the contract):
 
 3. Add a temporary dashboard entry referencing
    `moduleName: "TableModule"`, regenerate the page with
-   `npm run pageConfig:generatePage`, and visually confirm:
+  `npm run pageConfig:generatePage -- -d <dashboard|config>`, and visually confirm:
    - rows render with correct formatting and alignment per column type (incl. `boolean`,
      `percentScale`, fixed `de-DE` locale)
    - databars scale correctly (including diverging negatives) and honor the domain

@@ -379,7 +379,7 @@ Optional helper extraction (not required by the contract):
    `ARRAY<DOUBLE>`.
 
 3. Add a temporary dashboard entry referencing `moduleName: "BarChartModule"`, regenerate the
-   page with `npx tsx scripts/pages/generateNextPage.ts`, and visually confirm:
+  page with `npm run pageConfig:generatePage -- -d <dashboard|config>`, and visually confirm:
    - vertical and horizontal orientation both render correctly
    - grouped / stacked / stacked100 / overlay layouts behave as configured
    - value labels, sorting, threshold + per-category coloring apply correctly

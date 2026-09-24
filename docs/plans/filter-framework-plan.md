@@ -76,9 +76,9 @@ Filter selections can be large, so they are never serialized into the URL. Inste
 
 ## Generation + provider — `scripts/pages/generateNextPage.ts`
 
-- The generator reads its dashboard registry from **`pagesConfig/pages.json`** (not `pagesConfig/index.ts`, which is stale/unused and still references a non-existent `cudo-test`). `pages.json` already maps `cudoTest` → `cudoTest.json`; no registry edit needed.
-- The config is currently cast to `TabsConfig[]` and JSON-stringified into the page. Update the cast + template to the new config-object shape; render `DashboardShell` wrapped in `FilterProvider`, passing `reportName`, `filters`, and `tabs`.
-- ⚠️ The script skips existing page dirs — delete `app/Dashboards/cudoTest/page.tsx` to regenerate under the new shape.
+- The registry comes from **`pagesConfig/pages.json`**; `pagesConfig/index.ts` is not used by the generator.
+- The generator reads the `DashboardConfig` from `pagesConfig/<dashboardConfigName>` and produces `app/Dashboards/<Name>/page.tsx` plus `app/Dashboards/<Name>/dashboardConfig.ts` from two templates.
+- A normal generator run skips existing dashboard directories. Use `npm run pageConfig:generatePage -- -d <dashboard|config>` (alternatively `--dashboard`) to force-regenerate exactly one registered dashboard.
 
 ## Migration
 

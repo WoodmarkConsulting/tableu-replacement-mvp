@@ -95,11 +95,12 @@ DATABRICKS_OAUTH_CLIENT_SECRET=<client-secret>
 
 ## Repository structure
 
-- `pagesConfig/pages.json`: Registry of dashboards and the JSON file each dashboard uses.
+- `pagesConfig/pages.json`: Registry of dashboards with `dashboardName` and `dashboardConfigName`.
 - `pagesConfig/*.json`: Declarative dashboard definitions with tabs, rows, chart metadata, filters, and module config.
 - `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. The `chartID` maps directly to the SQL filename.
 - `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail and `tooltipLookup` query for selected chart rows.
-- `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router pages for dashboards.
+- `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page entry point for a dashboard.
+- `app/Dashboards/<DashboardName>/dashboardConfig.ts`: Generated dashboard configuration imported by the page.
 - `components/TabsWrapper/index.tsx`: Renders tabs and rows and passes each chart entry into `ChartWrapper`.
 - `components/ChartWrapper/index.tsx`: Resolves the selected module, fetches chart data, validates it against the module schema, and injects runtime props.
 - `app/api/data/chart/[...chartIDs]/route.ts`: Loads `pagesConfig/sql/<chartID>.sql`, executes it, and returns the query result.
@@ -108,7 +109,7 @@ DATABRICKS_OAUTH_CLIENT_SECRET=<client-secret>
 - `modules/modulRegistry.ts`: Auto-generated registry of available modules and the union of chart config types.
 - `modules/instructions.md`: High-level overview of the available modules and when to use them.
 - `modules/<ModuleName>/instructions.md`: Module-specific behavior, data contract, config rules, and usage notes.
-- `scripts/pages/generateNextPage.ts`: Generates `app/Dashboards/<DashboardName>/page.tsx` from `pagesConfig/pages.json` and the referenced JSON.
+- `scripts/pages/generateNextPage.ts`: Generates the dashboard page and its configuration from `pagesConfig/pages.json` and the referenced JSON.
 - `scripts/modules/validateModules.ts`: Validates the required module file contract.
 - `scripts/modules/generateModuleRegistry.ts`: Regenerates `modules/modulRegistry.ts` from module folders.
 
@@ -121,23 +122,26 @@ flowchart TD
     A[pagesConfig/pages.json] --> B[pagesConfig/<dashboard>.json]
     B --> C[npm run pageConfig:generatePage]
     C --> D[app/Dashboards/<DashboardName>/page.tsx]
-    D --> E[ChartPageWrapper]
-    E --> F[TabsWrapper]
-    F --> G[ChartWrapper]
-    G --> H[moduleRegistry via moduleName]
-    G --> I[/api/data/chart/<chartID>]
-    I --> J[pagesConfig/sql/<chartID>.sql]
-    J --> K[Databricks query result]
-    K --> G
-    G --> L[Zod validation via module chartDataSchema.ts]
-    L --> M[Module default export]
+    C --> E[app/Dashboards/<DashboardName>/dashboardConfig.ts]
+    D --> F[DashboardShell]
+    E --> F
+    F --> G[ChartPageWrapper]
+    G --> H[TabsWrapper]
+    H --> I[ChartWrapper]
+    I --> J[moduleRegistry via moduleName]
+    I --> K[/api/data/chart/<chartID>]
+    K --> L[pagesConfig/sql/<chartID>.sql]
+    L --> M[Databricks query result]
+    M --> I
+    I --> N[Zod validation via module chartDataSchema.ts]
+    N --> O[Module default export]
 ```
 
 In practice that means:
 
 1. `pagesConfig/pages.json` points to a dashboard JSON file.
-2. `npm run pageConfig:generatePage` embeds that JSON into `app/Dashboards/<DashboardName>/page.tsx`.
-3. The generated page renders `ChartPageWrapper` and `TabsWrapper`.
+2. `npm run pageConfig:generatePage` validates each registered dashboard and generates `page.tsx` plus `dashboardConfig.ts` under `app/Dashboards/<DashboardName>/`.
+3. `dashboardConfig.ts` contains `tabsConfig`, `dashboardConfig`, and `INITIAL_TAB`; `page.tsx` imports that file and renders `DashboardShell`.
 4. `TabsWrapper` lays out rows in a 12-column grid and passes each configured chart entry to `ChartWrapper`.
 5. `ChartWrapper` resolves the selected module from `modules/modulRegistry.ts` using `moduleName`.
 6. `ChartWrapper` fetches `/api/data/chart/<chartID>`.
@@ -284,15 +288,24 @@ For each entry in `pagesConfig/pages.json`, the generator:
 
 1. Reads `dashboardName` and `dashboardConfigName`.
 2. Validates that the project root and referenced JSON file exist.
-3. Reads and parses the dashboard JSON.
-4. Creates `app/Dashboards/<DashboardName>/page.tsx` if the target folder does not already exist.
-5. Embeds the parsed dashboard JSON directly into the generated page as `tabsConfig`.
+3. Validates the referenced dashboard configuration before creating anything.
+4. Reads and validates the dashboard JSON.
+5. Creates `app/Dashboards/<DashboardName>/page.tsx` and `dashboardConfig.ts` from `app/DEV/template/page.template.tsx` and `app/DEV/template/dashboardConfig.ts` when the target folder does not already exist.
+6. Writes `tabsConfig`, `dashboardConfig`, and `INITIAL_TAB` to `dashboardConfig.ts`; `page.tsx` imports that file and renders `DashboardShell`.
 
-Important limitation:
+The normal run processes all registered entries, creates only missing dashboard
+folders, and skips existing folders completely. To select one registered
+dashboard by `dashboardName` or `dashboardConfigName`, use either name with an
+optional extension:
 
-- the generator does not overwrite an existing page directory
+```bash
+npm run pageConfig:generatePage -- -d <dashboard|config>
+# --dashboard is an equivalent long form
+```
 
-That means JSON changes do not automatically refresh an already generated page folder.
+The targeted run validates the selected dashboard and force-regenerates its
+existing folder. If generation fails, a folder created during that run is
+removed; an existing folder is left unchanged.
 
 ## Data flow and SQL
 
@@ -354,6 +367,6 @@ pnpm run databricks:tableSchemas
 ## Current caveats
 
 - `app/Dashboards/<DashboardName>/page.tsx` files are generated outputs, not the primary authoring surface.
-- The generator skips dashboards whose target page directory already exists.
+- The normal generator skips dashboards whose target folder already exists; a targeted `-d`/`--dashboard` run force-regenerates the selected dashboard.
 - `ChartPageWrapper` is currently only a thin layout wrapper.
 - The root `app/page.tsx` is not the main dashboard authoring flow; the config-driven dashboard path is the intended architecture.

@@ -25,12 +25,13 @@ The intended end state is:
 
 ## Important paths
 
-- `pagesConfig/pages.json`: Registry the generator reads — maps each `dashboardName` to its config JSON. (`pagesConfig/index.ts` is legacy and not used by generation.)
+- `pagesConfig/pages.json`: Registry the generator reads — maps each `dashboardName` and `dashboardConfigName` to a dashboard JSON file. (`pagesConfig/index.ts` is legacy and not used by generation.)
 - `pagesConfig/*.json`: Declarative dashboard definition. Top level is a `DashboardConfig` object: `{ reportName, filters, tabs, actions? }`. Each component carries `chartID`, `chartConfig`, optional `filterBindings`, and optional `enhancedTooltip`.
 - `pagesConfig/sql/<chartID>.sql`: SQL source for a chart. `chartID` maps directly to the SQL filename. The framework always binds one JSON object as `:input`; chart SQL declares its accepted filter and action fields with `from_json` and a typed `STRUCT`.
 - `pagesConfig/sql/tooltipSql/<chartID>.tooltip.sql`: Batched detail query for selected rows. It also returns exact `sourceField` aliases used by outgoing `tooltipLookup` action mappings.
-- `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page files. These are generated outputs, not the authoring surface for dashboards.
-- `scripts/pages/generateNextPage.ts`: Creates `app/Dashboards/<DashboardName>/page.tsx` from `pagesConfig/pages.json` and the referenced JSON.
+- `app/Dashboards/<DashboardName>/page.tsx`: Generated App Router page entry point. It imports the generated dashboard configuration and renders `DashboardShell`.
+- `app/Dashboards/<DashboardName>/dashboardConfig.ts`: Generated `tabsConfig`, `dashboardConfig`, and `INITIAL_TAB` for the dashboard page.
+- `scripts/pages/generateNextPage.ts`: Validates registered dashboards and generates both dashboard files from the templates and referenced JSON.
 - `components/TabsWrapper/index.tsx`: Renders tab and row layout, derives a dashboard-wide `chartID` to `chartTitle` map, and passes each chart config into `ChartWrapper`.
 - `components/ChartWrapper/index.tsx`: Resolves the module by `moduleName`, fetches chart data from `/api/data/chart/<chartID>`, validates it with the module's Zod schema, owns selection/lasso/context-menu behavior, and injects runtime props.
 - `app/api/data/chart/[...chartIDs]/route.ts`: Loads `pagesConfig/sql/<chartID>.sql`, executes it, and returns the query result.
@@ -56,10 +57,11 @@ Do not change module implementation files for normal dashboard requests.
 
 The runtime flow is:
 
-1. `pagesConfig/pages.json` lists dashboards.
-2. `scripts/pages/generateNextPage.ts` embeds the referenced JSON config into a generated page under `app/Dashboards/`.
-3. The generated page renders `TabsWrapper` with `tabsConfig`.
-4. `TabsWrapper` renders `ChartWrapper` for each configured component.
+1. `pagesConfig/pages.json` lists `dashboardName` and `dashboardConfigName` pairs.
+2. `scripts/pages/generateNextPage.ts` validates each referenced JSON config and generates `page.tsx` plus `dashboardConfig.ts` under `app/Dashboards/<DashboardName>/`.
+3. `dashboardConfig.ts` contains `tabsConfig`, `dashboardConfig`, and `INITIAL_TAB`; `page.tsx` imports it and renders `DashboardShell`.
+4. The generated dashboard renders `TabsWrapper` with `tabsConfig`.
+5. `TabsWrapper` renders `ChartWrapper` for each configured component.
 5. `ChartWrapper` resolves the configured `moduleName` from `moduleRegistry`.
 6. `ChartWrapper` fetches `/api/data/chart/<chartID>`.
 7. The API route reads `pagesConfig/sql/<chartID>.sql` and executes the query.
@@ -285,7 +287,8 @@ For module-development or framework work:
   application state.
 - Prefer updating `pagesConfig/*.json` and `pagesConfig/sql/*.sql` over editing React files for dashboard requests.
 - Treat generated `app/Dashboards/<DashboardName>/page.tsx` files as outputs, not as the primary authoring surface.
-- `scripts/pages/generateNextPage.ts` does not overwrite an existing page directory; if a generated page already exists, the script skips it.
+- `scripts/pages/generateNextPage.ts` skips an existing dashboard folder during a normal run. Use `npm run pageConfig:generatePage -- -d <dashboard|config>` (or `--dashboard`) to validate and force-regenerate one registered dashboard; the extension is optional.
+- If a generation error occurs, a dashboard folder newly created during that run is removed. Existing folders remain unchanged.
 - Before changing any file inside a folder under `modules/`, verify that the folder already satisfies the required module contract.
 - After changing any file inside a folder under `modules/`, verify again that the folder still satisfies the required module contract.
 - Every commit that changes an implementation file below `modules/<ModuleName>/` must also stage updates to both `modules/<ModuleName>/instructions.md` and `modules/instructions.md`. The pre-commit hook enforces this rule against the staged files.

@@ -322,7 +322,7 @@ Optional helper extraction (not required by the contract):
 
 2. Add a temporary dashboard entry referencing
    `moduleName: "HistogramModule"`, regenerate the page with
-   `npx tsx scripts/pages/generateNextPage.ts`, and visually confirm:
+  `npm run pageConfig:generatePage -- -d <dashboard|config>`, and visually confirm:
    - bars render with correct bin ranges and counts
    - overlay/group/stack layouts behave as configured
    - density and cumulative toggles produce sensible output

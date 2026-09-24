@@ -51,10 +51,10 @@ These scripts are the backbone of the config-driven model and are pure Node — 
 | -------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Module registry generation | `scripts/modules/generateModuleRegistry.ts` | Given a fixture `modules/` tree, emits correct registry keys + config union; deterministic output.                                   |
 | Module validation          | `scripts/modules/validateModules.ts`        | Passes on a compliant fixture; fails with clear errors for each missing contract file / missing default export / wrong `type` count. |
-| Page generation            | `scripts/pages/generateNextPage.ts`         | Emits `app/Dashboards/<Name>/page.tsx` from a fixture config; **skips** when the directory already exists; embeds referenced JSON.   |
+| Page generation            | `scripts/pages/generateNextPage.ts`         | Emits `app/Dashboards/<Name>/page.tsx` and `dashboardConfig.ts`; `dashboardConfig.ts` contains the referenced configuration and `INITIAL_TAB`; **skips** when the directory already exists.   |
 | Dashboard ID generation    | `scripts/modules/generateDashboardID.ts`    | ID format/uniqueness.                                                                                                                |
 
-> Run these against fixtures in a temp dir (`os.tmpdir()`), never against the real `modules/` or `app/` tree. Before adding these tests, refactor each script entry point to accept an explicit project root/input/output path and guard CLI execution so importing the module has no filesystem side effects. Keep production defaults pointed at the repository root.
+> Run these against fixtures in an isolated temp dir (`os.tmpdir()`), never against the real `modules/` or `app/` tree. Before adding these tests, refactor each script entry point to accept an explicit project root/input/output path and guard CLI execution so importing the module has no filesystem side effects. Keep production defaults pointed at the repository root.
 
 ### Layer C — API route handlers (Vitest, `node` environment)
 

@@ -955,7 +955,28 @@ Run:
 npm run pageConfig:generatePage
 ```
 
-The generated Next.js page must be based on the configuration.
+The generator reads the registered `dashboardName` and `dashboardConfigName`
+from `pagesConfig/pages.json`, validates the referenced dashboard JSON, and
+creates these files from the templates under
+`app/Dashboards/<DashboardName>/`:
+
+- `page.tsx`, which imports the generated configuration and renders
+  `DashboardShell`
+- `dashboardConfig.ts`, which contains `tabsConfig`, `dashboardConfig`, and
+  `INITIAL_TAB`
+
+A normal run processes every registered dashboard, creates only missing
+dashboard folders, and skips existing folders completely. To validate and
+force-regenerate exactly one registered dashboard, select it by
+`dashboardName` or `dashboardConfigName`; the extension is optional:
+
+```bash
+npm run pageConfig:generatePage -- -d <dashboard|config>
+# --dashboard is equivalent
+```
+
+If generation fails, a folder newly created during that run is removed.
+Existing dashboard folders remain unchanged.
 
 Normal dashboard creation must not:
 

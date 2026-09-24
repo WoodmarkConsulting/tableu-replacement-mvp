@@ -143,8 +143,10 @@ any other filter.
 
 1. `npm run lint`.
 2. `npx tsc --noEmit`.
-3. Regenerate + inspect a dashboard page:
-   `rm -rf app/Dashboards/<name> && npx tsx scripts/pages/generateNextPage.ts`.
+3. Regenerate + inspect one registered dashboard page:
+  `npm run pageConfig:generatePage -- -d <dashboard|config>`.
+  A normal generator run skips existing dashboard directories; the targeted
+  `-d`/`--dashboard` run force-regenerates exactly the selected registered dashboard.
 4. Manual (Playwright) on a dashboard:
    - Open → confirm no `/api/data/*` requests fire (Network) and charts show the
      idle prompt.

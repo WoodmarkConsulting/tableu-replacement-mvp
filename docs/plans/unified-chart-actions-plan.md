@@ -34,7 +34,7 @@ While both mechanisms converge into `FilterContribution` entries in `stores/filt
 - **Zustand store architecture**: State management must strictly adhere to the existing Zustand architecture (`stores/filterProvider.ts`) without introducing React Context.
 - **Ambient global types**: `types/tabs.d.ts` and `types/filters.d.ts` are global declaration files with no top-level `import`/`export`. New declarations must stay export-less; adding `export` turns the file into a module and breaks every global type reference in the repo. Inline `import("…")` types are fine (already used for `ModuleRegistryKeys`).
 - **Production normalization**: `DashboardShell` calls `validateDashboardConfig` only under `process.env.NODE_ENV !== "production"`. Normalization must therefore be a **separate** pure function that runs unconditionally, memoized on config identity — an unstable `actions` reference propagates into `ChartWrapper` effect dependencies and would churn selection and refetch state.
-- **Generated pages are not regenerated**: `scripts/pages/generateNextPage.ts` skips existing page directories, so the eight pages under `app/Dashboards/` keep emitting `connections`/`tabJumps` unless their directories are deleted and regenerated. The normalizer is load-bearing either way.
+- **Generated pages are not regenerated**: The normal generator skips existing directories; for an updated output, use `npm run pageConfig:generatePage -- -d <dashboard|config>` (or `--dashboard`) to force-regenerate exactly one registered dashboard. The normalizer is load-bearing either way.
 - **Cycle prevention**: The non-navigating action dependency graph must remain strictly acyclic ($A \rightarrow B \rightarrow A$ is forbidden). Navigating actions are excluded (see *Cycle graph semantics*).
 - **Manual navigation invariant**: Any action with `navigate` must use `trigger: "manual"`. Automatic tab jumps on mark click/select are prohibited to prevent disruptive UI behavior during chart exploration.
 - **Contribution key stability**: `FilterSource.kind` is encoded into `contributionKey` and therefore into composition (`sameSourceKind`/`crossSourceKind`), breadcrumb `appliedKeys`, `ActiveFilters` chip labels, and persisted `FilterSnapshotV2` payloads. Unified actions must keep emitting the existing kinds (see *Source kind mapping*) so already shared permalinks hydrate and compose exactly as before.
@@ -333,7 +333,7 @@ Tasks 1–3 are additive and change no behavior. **Task 4a is the switch point**
 - **Files**:
   - `pagesConfig/connectionAcceptance.json`, `pagesConfig/productionNumbers.json`
   - `scripts/pages/generateNextPage.ts`
-  - `app/Dashboards/ConnectionAcceptance/`, `app/Dashboards/ProductionNumbers/` (delete and regenerate — the generator skips existing directories)
+  - `app/Dashboards/ConnectionAcceptance/`, `app/Dashboards/ProductionNumbers/` (force-regenerate the targeted output with `npm run pageConfig:generatePage -- -d <dashboard|config>` or `--dashboard`; the generator skips existing directories)
   - `tests/generateNextPage.test.ts`
 - **Acceptance Criteria**:
   - Regenerated pages emit `actions` and no legacy keys.
