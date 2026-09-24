@@ -626,7 +626,10 @@ module. `ChartWrapper` provides it consistently:
 - Right-click **Filtern** stays available for an executable `clientRow` action
   while a sibling `tooltipLookup` action is still resolving. Choosing one target
   applies that target immediately.
-- The tooltip footer button applies the staged values to all current-tab targets.
+- The tooltip footer button ("Verknüpfte Diagramme filtern") applies the staged
+  values to current-tab sibling targets only. Dashboard-scoped actions
+  (`target.kind === "dashboard"`) are never triggered from this footer; run them
+  from the right-click **Dashboardweit** context-menu group instead.
 - Tooltip state belongs to its source `chartID`; only that wrapper renders the card.
 - Target menu labels come from `chartTitle` across all configured tabs. Require a
   useful title for action targets; never expose `chartID` as user-facing text.
@@ -647,7 +650,7 @@ default and requires no property. For automatic application, set
 For every requested link:
 
 1. Confirm that the source module supports selection.
-2. Resolve the selected titles to `fromChartID` and target (`{ kind: "chart", chartID }` or `{ kind: "tab", tab }`).
+2. Resolve the selected titles to `fromChartID` and target (`{ kind: "chart", chartID }`, `{ kind: "tab", tab }`, or `{ kind: "dashboard" }` to filter every chart on every tab). A `dashboard` target cannot navigate.
 3. Set `sourceResolution`: `"clientRow"` for synchronous in-memory extraction or `"tooltipLookup"` for warehouse query via `.tooltip.sql`.
 4. Give the action a non-empty, dashboard-unique `id`.
 5. Add one `mappings` entry per linked value with `sourceField` and `targetDimensionId`.

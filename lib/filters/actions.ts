@@ -201,7 +201,9 @@ export function resolveActionContributions(
     const target: FilterTarget =
       action.target.kind === "tab"
         ? { kind: "tab", tab: action.target.tab }
-        : { kind: "chart", chartID: action.target.chartID as TableSchemaKey };
+        : action.target.kind === "chart"
+          ? { kind: "chart", chartID: action.target.chartID as TableSchemaKey }
+          : { kind: "dashboard" };
 
     contributions.push({
       key: contributionKey(source, target, dimension.id),

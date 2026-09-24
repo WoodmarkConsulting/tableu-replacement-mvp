@@ -63,7 +63,8 @@
                 },
                 "tooltip": {
                   "show": true,
-                  "cursor": true
+                  "cursor": true,
+                  "showOnClick": false
                 },
                 "legend": {
                   "show": false
@@ -391,6 +392,22 @@
         }
       ],
       "label": "Details Fahrzeugreihe auf Tab \"Detail\" filtern"
+    },
+    {
+      "id": "ecu-dashboard-filter",
+      "fromChartID": "3342fe24-5ed3-4560-b6e8-b6cdfcc776e1",
+      "target": {
+        "kind": "dashboard"
+      },
+      "sourceResolution": "clientRow",
+      "trigger": "manual",
+      "mappings": [
+        {
+          "sourceField": "category",
+          "targetDimensionId": "ecu_nm"
+        }
+      ],
+      "label": "ECU dashboardweit filtern"
     }
   ]
 }

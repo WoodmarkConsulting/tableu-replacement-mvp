@@ -44,7 +44,9 @@ type ActionSourceResolution = "clientRow" | "tooltipLookup";
 
 type ActionTarget<Tconf extends TabsConfig[] = TabsConfig[]> =
   | { kind: "chart"; chartID: Tconf[number]["rows"][number]["components"][number]["chartID"] }
-  | { kind: "tab"; tab: Tconf[number]["trigger"] };
+  | { kind: "tab"; tab: Tconf[number]["trigger"] }
+  // Applies the contribution dashboard-wide (every chart on every tab). Cannot navigate.
+  | { kind: "dashboard" };
 
 type ChartAction<Tconf extends TabsConfig[] = TabsConfig[]> = {
   id: string;

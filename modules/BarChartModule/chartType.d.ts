@@ -139,6 +139,14 @@ type BarChartConfig = {
   tooltip: {
     show: boolean;
     cursor: boolean;
+    /**
+     * Whether left-clicking a bar immediately opens the enhanced tooltip.
+     * Only relevant when the dashboard enables `enhancedTooltip`.
+     * Defaults to `true`. Set to `false` to open the enhanced tooltip only
+     * via the right-click context menu ("Tooltip anzeigen"); a left click
+     * then just selects the bar.
+     */
+    showOnClick?: boolean;
   };
 
   /**

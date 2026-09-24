@@ -149,6 +149,8 @@ export function validateDashboardConfig(config: DashboardConfig): void {
         );
       }
       assertKeySafe(`Target tab of action "${action.id}"`, action.target.tab);
+    } else if (action.target.kind === "dashboard") {
+      // Dashboard-wide target: applies to every chart, no reference to check.
     } else {
       throw new Error(
         `Action "${action.id}" has invalid target kind "${(action.target as Record<string, unknown>)?.kind}".`,
@@ -179,21 +181,42 @@ export function validateDashboardConfig(config: DashboardConfig): void {
         );
       }
 
-      if (action.target.kind === "chart") {
-        const targetChart = charts.get(action.target.chartID)!;
-        if (targetChart.filterBindings?.[dimension.id] === undefined) {
-          throw new Error(
-            `Target chart "${targetChart.chartID}" does not bind dimension "${dimension.id}".`,
-          );
+      const target = action.target;
+      switch (target.kind) {
+        case "chart": {
+          const targetChart = charts.get(target.chartID)!;
+          if (targetChart.filterBindings?.[dimension.id] === undefined) {
+            throw new Error(
+              `Target chart "${targetChart.chartID}" does not bind dimension "${dimension.id}".`,
+            );
+          }
+          break;
         }
-      } else if (action.target.kind === "tab") {
-        const reachesChart = (chartsByTab.get(action.target.tab) ?? []).some(
-          (chart) => chart.filterBindings?.[dimension.id] !== undefined,
-        );
-        if (!reachesChart) {
-          throw new Error(
-            `Action "${action.id}" dimension "${dimension.id}" is not bound by a chart on tab "${action.target.tab}".`,
+        case "tab": {
+          const reachesChart = (chartsByTab.get(target.tab) ?? []).some(
+            (chart) => chart.filterBindings?.[dimension.id] !== undefined,
           );
+          if (!reachesChart) {
+            throw new Error(
+              `Action "${action.id}" dimension "${dimension.id}" is not bound by a chart on tab "${target.tab}".`,
+            );
+          }
+          break;
+        }
+        case "dashboard": {
+          const reachesChart = Array.from(charts.values()).some(
+            (chart) => chart.filterBindings?.[dimension.id] !== undefined,
+          );
+          if (!reachesChart) {
+            throw new Error(
+              `Action "${action.id}" dimension "${dimension.id}" is not bound by any chart in the dashboard.`,
+            );
+          }
+          break;
+        }
+        default: {
+          const _exhaustive: never = target;
+          void _exhaustive;
         }
       }
 
@@ -217,22 +240,41 @@ export function validateDashboardConfig(config: DashboardConfig): void {
     if (action.navigate) {
       continue;
     }
-    if (action.target.kind === "chart") {
+    const addEdge = (targetChartID: string) => {
       graph.set(action.fromChartID, [
         ...(graph.get(action.fromChartID) ?? []),
-        action.target.chartID,
+        targetChartID,
       ]);
-    } else if (action.target.kind === "tab") {
-      const targetCharts = (chartsByTab.get(action.target.tab) ?? []).filter((chart) =>
-        action.mappings.some(
-          (mapping) => chart.filterBindings?.[mapping.targetDimensionId] !== undefined,
-        ),
+    };
+    const bindsMappedDimension = (chart: TabsComponentConfig) =>
+      action.mappings.some(
+        (mapping) => chart.filterBindings?.[mapping.targetDimensionId] !== undefined,
       );
-      for (const targetChart of targetCharts) {
-        graph.set(action.fromChartID, [
-          ...(graph.get(action.fromChartID) ?? []),
-          targetChart.chartID,
-        ]);
+    const target = action.target;
+    switch (target.kind) {
+      case "chart": {
+        addEdge(target.chartID);
+        break;
+      }
+      case "tab": {
+        for (const targetChart of (chartsByTab.get(target.tab) ?? []).filter(
+          bindsMappedDimension,
+        )) {
+          addEdge(targetChart.chartID);
+        }
+        break;
+      }
+      case "dashboard": {
+        for (const targetChart of Array.from(charts.values()).filter(
+          bindsMappedDimension,
+        )) {
+          addEdge(targetChart.chartID);
+        }
+        break;
+      }
+      default: {
+        const _exhaustive: never = target;
+        void _exhaustive;
       }
     }
   }

@@ -439,7 +439,7 @@ function BarChartModule(props: Props) {
       return;
     }
 
-    if (enhancedTooltip) {
+    if (enhancedTooltip && tooltip.showOnClick !== false) {
       showTooltipOnClick({
         chartID,
         dataPoint: row,

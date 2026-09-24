@@ -5,6 +5,7 @@ import {
   canExecuteAction,
   resolveActionContributions,
 } from "../lib/filters/actions";
+import { contributionKey } from "../lib/filters/contributions";
 
 const chartA = "69e28f7b-a25a-4911-ae2c-64b3ab5ca155" as TableSchemaKey;
 const chartB = "8ea746c9-7d14-4e4a-b5fc-49c805430320" as TableSchemaKey;
@@ -293,5 +294,27 @@ describe("actions resolver", () => {
         expect(res).toBeNull();
       }
     }
+  });
+
+  it("resolves a dashboard-wide target contribution", () => {
+    const action: ChartAction = {
+      id: "act-dashboard",
+      fromChartID: chartA,
+      sourceResolution: "clientRow",
+      trigger: "manual",
+      target: { kind: "dashboard" },
+      mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
+    };
+
+    const rows = [{ region_code: "EU" }, { region_code: "US" }];
+    const contribs = resolveActionContributions(dimensions, action, rows);
+
+    expect(contribs).not.toBeNull();
+    expect(contribs![0].value).toEqual(["EU", "US"]);
+    expect(contribs![0].source.kind).toBe("chartSelection");
+    expect(contribs![0].target).toEqual({ kind: "dashboard" });
+    expect(contribs![0].key).toBe(
+      contributionKey(contribs![0].source, contribs![0].target, "region"),
+    );
   });
 });

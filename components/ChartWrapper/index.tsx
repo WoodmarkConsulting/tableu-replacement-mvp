@@ -31,6 +31,7 @@ import {
   ExternalLink,
   Eye,
   ListFilter,
+  TriangleAlert,
   XCircle,
 } from "lucide-react";
 
@@ -41,9 +42,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import {
   contributionAppliesTo,
+  isEmptyFilterValue,
 } from "@/lib/filters/contributions";
 import { resolveChartFilters } from "@/lib/filters/resolveChartFilters";
 import {
@@ -180,6 +188,37 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   );
   const hasApplied = useFilterStore((state) => state.hasApplied);
   const dimensions = useFilterStore((state) => state.dimensions);
+  // Applied, in-scope filters this chart does not bind: its data ignores them.
+  const unappliedFilterLabels = useFilterStore(
+    useShallow((state) => {
+      const dimensionsById = new Map(
+        state.dimensions.map((dimension) => [dimension.id, dimension]),
+      );
+      const labels = new Set<string>();
+
+      for (const contribution of Object.values(state.appliedContributions)) {
+        if (filterBindings?.[contribution.dimensionId] !== undefined) {
+          continue;
+        }
+        if (isEmptyFilterValue(contribution.value)) {
+          continue;
+        }
+        if (
+          !contributionAppliesTo(contribution, {
+            chartID,
+            tab: state.activeTab,
+          })
+        ) {
+          continue;
+        }
+
+        const dimension = dimensionsById.get(contribution.dimensionId);
+        labels.add(dimension?.label ?? contribution.dimensionId);
+      }
+
+      return Array.from(labels).sort();
+    }),
+  );
   const executeAction = useFilterStore((state) => state.executeAction);
   const stagePendingAction = useFilterStore(
     (state) => state.stagePendingAction,
@@ -551,6 +590,9 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
   const currentTabActions = useMemo(() => {
     return manualOutgoingActions.filter((action) => {
+      if (action.target.kind === "dashboard") {
+        return false;
+      }
       if (action.target.kind === "chart") {
         const targetTab = chartTabs[action.target.chartID];
         return targetTab === activeTab;
@@ -561,6 +603,9 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
 
   const otherTabActions = useMemo(() => {
     return manualOutgoingActions.filter((action) => {
+      if (action.target.kind === "dashboard") {
+        return false;
+      }
       if (action.target.kind === "chart") {
         const targetTab = chartTabs[action.target.chartID];
         return targetTab !== undefined && targetTab !== activeTab;
@@ -569,8 +614,14 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     });
   }, [manualOutgoingActions, chartTabs, activeTab]);
 
-  const executableCurrentTabActions = useMemo(() => {
-    return currentTabActions.filter((action) => {
+  const dashboardActions = useMemo(() => {
+    return manualOutgoingActions.filter(
+      (action) => action.target.kind === "dashboard",
+    );
+  }, [manualOutgoingActions]);
+
+  const isActionExecutable = useCallback(
+    (action: ChartAction) => {
       if (action.sourceResolution === "clientRow") {
         return (
           resolveActionContributions(
@@ -588,13 +639,17 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
           "actionId" in contribution.source &&
           contribution.source.actionId === action.id,
       );
-    });
-  }, [
-    currentTabActions,
-    dimensions,
-    selectedActionContributions,
-    selectedRows,
-  ]);
+    },
+    [dimensions, selectedActionContributions, selectedRows],
+  );
+
+  const executableCurrentTabActions = useMemo(() => {
+    return currentTabActions.filter(isActionExecutable);
+  }, [currentTabActions, isActionExecutable]);
+
+  const executableDashboardActions = useMemo(() => {
+    return dashboardActions.filter(isActionExecutable);
+  }, [dashboardActions, isActionExecutable]);
 
   const applyAllCurrentTabActions = () => {
     if (executableCurrentTabActions.length === 0) {
@@ -607,6 +662,17 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
     applyActionContributions(chartID, allContribs, actionIds);
   };
 
+  const applyAllDashboardActions = () => {
+    if (executableDashboardActions.length === 0) {
+      return;
+    }
+    const allContribs = executableDashboardActions.flatMap(
+      (action) => getExecutableActionContributions(action) ?? [],
+    );
+    const actionIds = executableDashboardActions.map((action) => action.id);
+    applyActionContributions(chartID, allContribs, actionIds);
+  };
+
   if (error) {
     console.error("Error fetching chart data:", error);
   }
@@ -614,9 +680,40 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
   return (
     <Card className="h-full w-full" id={chartID}>
       <CardHeader>
-        <CardTitle className={cn(chartTitle ? "" : "hidden")}>
-          {chartTitle}
-        </CardTitle>
+        <div className="flex min-w-0 items-center gap-2">
+          <CardTitle className={cn(chartTitle ? "" : "hidden")}>
+            {chartTitle}
+          </CardTitle>
+
+          {hasApplied && unappliedFilterLabels.length > 0 ? (
+            <TooltipProvider delay={150}>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <span
+                      className="inline-flex shrink-0 text-amber-500"
+                      aria-label="Nicht alle aktiven Filter gelten für dieses Diagramm"
+                      tabIndex={0}>
+                      <TriangleAlert className="size-4" />
+                    </span>
+                  }
+                />
+
+                <TooltipContent>
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium">
+                      Nicht alle aktiven Filter gelten für dieses Diagramm.
+                    </span>
+
+                    <span>
+                      Ignoriert: {unappliedFilterLabels.join(", ")}
+                    </span>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : null}
+        </div>
 
         <CardDescription className="sr-only">
           {chartDescription}
@@ -875,9 +972,11 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
                       <ContextMenuLabel>Auf anderen Tabs</ContextMenuLabel>
                       {otherTabActions.map((action) => {
                         const targetTab =
-                          action.target.kind === "tab"
-                            ? action.target.tab
-                            : chartTabs[action.target.chartID] ?? "Anderer Tab";
+                          action.target.kind === "chart"
+                            ? chartTabs[action.target.chartID] ?? "Anderer Tab"
+                            : action.target.kind === "tab"
+                              ? action.target.tab
+                              : "Anderer Tab";
 
                         const label =
                           action.label ??
@@ -900,6 +999,49 @@ function ChartWrapper<M extends ModuleRegistryKeys>(
                             ) : (
                               <ListFilter />
                             )}
+                            <span className="flex-1 truncate">{label}</span>
+                            {isDisabled && selectedRows.length > 0 ? (
+                              <span className="text-[10px] text-muted-foreground ml-auto pl-2">
+                                ({disabledReason})
+                              </span>
+                            ) : null}
+                          </ContextMenuItem>
+                        );
+                      })}
+                    </ContextMenuGroup>
+                  ) : null}
+
+                  {dashboardActions.length > 0 &&
+                  (currentTabActions.length > 0 ||
+                    otherTabActions.length > 0) ? (
+                    <ContextMenuSeparator />
+                  ) : null}
+
+                  {dashboardActions.length > 0 ? (
+                    <ContextMenuGroup>
+                      <ContextMenuLabel>Dashboardweit</ContextMenuLabel>
+                      {executableDashboardActions.length > 1 ? (
+                        <ContextMenuItem onClick={applyAllDashboardActions}>
+                          <ListFilter />
+                          Alle filtern
+                        </ContextMenuItem>
+                      ) : null}
+
+                      {dashboardActions.map((action) => {
+                        const label =
+                          action.label ??
+                          `Dashboardweit filtern (${action.mappings
+                            .map((mapping) => mapping.targetDimensionId)
+                            .join(", ")})`;
+                        const disabledReason = getActionDisabledReason(action);
+                        const isDisabled = disabledReason !== null;
+
+                        return (
+                          <ContextMenuItem
+                            key={action.id}
+                            disabled={isDisabled}
+                            onClick={() => handleExecuteAction(action)}>
+                            <ListFilter />
                             <span className="flex-1 truncate">{label}</span>
                             {isDisabled && selectedRows.length > 0 ? (
                               <span className="text-[10px] text-muted-foreground ml-auto pl-2">

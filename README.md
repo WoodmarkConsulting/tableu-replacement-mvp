@@ -227,10 +227,11 @@ Right-clicking a rendered chart opens a shared context menu:
 - **Filtern** opens a unified submenu categorized into:
   - **"Auf diesem Tab"**: chart targets on the current tab, plus "Alle filtern".
   - **"Auf anderen Tabs"**: drilldowns and cross-tab targets. Actions with `navigate` switch tabs and push a return breadcrumb (`TabBreadcrumb`), while non-navigating actions update target filters in-place.
+  - **"Dashboardweit"**: `{ kind: "dashboard" }` targets that apply to every chart on every tab, plus "Alle filtern". The result shows as a removable chip in the global filter bar and composes with the dimension's control value.
 - Actions can be triggered manually (`trigger: "manual"`) or automatically on selection (`trigger: "auto"`).
 - In-memory data resolution (`sourceResolution: "clientRow"`) extracts values from `selectedRows` without a warehouse query, whereas `"tooltipLookup"` queries warehouse detail via `.tooltip.sql`.
 
-Actions are declared in `DashboardConfig.actions` with `id`, `fromChartID`, `target` (`{ kind: "chart", chartID }` or `{ kind: "tab", tab }`), `sourceResolution` (`"clientRow"` or `"tooltipLookup"`), `mappings`, optional `trigger` (`"manual"` | `"auto"`), optional `navigate`, and optional `maxDistinctValues`.
+Actions are declared in `DashboardConfig.actions` with `id`, `fromChartID`, `target` (`{ kind: "chart", chartID }`, `{ kind: "tab", tab }`, or `{ kind: "dashboard" }`), `sourceResolution` (`"clientRow"` or `"tooltipLookup"`), `mappings`, optional `trigger` (`"manual"` | `"auto"`), optional `navigate` (tab targets only), and optional `maxDistinctValues`.
 
 ## Dashboard config model
 

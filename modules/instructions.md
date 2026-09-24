@@ -71,7 +71,9 @@ For module-specific details, read `modules/LineChartModule/instructions.md`.
 - Notes: Supports vertical and horizontal orientation, per-category and threshold coloring,
   value labels with automatic outside-label spacing, sorting, reference lines, and
   per-category target markers. Selection is by bar click plus a rectangular/polygon lasso
-  adapter (no zoom); selected bars are highlighted and non-selected bars fade. This differs
+  adapter (no zoom); selected bars are highlighted and non-selected bars fade. When
+  `enhancedTooltip` is enabled, a bar click opens the enhanced tooltip by default; set
+  `tooltip.showOnClick: false` to open it only via the right-click context menu. This differs
   from `LineChartModule` (continuous numeric/time X axis) and `HistogramModule` (numeric bins
   of a single variable); use those instead when the X axis is not a set of discrete categories.
 

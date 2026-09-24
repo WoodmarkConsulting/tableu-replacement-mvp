@@ -193,6 +193,7 @@ type BarChartConfig = {
   tooltip: {
     show: boolean;
     cursor: boolean;
+    showOnClick?: boolean;
   };
   legend: {
     show: boolean;
@@ -418,6 +419,7 @@ Type:
 {
   show: boolean;
   cursor: boolean;
+  showOnClick?: boolean;
 }
 ```
 
@@ -430,6 +432,13 @@ Description:
 Controls the inline recharts tooltip. This is separate from the wrapper-owned enhanced
 tooltip backed by tooltip SQL. While an enhanced tooltip is present, the inline tooltip is
 suppressed.
+
+Behavior:
+
+- `showOnClick` is optional and defaults to `true`. It only matters when the dashboard
+  enables `enhancedTooltip`. When `true`, left-clicking a bar selects it and immediately
+  opens the enhanced tooltip. When `false`, a left click only selects the bar; the enhanced
+  tooltip opens exclusively through the right-click context menu ("Tooltip anzeigen").
 
 ### `legend`
 
@@ -744,5 +753,7 @@ an amber stroke, `2px` width, and `0.35` fade opacity.
 - Selected rows are injected back as read-only `selectedRows` and rendered with
   `selectionStyle`.
 - With `enhancedTooltip: true`, clicking a bar opens the wrapper-owned static tooltip for the
-  selected row. All selected rows are batched into a single tooltip request; every data-point
-  property reaches tooltip SQL as a JSON array parameter.
+  selected row, unless `tooltip.showOnClick` is `false`, in which case a click only selects the
+  bar and the tooltip is opened via the right-click context menu ("Tooltip anzeigen"). All
+  selected rows are batched into a single tooltip request; every data-point property reaches
+  tooltip SQL as a JSON array parameter.

@@ -191,6 +191,46 @@ describe("unified filter contribution domain", () => {
     expect(crossSourceUnion.impossible).toBe(false);
   });
 
+  it("composes a dashboard-targeted chartSelection with a dashboard control", () => {
+    const control: FilterSource = { kind: "control", dimensionId: "region" };
+    const selection: FilterSource = {
+      kind: "chartSelection",
+      actionId: "dash-filter",
+      sourceChartID: chartB,
+    };
+    const target: FilterTarget = { kind: "dashboard" };
+
+    // Default crossSourceKind is "intersect": the selection narrows the control.
+    const intersect = resolveChartFilters({
+      chartID: chartA,
+      tab: "Overview",
+      dimensions,
+      contributions: [
+        makeContribution(control, target, "region", ["EU", "US"]),
+        makeContribution(selection, target, "region", ["EU"]),
+      ],
+      bindings: { region: "region_code" },
+    });
+    expect(intersect.params.region_code).toBe("EU");
+    expect(intersect.impossible).toBe(false);
+
+    // crossSourceKind "union" widens the result across control and selection.
+    const union = resolveChartFilters({
+      chartID: chartA,
+      tab: "Overview",
+      dimensions: [
+        { ...dimensions[0], composition: { crossSourceKind: "union" } },
+      ],
+      contributions: [
+        makeContribution(control, target, "region", ["EU"]),
+        makeContribution(selection, target, "region", ["US"]),
+      ],
+      bindings: { region: "region_code" },
+    });
+    expect(union.params.region_code).toBe("EU,US");
+    expect(union.impossible).toBe(false);
+  });
+
   it("reports a conflict when a single-value dimension resolves to many values", () => {
     const control: FilterSource = { kind: "control", dimensionId: "status" };
     const selection: FilterSource = {
@@ -591,6 +631,86 @@ describe("dashboard config validation", () => {
     ];
     expect(() => validateDashboardConfig(chartNav)).toThrow(
       'Action "chart-nav" has navigate but target kind is not "tab".',
+    );
+  });
+
+  it("accepts a dashboard-wide action target but rejects navigate on it", () => {
+    const dashboardTarget = validConfig();
+    // Source chart must not bind the mapped dimension, else it self-targets.
+    dashboardTarget.tabs[0].rows[0].components[0].filterBindings = {
+      status: "status",
+    };
+    dashboardTarget.tabs[0].rows[0].components.push({
+      ...dashboardTarget.tabs[0].rows[0].components[0],
+      chartID: chartB,
+      filterBindings: { region: "region_code" },
+    });
+    dashboardTarget.actions = [
+      {
+        id: "dash-filter",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "manual",
+        target: { kind: "dashboard" },
+        mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
+      },
+    ];
+    expect(() => validateDashboardConfig(dashboardTarget)).not.toThrow();
+
+    const dashboardNav = validConfig();
+    dashboardNav.actions = [
+      {
+        id: "dash-nav",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "manual",
+        target: { kind: "dashboard" } as unknown as {
+          kind: "tab";
+          tab: string;
+        },
+        navigate: { restoreOnReturn: true },
+        mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
+      },
+    ];
+    expect(() => validateDashboardConfig(dashboardNav)).toThrow(
+      'Action "dash-nav" has navigate but target kind is not "tab".',
+    );
+  });
+
+  it("rejects a dashboard action whose dimension is bound by no chart", () => {
+    const config = validConfig();
+    config.tabs[0].rows[0].components[0].filterBindings = { status: "status" };
+    config.actions = [
+      {
+        id: "dash-region",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "manual",
+        target: { kind: "dashboard" },
+        mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
+      },
+    ];
+
+    expect(() => validateDashboardConfig(config)).toThrow(
+      'is not bound by any chart in the dashboard',
+    );
+  });
+
+  it("rejects a self-targeting dashboard action that filters its own source chart", () => {
+    const config = validConfig();
+    config.actions = [
+      {
+        id: "dash-self",
+        fromChartID: chartA,
+        sourceResolution: "clientRow",
+        trigger: "manual",
+        target: { kind: "dashboard" },
+        mappings: [{ sourceField: "region_code", targetDimensionId: "region" }],
+      },
+    ];
+
+    expect(() => validateDashboardConfig(config)).toThrow(
+      "Chart action graph must be acyclic.",
     );
   });
 

@@ -195,13 +195,13 @@ the card.
 
 Every rendered chart has a wrapper-owned right-click menu. **Tooltip anzeigen** is disabled
 without selected rows or when `enhancedTooltip` is false. **Filtern** opens a unified submenu
-categorized into **Auf diesem Tab** and **Auf anderen Tabs**:
+categorized into **Auf diesem Tab**, **Auf anderen Tabs**, and **Dashboardweit**:
 - **Trigger**: `"manual"` (context menu / tooltip button) vs. `"auto"` (selection triggers immediately).
 - **Source resolution**:
   - `"clientRow"`: in-memory lookup from `selectedRows` (supports top-level keys and `values.<col>`).
   - `"tooltipLookup"`: asynchronous warehouse query via `.tooltip.sql` (column aliases matching `sourceField`).
-- **Target scope**: `{ kind: "chart", chartID }` vs. `{ kind: "tab", tab }`.
-- **Navigation**: `navigate: { restoreOnReturn? }` (only valid on tab targets, requires `trigger: "manual"`). Navigating actions push breadcrumbs and switch tabs; non-navigating actions update filter contributions in-place.
+- **Target scope**: `{ kind: "chart", chartID }`, `{ kind: "tab", tab }`, or `{ kind: "dashboard" }`. A `dashboard` target applies the contribution to every chart on every tab; it appears as a removable chip in the global filter bar (tagged "via Auswahl") and composes with the dimension's control value instead of overwriting it.
+- **Navigation**: `navigate: { restoreOnReturn? }` (only valid on tab targets, requires `trigger: "manual"`). Navigating actions push breadcrumbs and switch tabs; non-navigating actions update filter contributions in-place. `chart` and `dashboard` targets cannot navigate.
 - **Value cap**: default 500 distinct values per mapping (`maxDistinctValues`), guarding against oversized SQL inputs.
 
 `DashboardConfig.actions` contains:
@@ -209,7 +209,10 @@ categorized into **Auf diesem Tab** and **Auf anderen Tabs**:
 {
   id: string;
   fromChartID: string;
-  target: { kind: "chart"; chartID: string } | { kind: "tab"; tab: string };
+  target:
+    | { kind: "chart"; chartID: string }
+    | { kind: "tab"; tab: string }
+    | { kind: "dashboard" };
   sourceResolution: "clientRow" | "tooltipLookup";
   trigger?: "manual" | "auto"; // default "manual"
   navigate?: { restoreOnReturn?: boolean }; // tab targets only
