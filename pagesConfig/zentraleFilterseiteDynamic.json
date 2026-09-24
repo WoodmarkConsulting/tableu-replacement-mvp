@@ -1,0 +1,116 @@
+{
+  "reportName": "Zentrale Filterseite",
+  "filters": [
+    { "id": "ms_cd", "label": "Fahrzeugbaureihe", "type": "multiselect", "optionsSource": "zentraleMsCd", "control": { "location": "dashboard" } },
+    { "id": "ecu_fault_desc", "label": "Fehlercode", "type": "multiselect", "optionsSource": "zentraleFaultDescription", "control": { "location": "dashboard" } },
+    { "id": "engine_md_cd", "label": "Motormodellcode", "type": "multiselect", "optionsSource": "zentraleEngineModelCode", "control": { "location": "dashboard" } },
+    { "id": "trans_md_cd", "label": "Transmission Model Code", "type": "multiselect", "optionsSource": "zentraleTransmissionModelCode", "control": { "location": "dashboard" } },
+    { "id": "md_cd", "label": "Vehicle Model Code", "type": "multiselect", "optionsSource": "zentraleVehicleModelCode", "control": { "location": "dashboard" } },
+    { "id": "plant_letter_cd", "label": "Plant", "type": "multiselect", "optionsSource": "zentralePlant", "control": { "location": "dashboard" } },
+    { "id": "ecus", "label": "ECU", "type": "multiselect", "optionsSource": "zentraleEcus", "control": { "location": "dashboard" } },
+    { "id": "prod_from", "label": "Production Date From", "type": "dateString", "control": { "location": "dashboard" } },
+    { "id": "prod_to", "label": "Production Date To", "type": "dateString", "control": { "location": "dashboard" } },
+    { "id": "diag_from", "label": "Diagnosis Start From", "type": "dateString", "control": { "location": "dashboard" } },
+    { "id": "diag_to", "label": "Diagnosis Start To", "type": "dateString", "control": { "location": "dashboard" } },
+    { "id": "selection_ecu_nm", "label": "Auswahl Steuergerät", "type": "multiselect" },
+    { "id": "selection_engine_series", "label": "Auswahl Motorbaureihe", "type": "multiselect" },
+    { "id": "selection_battery", "label": "Auswahl Batterie", "type": "multiselect" },
+    { "id": "selection_trans_md_cd_4", "label": "Auswahl Transmission Model Code", "type": "multiselect" },
+    { "id": "selection_country", "label": "Auswahl Vertriebsland", "type": "multiselect" },
+    { "id": "selection_ms_nm", "label": "Auswahl Fahrzeugbaureihe", "type": "multiselect" }
+  ],
+  "tabs": [
+    {
+      "trigger": "Zentrale Filterseite",
+      "rows": [
+        {
+          "height": 18,
+          "components": [
+            {
+              "moduleName": "CardModule",
+              "space": 6,
+              "chartTitle": "Anzahl Fehler",
+              "chartDescription": "Anzahl der nicht-leeren Fehlerdatensätze.",
+              "chartID": "25f69a8d-dbe0-44b2-a0f5-52f26fb75256",
+              "filterBindings": { "ms_cd": "ms_cd", "ecu_fault_desc": "ecu_fault_desc", "engine_md_cd": "engine_md_cd", "trans_md_cd": "trans_md_cd", "md_cd": "md_cd", "plant_letter_cd": "plant_letter_cd", "ecus": "ecus", "prod_from": "prod_from", "prod_to": "prod_to", "diag_from": "diag_from", "diag_to": "diag_to", "selection_ecu_nm": "selection_ecu_nm", "selection_engine_series": "selection_engine_series", "selection_battery": "selection_battery", "selection_trans_md_cd_4": "selection_trans_md_cd_4", "selection_country": "selection_country", "selection_ms_nm": "selection_ms_nm" },
+              "chartConfig": { "format": "number", "decimals": 0, "locale": "de-DE", "align": "center" }
+            },
+            {
+              "moduleName": "CardModule",
+              "space": 6,
+              "chartTitle": "Anzahl Fahrzeug",
+              "chartDescription": "Anzahl eindeutiger Fahrzeuge in den gefilterten Fehlerdaten.",
+              "chartID": "9e7df7d0-52be-419f-b4d0-68ff7975716d",
+              "filterBindings": { "ms_cd": "ms_cd", "ecu_fault_desc": "ecu_fault_desc", "engine_md_cd": "engine_md_cd", "trans_md_cd": "trans_md_cd", "md_cd": "md_cd", "plant_letter_cd": "plant_letter_cd", "ecus": "ecus", "prod_from": "prod_from", "prod_to": "prod_to", "diag_from": "diag_from", "diag_to": "diag_to", "selection_ecu_nm": "selection_ecu_nm", "selection_engine_series": "selection_engine_series", "selection_battery": "selection_battery", "selection_trans_md_cd_4": "selection_trans_md_cd_4", "selection_country": "selection_country", "selection_ms_nm": "selection_ms_nm" },
+              "chartConfig": { "format": "number", "decimals": 0, "locale": "de-DE", "align": "center" }
+            }
+          ]
+        },
+        {
+          "height": 42,
+          "components": [
+            {
+              "moduleName": "BarChartModule",
+              "space": 3,
+              "chartTitle": "Nach Steuergerät",
+              "chartDescription": "Anzahl der Fehlerfälle je Steuergerät, Top 10.",
+              "chartID": "a01c2a2d-631f-4188-b5b5-acff26222faf",
+              "filterBindings": {
+                "ms_cd": "ms_cd", "ecu_fault_desc": "ecu_fault_desc", "engine_md_cd": "engine_md_cd", "trans_md_cd": "trans_md_cd", "md_cd": "md_cd", "plant_letter_cd": "plant_letter_cd", "ecus": "ecus", "prod_from": "prod_from", "prod_to": "prod_to", "diag_from": "diag_from", "diag_to": "diag_to",
+                "selection_ecu_nm": "selection_ecu_nm", "selection_engine_series": "selection_engine_series", "selection_battery": "selection_battery", "selection_trans_md_cd_4": "selection_trans_md_cd_4", "selection_country": "selection_country", "selection_ms_nm": "selection_ms_nm"
+              },
+              "chartConfig": {
+                "orientation": "horizontal", "layout": "grouped",
+                "categoryAxis": { "show": true, "tickLine": false, "axisLine": true, "tickMargin": 8, "maxLabelChars": 22 },
+                "valueAxis": { "show": true, "tickLine": false, "axisLine": true, "format": "number", "numberFormat": { "decimals": 0, "useGrouping": true, "locale": "de-DE" }, "domain": "auto" },
+                "grid": { "show": true, "horizontal": false, "vertical": true, "strokeDasharray": "3 3" },
+                "tooltip": { "show": true, "cursor": true }, "legend": { "show": false },
+                "margin": { "top": 8, "right": 36, "bottom": 8, "left": 8 },
+                "bars": { "radius": 4, "categoryGap": "20%", "barGap": 4 },
+                "valueLabels": { "show": true, "format": "compact", "position": "outside" },
+                "series": [{ "seriesIndex": 0, "name": "Anzahl Fehlerfälle", "fill": "#2563eb", "fillOpacity": 1 }]
+              }
+            },
+            {
+              "moduleName": "BarChartModule", "space": 3, "chartTitle": "Nach Motorbaureihe", "chartDescription": "Anzahl der Fehlerfälle je Motorbaureihe, Top 10.", "chartID": "47b927f3-e8b5-4bbd-a271-e608c6cd7a37",
+              "filterBindings": { "ms_cd": "ms_cd", "ecu_fault_desc": "ecu_fault_desc", "engine_md_cd": "engine_md_cd", "trans_md_cd": "trans_md_cd", "md_cd": "md_cd", "plant_letter_cd": "plant_letter_cd", "ecus": "ecus", "prod_from": "prod_from", "prod_to": "prod_to", "diag_from": "diag_from", "diag_to": "diag_to", "selection_ecu_nm": "selection_ecu_nm", "selection_engine_series": "selection_engine_series", "selection_battery": "selection_battery", "selection_trans_md_cd_4": "selection_trans_md_cd_4", "selection_country": "selection_country", "selection_ms_nm": "selection_ms_nm" },
+              "chartConfig": { "orientation": "horizontal", "layout": "grouped", "categoryAxis": { "show": true, "tickLine": false, "axisLine": true, "tickMargin": 8, "maxLabelChars": 22 }, "valueAxis": { "show": true, "tickLine": false, "axisLine": true, "format": "number", "numberFormat": { "decimals": 0, "useGrouping": true, "locale": "de-DE" }, "domain": "auto" }, "grid": { "show": true, "horizontal": false, "vertical": true, "strokeDasharray": "3 3" }, "tooltip": { "show": true, "cursor": true }, "legend": { "show": false }, "margin": { "top": 8, "right": 36, "bottom": 8, "left": 8 }, "bars": { "radius": 4, "categoryGap": "20%", "barGap": 4 }, "valueLabels": { "show": true, "format": "number", "position": "outside" }, "series": [{ "seriesIndex": 0, "name": "Anzahl Fehlerfälle", "fill": "#2563eb", "fillOpacity": 1 }] }
+            },
+            {
+              "moduleName": "BarChartModule", "space": 3, "chartTitle": "Nach Batterie", "chartDescription": "Anzahl der Fehlerfälle je Batterie, Top 10.", "chartID": "6d25d01c-10d4-465c-98c4-7bd57e68f352",
+              "filterBindings": { "ms_cd": "ms_cd", "ecu_fault_desc": "ecu_fault_desc", "engine_md_cd": "engine_md_cd", "trans_md_cd": "trans_md_cd", "md_cd": "md_cd", "plant_letter_cd": "plant_letter_cd", "ecus": "ecus", "prod_from": "prod_from", "prod_to": "prod_to", "diag_from": "diag_from", "diag_to": "diag_to", "selection_ecu_nm": "selection_ecu_nm", "selection_engine_series": "selection_engine_series", "selection_battery": "selection_battery", "selection_trans_md_cd_4": "selection_trans_md_cd_4", "selection_country": "selection_country", "selection_ms_nm": "selection_ms_nm" },
+              "chartConfig": { "orientation": "horizontal", "layout": "grouped", "categoryAxis": { "show": true, "tickLine": false, "axisLine": true, "tickMargin": 8, "maxLabelChars": 22 }, "valueAxis": { "show": true, "tickLine": false, "axisLine": true, "format": "number", "numberFormat": { "decimals": 0, "useGrouping": true, "locale": "de-DE" }, "domain": "auto" }, "grid": { "show": true, "horizontal": false, "vertical": true, "strokeDasharray": "3 3" }, "tooltip": { "show": true, "cursor": true }, "legend": { "show": false }, "margin": { "top": 8, "right": 36, "bottom": 8, "left": 8 }, "bars": { "radius": 4, "categoryGap": "20%", "barGap": 4 }, "valueLabels": { "show": true, "format": "number", "position": "outside" }, "series": [{ "seriesIndex": 0, "name": "Anzahl Fehlerfälle", "fill": "#2563eb", "fillOpacity": 1 }] }
+            },
+            {
+              "moduleName": "BarChartModule", "space": 3, "chartTitle": "Nach Transmission Model Code", "chartDescription": "Anzahl der Fehlerfälle je vierstelligem Transmission Model Code, Top 10.", "chartID": "32a8e84d-63bb-4b7f-a61b-09f8aa3735dd",
+              "filterBindings": { "ms_cd": "ms_cd", "ecu_fault_desc": "ecu_fault_desc", "engine_md_cd": "engine_md_cd", "trans_md_cd": "trans_md_cd", "md_cd": "md_cd", "plant_letter_cd": "plant_letter_cd", "ecus": "ecus", "prod_from": "prod_from", "prod_to": "prod_to", "diag_from": "diag_from", "diag_to": "diag_to", "selection_ecu_nm": "selection_ecu_nm", "selection_engine_series": "selection_engine_series", "selection_battery": "selection_battery", "selection_trans_md_cd_4": "selection_trans_md_cd_4", "selection_country": "selection_country", "selection_ms_nm": "selection_ms_nm" },
+              "chartConfig": { "orientation": "horizontal", "layout": "grouped", "categoryAxis": { "show": true, "tickLine": false, "axisLine": true, "tickMargin": 8, "maxLabelChars": 22 }, "valueAxis": { "show": true, "tickLine": false, "axisLine": true, "format": "number", "numberFormat": { "decimals": 0, "useGrouping": true, "locale": "de-DE" }, "domain": "auto" }, "grid": { "show": true, "horizontal": false, "vertical": true, "strokeDasharray": "3 3" }, "tooltip": { "show": true, "cursor": true }, "legend": { "show": false }, "margin": { "top": 8, "right": 36, "bottom": 8, "left": 8 }, "bars": { "radius": 4, "categoryGap": "20%", "barGap": 4 }, "valueLabels": { "show": true, "format": "number", "position": "outside" }, "series": [{ "seriesIndex": 0, "name": "Anzahl Fehlerfälle", "fill": "#2563eb", "fillOpacity": 1 }] }
+            }
+          ]
+        },
+        {
+          "height": 58,
+          "components": [
+            {
+              "moduleName": "MapModule", "space": 8, "chartTitle": "Nach Vertriebsland", "chartDescription": "Anzahl der Fehlerfälle je Vertriebsland.", "chartID": "c6db5e33-cfa3-425b-969b-a205fc13c4c0",
+              "filterBindings": { "ms_cd": "ms_cd", "ecu_fault_desc": "ecu_fault_desc", "engine_md_cd": "engine_md_cd", "trans_md_cd": "trans_md_cd", "md_cd": "md_cd", "plant_letter_cd": "plant_letter_cd", "ecus": "ecus", "prod_from": "prod_from", "prod_to": "prod_to", "diag_from": "diag_from", "diag_to": "diag_to", "selection_ecu_nm": "selection_ecu_nm", "selection_engine_series": "selection_engine_series", "selection_battery": "selection_battery", "selection_trans_md_cd_4": "selection_trans_md_cd_4", "selection_country": "selection_country", "selection_ms_nm": "selection_ms_nm" },
+              "chartConfig": { "projection": { "type": "geoNaturalEarth1", "center": [0, 20], "scale": 150 }, "zoom": { "enabled": true, "min": 1, "max": 8, "initial": 1 }, "geography": { "stroke": "#ffffff", "strokeWidth": 0.5, "defaultFill": "#e2e8f0" }, "choropleth": { "enabled": true, "colorScale": { "type": "gradient", "gradient": { "minColor": "#dbeafe", "maxColor": "#1d4ed8" } }, "noDataColor": "#f1f5f9" }, "bubbles": { "enabled": false, "radius": { "min": 2, "max": 20 }, "color": { "mode": "fixed", "fixedColor": "#1d4ed8" }, "stroke": "#ffffff", "strokeWidth": 1, "opacity": 0.8 }, "tooltip": { "show": true }, "regionLabels": { "show": false, "color": "#0f172a", "fontSize": 10 }, "legend": { "show": true, "position": "bottom-left" } }
+            },
+            {
+              "moduleName": "BarChartModule", "space": 4, "chartTitle": "Nach Fahrzeugbaureihe", "chartDescription": "Anzahl der Fehlerfälle je Fahrzeugbaureihe, Top 15.", "chartID": "49b2dc22-b91e-4252-ac29-3d0450b73050",
+              "filterBindings": { "ms_cd": "ms_cd", "ecu_fault_desc": "ecu_fault_desc", "engine_md_cd": "engine_md_cd", "trans_md_cd": "trans_md_cd", "md_cd": "md_cd", "plant_letter_cd": "plant_letter_cd", "ecus": "ecus", "prod_from": "prod_from", "prod_to": "prod_to", "diag_from": "diag_from", "diag_to": "diag_to", "selection_ecu_nm": "selection_ecu_nm", "selection_engine_series": "selection_engine_series", "selection_battery": "selection_battery", "selection_trans_md_cd_4": "selection_trans_md_cd_4", "selection_country": "selection_country", "selection_ms_nm": "selection_ms_nm" },
+              "chartConfig": { "orientation": "horizontal", "layout": "grouped", "categoryAxis": { "show": true, "tickLine": false, "axisLine": true, "tickMargin": 8, "maxLabelChars": 22 }, "valueAxis": { "show": true, "tickLine": false, "axisLine": true, "format": "number", "numberFormat": { "decimals": 0, "useGrouping": true, "locale": "de-DE" }, "domain": "auto" }, "grid": { "show": true, "horizontal": false, "vertical": true, "strokeDasharray": "3 3" }, "tooltip": { "show": true, "cursor": true }, "legend": { "show": false }, "margin": { "top": 8, "right": 36, "bottom": 8, "left": 8 }, "bars": { "radius": 4, "categoryGap": "20%", "barGap": 4 }, "valueLabels": { "show": true, "format": "number", "position": "outside" }, "series": [{ "seriesIndex": 0, "name": "Anzahl Fehlerfälle", "fill": "#2563eb", "fillOpacity": 1 }] }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "connections": [
+    { "id": "ecu-to-engine-series", "fromChartID": "a01c2a2d-631f-4188-b5b5-acff26222faf", "toChartID": "47b927f3-e8b5-4bbd-a271-e608c6cd7a37", "mappings": [{ "sourceField": "selection_ecu_nm", "targetDimensionId": "selection_ecu_nm" }], "apply": "auto" },
+    { "id": "ecu-to-battery", "fromChartID": "a01c2a2d-631f-4188-b5b5-acff26222faf", "toChartID": "6d25d01c-10d4-465c-98c4-7bd57e68f352", "mappings": [{ "sourceField": "selection_ecu_nm", "targetDimensionId": "selection_ecu_nm" }], "apply": "auto" },
+    { "id": "ecu-to-transmission", "fromChartID": "a01c2a2d-631f-4188-b5b5-acff26222faf", "toChartID": "32a8e84d-63bb-4b7f-a61b-09f8aa3735dd", "mappings": [{ "sourceField": "selection_ecu_nm", "targetDimensionId": "selection_ecu_nm" }], "apply": "auto" },
+    { "id": "ecu-to-country", "fromChartID": "a01c2a2d-631f-4188-b5b5-acff26222faf", "toChartID": "c6db5e33-cfa3-425b-969b-a205fc13c4c0", "mappings": [{ "sourceField": "selection_ecu_nm", "targetDimensionId": "selection_ecu_nm" }], "apply": "auto" },
+    { "id": "ecu-to-vehicle-series", "fromChartID": "a01c2a2d-631f-4188-b5b5-acff26222faf", "toChartID": "49b2dc22-b91e-4252-ac29-3d0450b73050", "mappings": [{ "sourceField": "selection_ecu_nm", "targetDimensionId": "selection_ecu_nm" }], "apply": "auto" }
+  ]
+}

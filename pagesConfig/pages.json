@@ -14,5 +14,9 @@
   {
     "dashboardName": "ConnectionAcceptance",
     "dashboardConfigName": "connectionAcceptance.json"
+  },
+  {
+    "dashboardName": "ZentraleFilterseite",
+    "dashboardConfigName": "zentraleFilterseiteDynamic.json"
   }
 ]
