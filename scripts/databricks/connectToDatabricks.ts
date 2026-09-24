@@ -15,7 +15,7 @@ function printDatabricksCliVersion(): void {
       stdio: ["ignore", "pipe", "pipe"],
     }).trim();
 
-    console.log(`Using ${version}\n`);
+    console.info(`Using ${version}\n`);
   } catch {
     console.error(
       `${ANSI_COLORS.RED}Error: Failed to execute the project-local Databricks CLI.${ANSI_COLORS.RESET}`,
@@ -119,7 +119,7 @@ databricksAuthProcess.on("exit", async (code) => {
     process.exit(code ?? 1);
   }
 
-  console.log();
+  console.info();
 
   const connectionIsValid = await verifyDatabricksConnection(workspaceHost);
 

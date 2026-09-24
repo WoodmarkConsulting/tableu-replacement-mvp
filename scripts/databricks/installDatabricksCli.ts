@@ -77,19 +77,19 @@ async function installDatabricksCli(): Promise<void> {
   const installedVersion = getInstalledVersion();
 
   if (installedVersion === DATABRICKS_CLI_VERSION) {
-    console.log(
+    console.info(
       `Databricks CLI ${DATABRICKS_CLI_VERSION} is already installed locally.`,
     );
     return;
   }
 
   if (installedVersion) {
-    console.log(
+    console.info(
       `Found local Databricks CLI ${installedVersion}. ` +
         `Replacing it with ${DATABRICKS_CLI_VERSION}.`,
     );
   } else {
-    console.log(
+    console.info(
       `Installing Databricks CLI ${DATABRICKS_CLI_VERSION} locally...`,
     );
   }
@@ -112,7 +112,7 @@ async function installDatabricksCli(): Promise<void> {
   try {
     const archivePath = path.join(temporaryDirectory, archiveName);
 
-    console.log(
+    console.info(
       `Downloading Databricks CLI for ${operatingSystem}/${architecture}...`,
     );
 
@@ -177,9 +177,9 @@ async function installDatabricksCli(): Promise<void> {
       );
     }
 
-    console.log(`Databricks CLI ${verifiedVersion} installed successfully.`);
+    console.info(`Databricks CLI ${verifiedVersion} installed successfully.`);
 
-    console.log(`CLI path: ${DATABRICKS_CLI_PATH}`);
+    console.info(`CLI path: ${DATABRICKS_CLI_PATH}`);
   } finally {
     await rm(temporaryDirectory, {
       recursive: true,

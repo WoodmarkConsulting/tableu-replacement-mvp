@@ -19,7 +19,7 @@ logoutProcess.on("error", (error) => {
 
 logoutProcess.on("exit", (code) => {
   if (code === 0) {
-    console.log("Databricks logout completed successfully.");
+    console.info("Databricks logout completed successfully.");
   } else {
     console.error("Databricks logout failed.");
   }

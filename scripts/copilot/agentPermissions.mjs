@@ -130,7 +130,7 @@ function checkPermission(data, markerPath) {
 }
 
 function deny(reason) {
-  console.log(
+  console.info(
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: "PreToolUse",

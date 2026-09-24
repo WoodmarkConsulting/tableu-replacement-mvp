@@ -51,8 +51,6 @@ export function TabsWrapper({
     ),
   ) as Partial<Record<TableSchemaKey, string>>;
 
-  console.log("tabsConfig", tabsConfig);
-
   return (
     <Tabs
       value={value}

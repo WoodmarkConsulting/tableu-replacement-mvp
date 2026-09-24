@@ -130,4 +130,4 @@ if (hasErrors) {
   process.exit(1);
 }
 
-console.log(`${ANSI_COLORS.GREEN}All modules are valid.${ANSI_COLORS.RESET}`);
+console.info(`${ANSI_COLORS.GREEN}All modules are valid.${ANSI_COLORS.RESET}`);

@@ -475,10 +475,10 @@ async function generateModuleRegistry(): Promise<void> {
 
   await writeFile(OUTPUT_FILE, registrySource, "utf8");
 
-  console.log(`Module registry updated: ${OUTPUT_FILE}`);
+  console.info(`Module registry updated: ${OUTPUT_FILE}`);
 
   for (const moduleInfo of moduleInfos) {
-    console.log(
+    console.info(
       `- ${moduleInfo.moduleName} -> config: ${moduleInfo.chartConfigType}, schema: ${moduleInfo.dataSchemaImportName}`,
     );
   }
@@ -526,7 +526,7 @@ function scheduleGeneration(): void {
 async function start(): Promise<void> {
   await runGenerator();
 
-  console.log(`Watching for module changes: ${MODULES_DIRECTORY}`);
+  console.info(`Watching for module changes: ${MODULES_DIRECTORY}`);
 
   const watcher = watch(
     MODULES_DIRECTORY,
@@ -560,7 +560,7 @@ async function start(): Promise<void> {
   });
 
   const shutdown = () => {
-    console.log("\nStopping module registry watcher...");
+    console.info("\nStopping module registry watcher...");
 
     watcher.close();
 

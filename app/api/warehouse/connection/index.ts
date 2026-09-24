@@ -103,7 +103,7 @@ export const runQuery = async <T extends object = object[]>(
 
     if (isDev) {
       const rowCount = Array.isArray(result) ? result.length : undefined;
-      console.log(
+      console.info(
         `[databricks] OK in ${Date.now() - startedAt}ms${
           rowCount === undefined ? "" : `, ${rowCount} row(s)`
         }`,

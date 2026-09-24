@@ -126,7 +126,7 @@ function generatePageForDashboard(dashboard: PagesConfig, force: boolean) {
 
   // Never modify or delete an already existing page directory unless forced.
   if (pageAlreadyExists && !force) {
-    console.log(
+    console.info(
       `Folder for page "${dashboardName}" already exists. Skipping creation.`,
     );
     return;
@@ -155,7 +155,7 @@ function generatePageForDashboard(dashboard: PagesConfig, force: boolean) {
 
     pageCreatedSuccessfully = true;
 
-    console.log(
+    console.info(
       `Page "${dashboardName}" ${pageAlreadyExists ? "regenerated" : "created"} successfully.`,
     );
   } catch (error) {
@@ -173,7 +173,7 @@ function generatePageForDashboard(dashboard: PagesConfig, force: boolean) {
           force: true,
         });
 
-        console.log(`Removed incomplete page directory "${pageFolderPath}".`);
+        console.info(`Removed incomplete page directory "${pageFolderPath}".`);
       } catch (cleanupError) {
         console.error(
           `Failed to remove incomplete page directory "${pageFolderPath}":`,

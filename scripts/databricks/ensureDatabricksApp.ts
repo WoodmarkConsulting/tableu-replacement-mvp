@@ -177,7 +177,7 @@ async function askToCreateApp(): Promise<boolean> {
         return false;
       }
 
-      console.log(
+      console.info(
         `${ANSI_COLORS.YELLOW}Please enter "yes" or "no".${ANSI_COLORS.RESET}`,
       );
     }
@@ -187,7 +187,7 @@ async function askToCreateApp(): Promise<boolean> {
 }
 
 async function createApp(): Promise<void> {
-  console.log(`Creating Databricks app "${DATABRICKS_APP_NAME}"...`);
+  console.info(`Creating Databricks app "${DATABRICKS_APP_NAME}"...`);
 
   await runDatabricksCommand([
     "apps",
@@ -236,15 +236,15 @@ async function cacheEnvironmentVariables(app: DatabricksApp): Promise<void> {
     mode: 0o600,
   });
 
-  console.log(
+  console.info(
     `${ANSI_COLORS.GREEN}Environment variables cached successfully.${ANSI_COLORS.RESET}`,
   );
 
-  console.log(`Cache file: ${ENV_CACHE_FILE}`);
+  console.info(`Cache file: ${ENV_CACHE_FILE}`);
 }
 
 async function main(): Promise<void> {
-  console.log(`Checking for Databricks app "${DATABRICKS_APP_NAME}"...`);
+  console.info(`Checking for Databricks app "${DATABRICKS_APP_NAME}"...`);
 
   let app: DatabricksApp | null;
 
@@ -261,7 +261,7 @@ async function main(): Promise<void> {
   }
 
   if (app) {
-    console.log(
+    console.info(
       `${ANSI_COLORS.GREEN}Databricks app "${DATABRICKS_APP_NAME}" already exists.${ANSI_COLORS.RESET}`,
     );
 
@@ -283,7 +283,7 @@ async function main(): Promise<void> {
   const shouldCreateApp = await askToCreateApp();
 
   if (!shouldCreateApp) {
-    console.log("App creation cancelled. No changes were made.");
+    console.info("App creation cancelled. No changes were made.");
 
     return;
   }
@@ -291,15 +291,15 @@ async function main(): Promise<void> {
   try {
     await createApp();
 
-    console.log(
+    console.info(
       `${ANSI_COLORS.GREEN}Databricks app creation request completed successfully.${ANSI_COLORS.RESET}`,
     );
 
-    console.log("Waiting for the app to become available...");
+    console.info("Waiting for the app to become available...");
 
     const createdApp = await waitForApp();
 
-    console.log(
+    console.info(
       `${ANSI_COLORS.GREEN}Databricks app "${DATABRICKS_APP_NAME}" is available.${ANSI_COLORS.RESET}`,
     );
 

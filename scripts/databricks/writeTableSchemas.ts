@@ -196,20 +196,20 @@ async function writeTableSchemas(
     throw new Error("At least one Databricks table path is required.");
   }
 
-  console.log(
+  console.info(
     `Reading schemas for ${tablePaths.length} Databricks table(s)...`,
   );
 
   const tables: TableSchema[] = [];
 
   for (const tablePath of tablePaths) {
-    console.log(`Reading table: ${tablePath}`);
+    console.info(`Reading table: ${tablePath}`);
 
     const tableSchema = await getTableSchema(tablePath);
 
     tables.push(tableSchema);
 
-    console.log(
+    console.info(
       `${ANSI_COLORS.GREEN}Schema loaded: ${tableSchema.tablePath}${ANSI_COLORS.RESET}`,
     );
   }
@@ -227,9 +227,9 @@ async function writeTableSchemas(
 
   await writeFile(outputPath, JSON.stringify(schemaFile, null, 2), "utf8");
 
-  console.log(
+  console.info(
     `${ANSI_COLORS.GREEN}Table schemas written successfully.${ANSI_COLORS.RESET}`,
   );
 
-  console.log(`Output: ${outputPath}`);
+  console.info(`Output: ${outputPath}`);
 }

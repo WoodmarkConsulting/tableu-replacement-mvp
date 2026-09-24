@@ -54,7 +54,7 @@ async function generateTypes(): Promise<void> {
 
   await writeFile(OUTPUT_PATH, output, "utf8");
 
-  console.log(
+  console.info(
     `Generated ${path.relative(process.cwd(), OUTPUT_PATH)} from ${schemas.length} schema file(s).`,
   );
 }
@@ -127,7 +127,7 @@ function watchSchemas(): void {
 
   watcher.on("error", reportError);
 
-  console.log(
+  console.info(
     `Watching ${path.relative(process.cwd(), SCHEMA_DIRECTORY)} for changes...`,
   );
 }
