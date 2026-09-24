@@ -35,12 +35,12 @@ This folder contains reusable dashboard modules that can be referenced from `pag
     `values.<column>`). Every present value must be a primitive. No tooltip SQL is required.
   - `"tooltipLookup"` reads `sourceField` as an exact alias from the source `.tooltip.sql`.
     The alias must contain a primitive or an array of primitives.
-  `target` is `{ kind: "chart", chartID }` or `{ kind: "tab", tab }`. `trigger` is `"manual"`
-  (default; context menu and tooltip button) or `"auto"` (apply on selection). `navigate` is
-  valid only on tab targets with `trigger: "manual"` and switches tabs. A chart target must
-  bind `targetDimensionId` in `filterBindings`. Manual actions may target any non-date
-  dimension; `trigger: "auto"` still requires `multiselect`. Distinct values are capped
-  (`maxDistinctValues`, default 500).
+    `target` is `{ kind: "chart", chartID }` or `{ kind: "tab", tab }`. `trigger` is `"manual"`
+    (default; context menu and tooltip button) or `"auto"` (apply on selection). `navigate` is
+    valid only on tab targets with `trigger: "manual"` and switches tabs. A chart target must
+    bind `targetDimensionId` in `filterBindings`. Manual actions may target any non-date
+    dimension; `trigger: "auto"` still requires `multiselect`. Distinct values are capped
+    (`maxDistinctValues`, default 500).
 - `TabsWrapper` maps every configured `chartID` to its `chartTitle` across tabs so the context
   menu shows user-facing target names. Action targets should always have useful titles;
   untitled targets display `Unbenanntes Diagramm` rather than an internal ID.

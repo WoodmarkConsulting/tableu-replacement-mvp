@@ -123,9 +123,9 @@ Note: `docs/plans/filter-framework-plan.md` mentions all filter types are
 2. `npx tsc --noEmit` (watch the widened `FilterValue` union across all consumers:
    `buildDefaultValues`, `toQueryParam`, `isEmpty` / `formatValue`, snapshots).
 3. Regenerate + inspect one registered dashboard page:
-  `npm run pageConfig:generatePage -- -d <dashboard|config>`.
-  A normal generator run skips existing dashboard directories; the targeted
-  `-d`/`--dashboard` run force-regenerates exactly the selected registered dashboard.
+   `npm run pageConfig:generatePage -- -d <dashboard|config>`.
+   A normal generator run skips existing dashboard directories; the targeted
+   `-d`/`--dashboard` run force-regenerates exactly the selected registered dashboard.
 4. Manual (Playwright) on a dashboard with a `multiselect` dimension:
    - Search filters the option list.
    - Multiple checks persist; the trigger shows the selected count/labels.

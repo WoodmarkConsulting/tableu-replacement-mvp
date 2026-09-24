@@ -50,12 +50,12 @@ deferred to a follow-up.
 
 ## How this differs from `HistogramModule`
 
-| | `BarChartModule` | `HistogramModule` |
-| --- | --- | --- |
-| X axis | discrete categories (strings) | numeric bins (ranges) |
-| Data row | one category + values | one bin + counts |
+|             | `BarChartModule`               | `HistogramModule`                 |
+| ----------- | ------------------------------ | --------------------------------- |
+| X axis      | discrete categories (strings)  | numeric bins (ranges)             |
+| Data row    | one category + values          | one bin + counts                  |
 | Typical use | compare measures across groups | show distribution of one variable |
-| Ordering | author-controlled / sortable | strictly ascending by bin edge |
+| Ordering    | author-controlled / sortable   | strictly ascending by bin edge    |
 
 ---
 
@@ -110,10 +110,10 @@ export default barChartDataSchema;
 
 ```json
 [
-  { "category": "North", "values": [120, 80],  "target": 130 },
-  { "category": "South", "values": [90, 140],  "target": 130 },
-  { "category": "East",  "values": [60, 110],  "target": 130 },
-  { "category": "West",  "values": [150, 70],  "target": 130 }
+  { "category": "North", "values": [120, 80], "target": 130 },
+  { "category": "South", "values": [90, 140], "target": 130 },
+  { "category": "East", "values": [60, 110], "target": 130 },
+  { "category": "West", "values": [150, 70], "target": 130 }
 ]
 ```
 
@@ -379,7 +379,7 @@ Optional helper extraction (not required by the contract):
    `ARRAY<DOUBLE>`.
 
 3. Add a temporary dashboard entry referencing `moduleName: "BarChartModule"`, regenerate the
-  page with `npm run pageConfig:generatePage -- -d <dashboard|config>`, and visually confirm:
+   page with `npm run pageConfig:generatePage -- -d <dashboard|config>`, and visually confirm:
    - vertical and horizontal orientation both render correctly
    - grouped / stacked / stacked100 / overlay layouts behave as configured
    - value labels, sorting, threshold + per-category coloring apply correctly

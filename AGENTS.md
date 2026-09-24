@@ -62,11 +62,11 @@ The runtime flow is:
 3. `dashboardConfig.ts` contains `tabsConfig`, `dashboardConfig`, and `INITIAL_TAB`; `page.tsx` imports it and renders `DashboardShell`.
 4. The generated dashboard renders `TabsWrapper` with `tabsConfig`.
 5. `TabsWrapper` renders `ChartWrapper` for each configured component.
-5. `ChartWrapper` resolves the configured `moduleName` from `moduleRegistry`.
-6. `ChartWrapper` fetches `/api/data/chart/<chartID>`.
-7. The API route reads `pagesConfig/sql/<chartID>.sql` and executes the query.
-8. `ChartWrapper` validates the returned array against the selected module's `chartDataSchema.ts`.
-9. The module receives `ChartWrapperInjectedProps<...>` including `chartData`, loading/error state, configured metadata, and the optional `onSelectionChange` callback.
+6. `ChartWrapper` resolves the configured `moduleName` from `moduleRegistry`.
+7. `ChartWrapper` fetches `/api/data/chart/<chartID>`.
+8. The API route reads `pagesConfig/sql/<chartID>.sql` and executes the query.
+9. `ChartWrapper` validates the returned array against the selected module's `chartDataSchema.ts`.
+10. The module receives `ChartWrapperInjectedProps<...>` including `chartData`, loading/error state, configured metadata, and the optional `onSelectionChange` callback.
 
 ## Filtering framework
 
@@ -198,6 +198,7 @@ the card.
 Every rendered chart has a wrapper-owned right-click menu. **Tooltip anzeigen** is disabled
 without selected rows or when `enhancedTooltip` is false. **Filtern** opens a unified submenu
 categorized into **Auf diesem Tab**, **Auf anderen Tabs**, and **Dashboardweit**:
+
 - **Trigger**: `"manual"` (context menu / tooltip button) vs. `"auto"` (selection triggers immediately).
 - **Source resolution**:
   - `"clientRow"`: in-memory lookup from `selectedRows` (supports top-level keys and `values.<col>`).
@@ -207,6 +208,7 @@ categorized into **Auf diesem Tab**, **Auf anderen Tabs**, and **Dashboardweit**
 - **Value cap**: default 500 distinct values per mapping (`maxDistinctValues`), guarding against oversized SQL inputs.
 
 `DashboardConfig.actions` contains:
+
 ```ts
 {
   id: string;
